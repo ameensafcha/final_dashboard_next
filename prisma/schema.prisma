@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model raw_materials {
+  id           Int      @id @default(autoincrement())
+  name         String
+  quantity     Float
+  unit         String   @default("kg")
+  price_per_kg Float?
+  receivings   receiving_materials[]
+  flavor_ingredients flavor_ingredients[]
+}
+
+model receiving_materials {
+  id             String   @id @default(uuid())
+  raw_material_id Int
+  raw_material   raw_materials @relation(fields: [raw_material_id], references: [id])
+  quantity       Float
+  unit           String   @default("kg")
+  rate           Float?
+  supplier       String
+  date           DateTime @default(now())
+  notes          String?
+}
+
+model flavors {
+  id           String             @id @default(uuid())
+  name         String
+  short_code   String             @default("XX")
+  is_active    Boolean            @default(true)
+  created_at   DateTime           @default(now())
+  ingredients  flavor_ingredients[]
+  product_flavors product_flavors[]
+}
+
+model products {
+  id              String            @id @default(uuid())
+  name            String
+  description     String?
+  is_active       Boolean           @default(true)
+  created_at      DateTime          @default(now())
+  product_flavors product_flavors[]
+  variants        product_variants[]
+}
+
+model product_variants {
+  id          String   @id @default(uuid())
+  product_id  String
+  size_id     String
+  price       Float    @default(0)
+  description String?
+  sku         String   @unique
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  product     products @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  size        sizes    @relation(fields: [size_id], references: [id])
+
+  @@unique([product_id, size_id])
+}
+
+model product_flavors {
+  id         String   @id @default(uuid())
+  product_id String
+  flavor_id  String
+  is_primary Boolean  @default(false)
+  product    products @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  flavor     flavors  @relation(fields: [flavor_id], references: [id])
+
+  @@unique([product_id, flavor_id])
+}
+
+model flavor_ingredients {
+  id             String       @id @default(uuid())
+  flavor_id      String
+  raw_material_id Int
+  flavor         flavors      @relation(fields: [flavor_id], references: [id], onDelete: Cascade)
+  raw_material   raw_materials @relation(fields: [raw_material_id], references: [id])
+
+  @@unique([flavor_id, raw_material_id])
+}
+
+model sizes {
+  id        String            @id @default(uuid())
+  size      String
+  unit      String            @default("kg")
+  pack_type String
+  is_active Boolean           @default(true)
+  created_at DateTime        @default(now())
+  variants  product_variants[]
+}

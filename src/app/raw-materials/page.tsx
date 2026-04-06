@@ -47,7 +47,7 @@ export default function RawMaterialsPage() {
 
   if (isLoading) return (
     <div className="flex items-center justify-center h-64">
-      <div className="animate-spin w-8 h-8 border-2 border-t-transparent rounded-full" style={{ borderColor: "#7C3AED", borderTopColor: "transparent" }}></div>
+      <div className="animate-spin w-8 h-8 border-2 border-t-transparent rounded-full" style={{ borderColor: "#E8C547", borderTopColor: "transparent" }}></div>
     </div>
   );
 
@@ -63,24 +63,33 @@ export default function RawMaterialsPage() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: "#4C1D95" }}>Raw Materials</h1>
-          <p className="text-sm mt-1" style={{ color: "#A78BFA" }}>Manage your inventory materials</p>
+          <h1 className="text-2xl font-bold" style={{ color: "#1A1A1A" }}>Raw Materials</h1>
+          <p className="text-sm mt-1" style={{ color: "#C9A83A" }}>Manage your inventory materials</p>
         </div>
-        <AddMaterialDialog />
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => window.location.href = '/raw-materials/logs'}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-200 hover:bg-yellow-50 cursor-pointer"
+            style={{ borderColor: "#E8C547", color: "#E8C547" }}
+          >
+            Logs
+          </button>
+          <AddMaterialDialog />
+        </div>
       </div>
 
       <div 
         className="rounded-xl overflow-hidden border"
-        style={{ backgroundColor: "#FFFFFF", borderColor: "#7C3AED20" }}
+        style={{ backgroundColor: "#FFFFFF", borderColor: "#E8C54720" }}
       >
         <table className="w-full">
           <thead>
-            <tr style={{ backgroundColor: "#FAF5FF" }}>
-              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#4C1D95" }}>ID</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#4C1D95" }}>Name</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#4C1D95" }}>Quantity</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#4C1D95" }}>Price/kg</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#4C1D95" }}>Actions</th>
+            <tr style={{ backgroundColor: "#F5F4EE" }}>
+              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#1A1A1A" }}>ID</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#1A1A1A" }}>Name</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#1A1A1A" }}>Quantity</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#1A1A1A" }}>Price/kg</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#1A1A1A" }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -89,22 +98,22 @@ export default function RawMaterialsPage() {
                 key={material.id} 
                 className="border-t transition-all duration-200"
                 style={{ 
-                  borderColor: "#7C3AED10",
-                  backgroundColor: index % 2 === 0 ? "transparent" : "#FAF5FF" 
+                  borderColor: "#E8C54710",
+                  backgroundColor: index % 2 === 0 ? "transparent" : "#F5F4EE" 
                 }}
               >
-                <td className="px-4 py-3 text-sm font-mono" style={{ color: "#A78BFA" }}>#{material.id}</td>
-                <td className="px-4 py-3 text-sm font-medium" style={{ color: "#4C1D95" }}>{material.name}</td>
-                <td className="px-4 py-3 text-sm" style={{ color: "#4C1D95" }}>{material.quantity} {material.unit}</td>
-                <td className="px-4 py-3 text-sm font-mono" style={{ color: material.price_per_kg ? "#7C3AED" : "#A78BFA" }}>
+                <td className="px-4 py-3 text-sm font-mono" style={{ color: "#C9A83A" }}>#{material.id}</td>
+                <td className="px-4 py-3 text-sm font-medium" style={{ color: "#1A1A1A" }}>{material.name}</td>
+                <td className="px-4 py-3 text-sm" style={{ color: "#1A1A1A" }}>{material.quantity} {material.unit}</td>
+                <td className="px-4 py-3 text-sm font-mono" style={{ color: material.price_per_kg ? "#E8C547" : "#C9A83A" }}>
                   {material.price_per_kg ? `$${material.price_per_kg}` : "-"}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <button 
                       onClick={() => setEditMaterial(material)}
-                      className="p-1.5 rounded-lg transition-all duration-200 hover:bg-purple-100 cursor-pointer"
-                      style={{ color: "#7C3AED" }}
+                      className="p-1.5 rounded-lg transition-all duration-200 hover:bg-yellow-100 cursor-pointer"
+                      style={{ color: "#E8C547" }}
                     >
                       <Edit className="w-4 h-4" />
                     </button>
@@ -123,9 +132,9 @@ export default function RawMaterialsPage() {
               <tr>
                 <td colSpan={5} className="px-4 py-12 text-center">
                   <div className="flex flex-col items-center gap-2">
-                    <Package className="w-12 h-12 opacity-30" style={{ color: "#A78BFA" }} />
-                    <p className="font-medium" style={{ color: "#A78BFA" }}>No materials found</p>
-                    <p className="text-sm" style={{ color: "#A78BFA" }}>Add your first raw material to get started</p>
+                    <Package className="w-12 h-12 opacity-30" style={{ color: "#C9A83A" }} />
+                    <p className="font-medium" style={{ color: "#C9A83A" }}>No materials found</p>
+                    <p className="text-sm" style={{ color: "#C9A83A" }}>Add your first raw material to get started</p>
                   </div>
                 </td>
               </tr>

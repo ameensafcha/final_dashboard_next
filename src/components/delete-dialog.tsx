@@ -23,15 +23,15 @@ function DeleteConfirmDialog({ open, onOpenChange, onConfirm, isPending }: Delet
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent style={{ backgroundColor: "#FFFFFF" }}>
         <DialogHeader>
-          <DialogTitle style={{ color: "#4C1D95" }}>Delete Material</DialogTitle>
-          <DialogDescription style={{ color: "#A78BFA" }}>
+          <DialogTitle style={{ color: "#1A1A1A" }}>Delete Material</DialogTitle>
+          <DialogDescription style={{ color: "#C9A83A" }}>
             Are you sure you want to delete this material? This action cannot be undone.
           </DialogDescription>
         </DialogHeader>
         <div className="flex gap-2 justify-end pt-2">
           <Button 
             onClick={() => onOpenChange(false)}
-            style={{ borderColor: "#7C3AED20", color: "#4C1D95" }}
+            style={{ borderColor: "#E8C54720", color: "#1A1A1A" }}
           >
             Cancel
           </Button>

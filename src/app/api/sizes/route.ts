@@ -8,7 +8,6 @@ export async function GET() {
     });
     return NextResponse.json(sizes);
   } catch (error) {
-    console.error(error);
     return NextResponse.json({ error: "Failed to fetch" }, { status: 500 });
   }
 }
@@ -25,7 +24,6 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json(updated);
   } catch (error) {
-    console.error(error);
     return NextResponse.json({ error: "Failed to update" }, { status: 500 });
   }
 }
@@ -46,7 +44,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json(newSize);
   } catch (error) {
-    console.error(error);
     return NextResponse.json({ error: "Failed to create" }, { status: 500 });
   }
 }
@@ -63,7 +60,6 @@ export async function PUT(request: Request) {
 
     return NextResponse.json(updated);
   } catch (error) {
-    console.error(error);
     return NextResponse.json({ error: "Failed to update" }, { status: 500 });
   }
 }
@@ -83,7 +79,6 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error(error);
     return NextResponse.json({ error: "Failed to delete" }, { status: 500 });
   }
 }

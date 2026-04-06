@@ -181,7 +181,7 @@ export default function SizesPage() {
 
   if (isLoading) return (
     <div className="flex items-center justify-center h-64">
-      <div className="animate-spin w-8 h-8 border-2 border-t-transparent rounded-full" style={{ borderColor: "#7C3AED", borderTopColor: "transparent" }}></div>
+      <div className="animate-spin w-8 h-8 border-2 border-t-transparent rounded-full" style={{ borderColor: "#E8C547", borderTopColor: "transparent" }}></div>
     </div>
   );
 
@@ -191,8 +191,8 @@ export default function SizesPage() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: "#4C1D95" }}>Sizes</h1>
-          <p className="text-sm mt-1" style={{ color: "#A78BFA" }}>Manage product sizes</p>
+          <h1 className="text-2xl font-bold" style={{ color: "#1A1A1A" }}>Sizes</h1>
+          <p className="text-sm mt-1" style={{ color: "#C9A83A" }}>Manage product sizes</p>
         </div>
         <button 
           onClick={() => setOpen(true)}
@@ -206,27 +206,27 @@ export default function SizesPage() {
 
       <div 
         className="rounded-xl overflow-hidden border"
-        style={{ backgroundColor: "#FFFFFF", borderColor: "#7C3AED20" }}
+        style={{ backgroundColor: "#FFFFFF", borderColor: "#E8C54720" }}
       >
         <table className="w-full">
           <thead>
-            <tr style={{ backgroundColor: "#FAF5FF" }}>
-              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#4C1D95" }}>Size</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#4C1D95" }}>Unit</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#4C1D95" }}>Pack Type</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#4C1D95" }}>Status</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#4C1D95" }}>Actions</th>
+            <tr style={{ backgroundColor: "#F5F4EE" }}>
+              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#1A1A1A" }}>Size</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#1A1A1A" }}>Unit</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#1A1A1A" }}>Pack Type</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#1A1A1A" }}>Status</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#1A1A1A" }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {sizesList.map((item, index) => (
               <tr 
                 key={item.id}
-                style={{ backgroundColor: index % 2 === 0 ? "transparent" : "#FAF5FF" }}
+                style={{ backgroundColor: index % 2 === 0 ? "transparent" : "#F5F4EE" }}
               >
-                <td className="px-4 py-3 text-sm font-medium" style={{ color: "#4C1D95" }}>{item.size}</td>
-                <td className="px-4 py-3 text-sm" style={{ color: "#4C1D95" }}>{item.unit}</td>
-                <td className="px-4 py-3 text-sm" style={{ color: "#4C1D95" }}>{item.pack_type}</td>
+                <td className="px-4 py-3 text-sm font-medium" style={{ color: "#1A1A1A" }}>{item.size}</td>
+                <td className="px-4 py-3 text-sm" style={{ color: "#1A1A1A" }}>{item.unit}</td>
+                <td className="px-4 py-3 text-sm" style={{ color: "#1A1A1A" }}>{item.pack_type}</td>
                 <td className="px-4 py-3">
                   <button 
                     onClick={() => handleToggle(item)}
@@ -243,8 +243,8 @@ export default function SizesPage() {
                   <div className="flex items-center gap-2">
                     <button 
                       onClick={() => handleEdit(item)}
-                      className="p-1.5 rounded-lg hover:bg-purple-100 cursor-pointer" 
-                      style={{ color: "#7C3AED" }}
+                      className="p-1.5 rounded-lg hover:bg-yellow-100 cursor-pointer" 
+                      style={{ color: "#E8C547" }}
                     >
                       <Edit className="w-4 h-4" />
                     </button>
@@ -263,9 +263,9 @@ export default function SizesPage() {
               <tr>
                 <td colSpan={5} className="px-4 py-12 text-center">
                   <div className="flex flex-col items-center gap-2">
-                    <Ruler className="w-12 h-12 opacity-30" style={{ color: "#A78BFA" }} />
-                    <p className="font-medium" style={{ color: "#A78BFA" }}>No sizes found</p>
-                    <p className="text-sm" style={{ color: "#A78BFA" }}>Add your first size</p>
+                    <Ruler className="w-12 h-12 opacity-30" style={{ color: "#C9A83A" }} />
+                    <p className="font-medium" style={{ color: "#C9A83A" }}>No sizes found</p>
+                    <p className="text-sm" style={{ color: "#C9A83A" }}>Add your first size</p>
                   </div>
                 </td>
               </tr>
@@ -278,30 +278,30 @@ export default function SizesPage() {
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent style={{ backgroundColor: "#FFFFFF" }}>
           <DialogHeader>
-            <DialogTitle style={{ color: "#4C1D95" }}>
+            <DialogTitle style={{ color: "#1A1A1A" }}>
               {editSize ? "Edit Size" : "Add Size"}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: "#4C1D95" }}>Size</label>
+                <label className="block text-sm font-medium mb-1" style={{ color: "#1A1A1A" }}>Size</label>
                 <Input
                   type="number"
                   value={formData.size}
                   onChange={(e) => setFormData({ ...formData, size: e.target.value })}
                   placeholder="e.g., 1, 500, 100"
                   required
-                  style={{ borderColor: "#7C3AED20" }}
+                  style={{ borderColor: "#E8C54720" }}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: "#4C1D95" }}>Unit</label>
+                <label className="block text-sm font-medium mb-1" style={{ color: "#1A1A1A" }}>Unit</label>
                 <select
                   value={formData.unit}
                   onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
                   className="w-full px-3 py-2 rounded-md border"
-                  style={{ borderColor: "#7C3AED20" }}
+                  style={{ borderColor: "#E8C54720" }}
                 >
                   <option value="kg">kg</option>
                   <option value="gm">gm</option>
@@ -309,26 +309,26 @@ export default function SizesPage() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: "#4C1D95" }}>Pack Type</label>
+              <label className="block text-sm font-medium mb-1" style={{ color: "#1A1A1A" }}>Pack Type</label>
               <Input
                 type="text"
                 value={formData.pack_type}
                 onChange={(e) => setFormData({ ...formData, pack_type: e.target.value })}
                 placeholder="e.g., Bottle, Box, Pouch"
                 required
-                style={{ borderColor: "#7C3AED20" }}
+                style={{ borderColor: "#E8C54720" }}
               />
             </div>
             {editSize && (
               <div className="flex items-center justify-between">
-                <label className="text-sm font-medium" style={{ color: "#4C1D95" }}>
+                <label className="text-sm font-medium" style={{ color: "#1A1A1A" }}>
                   Status
                 </label>
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, is_active: !formData.is_active })}
                   className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer"
-                  style={{ backgroundColor: formData.is_active ? "#7C3AED" : "#DC2626" }}
+                  style={{ backgroundColor: formData.is_active ? "#E8C547" : "#DC2626" }}
                 >
                   <span
                     className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
@@ -338,13 +338,13 @@ export default function SizesPage() {
               </div>
             )}
             <div className="flex gap-2 justify-end pt-2">
-              <Button type="button" onClick={handleClose} style={{ borderColor: "#7C3AED20", color: "#4C1D95" }}>
+              <Button type="button" onClick={handleClose} style={{ borderColor: "#E8C54720", color: "#1A1A1A" }}>
                 Cancel
               </Button>
               <Button 
                 type="submit" 
                 disabled={createMutation.isPending || updateMutation.isPending}
-                style={{ backgroundColor: "#7C3AED", color: "white" }}
+                style={{ backgroundColor: "#E8C547", color: "white" }}
               >
                 {editSize ? (updateMutation.isPending ? "Saving..." : "Save") : (createMutation.isPending ? "Saving..." : "Save")}
               </Button>
@@ -357,7 +357,7 @@ export default function SizesPage() {
       <Dialog open={deleteOpen} onOpenChange={(open) => { setDeleteOpen(open); if (!open) setLinkedProducts([]); }}>
         <DialogContent style={{ backgroundColor: "#FFFFFF", maxWidth: "450px" }}>
           <DialogHeader>
-            <DialogTitle style={{ color: "#4C1D95" }}>Delete Size</DialogTitle>
+            <DialogTitle style={{ color: "#1A1A1A" }}>Delete Size</DialogTitle>
           </DialogHeader>
           {linkedProducts.length > 0 ? (
             <div className="space-y-3">
@@ -367,19 +367,19 @@ export default function SizesPage() {
               <div className="max-h-40 overflow-y-auto border rounded-lg p-2" style={{ borderColor: "#DC262620" }}>
                 {linkedProducts.map(p => (
                   <div key={p.id} className="flex items-center justify-between p-2 rounded" style={{ backgroundColor: "#FEE2E2" }}>
-                    <span className="text-sm font-medium" style={{ color: "#4C1D95" }}>{p.name}</span>
-                    <span className="text-xs font-mono" style={{ color: "#A78BFA" }}>{p.sku}</span>
+                    <span className="text-sm font-medium" style={{ color: "#1A1A1A" }}>{p.name}</span>
+                    <span className="text-xs font-mono" style={{ color: "#C9A83A" }}>{p.sku}</span>
                   </div>
                 ))}
               </div>
             </div>
           ) : (
-            <p style={{ color: "#4C1D95" }}>
+            <p style={{ color: "#1A1A1A" }}>
               Are you sure you want to delete this size?
             </p>
           )}
           <div className="flex gap-2 justify-end pt-2">
-            <Button onClick={() => { setDeleteOpen(false); setLinkedProducts([]); }} style={{ borderColor: "#7C3AED20", color: "#4C1D95" }}>
+            <Button onClick={() => { setDeleteOpen(false); setLinkedProducts([]); }} style={{ borderColor: "#E8C54720", color: "#1A1A1A" }}>
               Cancel
             </Button>
             {linkedProducts.length === 0 && (

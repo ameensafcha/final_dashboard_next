@@ -1,21 +1,29 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Hide scrollbar but allow scrolling */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
 
 :root {
-  --background: #FAF5FF;
-  --foreground: #4C1D95;
-  --primary: #7C3AED;
-  --primary-foreground: #FFFFFF;
-  --secondary: #A78BFA;
-  --secondary-foreground: #FFFFFF;
-  --accent: #F97316;
-  --accent-foreground: #FFFFFF;
+  --background: #F5F4EE;
+  --foreground: #1A1A1A;
+  --primary: #E8C547;
+  --primary-foreground: #1A1A1A;
+  --secondary: #D4B84A;
+  --secondary-foreground: #1A1A1A;
+  --accent: #E8C547;
+  --accent-foreground: #1A1A1A;
   --destructive: #DC2626;
   --destructive-foreground: #FFFFFF;
-  --border: #7C3AED20;
-  --input: #7C3AED20;
-  --ring: #7C3AED;
+  --border: #E8E7E1;
+  --input: #E8E7E1;
+  --ring: #E8C547;
   --radius: 0.75rem;
 }
 

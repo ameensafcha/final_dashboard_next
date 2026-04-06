@@ -72,38 +72,38 @@ export function EditMaterialDialog({ material, open, onOpenChange }: EditMateria
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent style={{ backgroundColor: "#FFFFFF" }}>
         <DialogHeader>
-          <DialogTitle style={{ color: "#4C1D95" }}>Edit Raw Material</DialogTitle>
+          <DialogTitle style={{ color: "#1A1A1A" }}>Edit Raw Material</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: "#4C1D95" }}>Name</label>
+            <label className="block text-sm font-medium mb-1" style={{ color: "#1A1A1A" }}>Name</label>
             <Input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              style={{ borderColor: "#7C3AED20" }}
+              style={{ borderColor: "#E8C54720" }}
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: "#4C1D95" }}>Quantity</label>
+              <label className="block text-sm font-medium mb-1" style={{ color: "#1A1A1A" }}>Quantity</label>
               <Input
                 type="number"
                 step="0.01"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
                 required
-                style={{ borderColor: "#7C3AED20" }}
+                style={{ borderColor: "#E8C54720" }}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: "#4C1D95" }}>Unit</label>
+              <label className="block text-sm font-medium mb-1" style={{ color: "#1A1A1A" }}>Unit</label>
               <select
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
                 className="w-full px-3 py-2 rounded-md border"
-                style={{ borderColor: "#7C3AED20" }}
+                style={{ borderColor: "#E8C54720" }}
               >
                 <option value="kg">Kilogram (kg)</option>
                 <option value="gm">Gram (gm)</option>
@@ -114,27 +114,27 @@ export function EditMaterialDialog({ material, open, onOpenChange }: EditMateria
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: "#4C1D95" }}>Price/kg</label>
+            <label className="block text-sm font-medium mb-1" style={{ color: "#1A1A1A" }}>Price/kg</label>
             <Input
               type="number"
               step="0.01"
               value={pricePerKg}
               onChange={(e) => setPricePerKg(e.target.value)}
-              style={{ borderColor: "#7C3AED20" }}
+              style={{ borderColor: "#E8C54720" }}
             />
           </div>
           <div className="flex gap-2 justify-end pt-2">
             <Button 
               type="button" 
               onClick={() => onOpenChange(false)}
-              style={{ borderColor: "#7C3AED20", color: "#4C1D95" }}
+              style={{ borderColor: "#E8C54720", color: "#1A1A1A" }}
             >
               Cancel
             </Button>
             <Button 
               type="submit" 
               disabled={updateMutation.isPending}
-              style={{ backgroundColor: "#7C3AED", color: "white" }}
+              style={{ backgroundColor: "#E8C547", color: "white" }}
             >
               {updateMutation.isPending ? "Saving..." : "Save"}
             </Button>

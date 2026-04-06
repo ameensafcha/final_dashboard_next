@@ -6,7 +6,6 @@ export async function GET() {
     const materials = await prisma.raw_materials.findMany();
     return NextResponse.json(materials);
   } catch (error) {
-    console.error(error);
     return NextResponse.json({ error: "Failed to fetch" }, { status: 500 });
   }
 }
@@ -27,7 +26,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json(material);
   } catch (error) {
-    console.error(error);
     return NextResponse.json({ error: "Failed to create" }, { status: 500 });
   }
 }
@@ -49,7 +47,6 @@ export async function PUT(request: Request) {
 
     return NextResponse.json(material);
   } catch (error) {
-    console.error(error);
     return NextResponse.json({ error: "Failed to update" }, { status: 500 });
   }
 }
@@ -65,7 +62,6 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error(error);
     return NextResponse.json({ error: "Failed to delete" }, { status: 500 });
   }
 }

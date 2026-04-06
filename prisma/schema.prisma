@@ -13,7 +13,9 @@ model raw_materials {
   unit         String   @default("kg")
   price_per_kg Float?
   receivings   receiving_materials[]
-  flavor_ingredients flavor_ingredients[]
+  logs         raw_material_logs[]
+
+  @@index([name])
 }
 
 model receiving_materials {
@@ -26,16 +28,22 @@ model receiving_materials {
   supplier       String
   date           DateTime @default(now())
   notes          String?
+
+  @@index([raw_material_id])
+  @@index([date(sort: Desc)])
 }
 
 model flavors {
   id           String             @id @default(uuid())
   name         String
   short_code   String             @default("XX")
-  is_active    Boolean            @default(true)
-  created_at   DateTime           @default(now())
-  ingredients  flavor_ingredients[]
+  ingredients  String?            // comma separated ingredients
+  is_active    Boolean           @default(true)
+  created_at   DateTime          @default(now())
   product_flavors product_flavors[]
+  variants     product_variants[]
+  batches     batches[]
+  finished_products finished_products[]
 }
 
 model products {
@@ -51,37 +59,32 @@ model products {
 model product_variants {
   id          String   @id @default(uuid())
   product_id  String
+  flavor_id   String
   size_id     String
   price       Float    @default(0)
   description String?
   sku         String   @unique
-  is_active   Boolean  @default(true)
+  is_active   Boolean  @default(false)
   created_at  DateTime @default(now())
   product     products @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  flavor      flavors  @relation(fields: [flavor_id], references: [id])
   size        sizes    @relation(fields: [size_id], references: [id])
+  inventory   variant_inventory?
+  receive_items packing_receive_items[]
 
-  @@unique([product_id, size_id])
+  @@unique([product_id, flavor_id, size_id])
+  @@index([product_id])
+  @@index([is_active])
 }
 
 model product_flavors {
   id         String   @id @default(uuid())
   product_id String
   flavor_id  String
-  is_primary Boolean  @default(false)
   product    products @relation(fields: [product_id], references: [id], onDelete: Cascade)
   flavor     flavors  @relation(fields: [flavor_id], references: [id])
 
   @@unique([product_id, flavor_id])
-}
-
-model flavor_ingredients {
-  id             String       @id @default(uuid())
-  flavor_id      String
-  raw_material_id Int
-  flavor         flavors      @relation(fields: [flavor_id], references: [id], onDelete: Cascade)
-  raw_material   raw_materials @relation(fields: [raw_material_id], references: [id])
-
-  @@unique([flavor_id, raw_material_id])
 }
 
 model sizes {
@@ -92,4 +95,118 @@ model sizes {
   is_active Boolean           @default(true)
   created_at DateTime        @default(now())
   variants  product_variants[]
+}
+
+model transactions {
+  id           String   @id @default(uuid())
+  type         String   // "sale" or "purchase"
+  amount       Float
+  date         DateTime @default(now())
+  reference_id String?
+  person       String?
+  note         String?
+  created_at   DateTime @default(now())
+
+  @@index([type])
+  @@index([date(sort: Desc)])
+}
+
+model batches {
+  id            String   @id @default(uuid())
+  batch_id      String   @unique  // Format: BATCH-YYMMDD-0001
+  date          DateTime @default(now())
+  logged_by     String   // "Jeffrey", "Team Member 1", "Team Member 2"
+  raw_material_id Int?   // Raw material used (optional)
+  flavor_id     String
+  flavor        flavors  @relation(fields: [flavor_id], references: [id])
+  
+  // Yield Calculation
+  leaves_in     Float    // Total raw material input
+  powder_out    Float    // Finished product output
+  waste_loss    Float    // Calculated: leaves_in - powder_out
+  yield_percent Float    // Calculated: (powder_out / leaves_in) * 100
+  
+  // Quality & Status
+  quality_check Boolean  @default(false)
+  status        String   // "Sent in Factory", "Running", "Draft"
+  notes         String?
+  
+  created_at    DateTime @default(now())
+
+  @@index([status])
+  @@index([created_at(sort: Desc)])
+  @@index([flavor_id])
+}
+
+model raw_material_logs {
+  id              String          @id @default(uuid())
+  raw_material_id Int
+  quantity        Float
+  type            String         // "purchase", "batch_used", "adjustment"
+  reference_id    String?        // Links to receiving or batch
+  created_at      DateTime       @default(now())
+  raw_material    raw_materials   @relation(fields: [raw_material_id], references: [id])
+
+  @@index([raw_material_id])
+  @@index([created_at(sort: Desc)])
+}
+
+model finished_products {
+  id              String        @id @default(uuid())
+  flavor_id       String
+  flavor          flavors       @relation(fields: [flavor_id], references: [id])
+  quantity        Float         // kg
+  batch_reference String?       // Reference to batch_id
+  created_at      DateTime      @default(now())
+
+  @@index([created_at(sort: Desc)])
+  @@index([flavor_id])
+}
+
+model packing_logs {
+  id               String   @id @default(uuid())
+  third_party_name String
+  bag_size         Int      // 5 or 10
+  bag_count        Int
+  total_kg         Float
+  created_at       DateTime @default(now())
+
+  @@index([created_at(sort: Desc)])
+}
+
+model powder_stock {
+  id                Int      @id @default(autoincrement())
+  total_from_batches Float   // Batch se aaya powder
+  total_sent        Float    // Packing me bheja
+  available         Float    // total_from_batches - total_sent
+  updated_at        DateTime @default(now())
+}
+
+model packing_receives {
+  id                String   @id @default(uuid())
+  third_party_name  String
+  notes             String?
+  created_at        DateTime @default(now())
+  items             packing_receive_items[]
+
+  @@index([created_at(sort: Desc)])
+}
+
+model packing_receive_items {
+  id                  String          @id @default(uuid())
+  packing_receive_id  String
+  packing_receive     packing_receives @relation(fields: [packing_receive_id], references: [id], onDelete: Cascade)
+  variant_id          String
+  variant             product_variants @relation(fields: [variant_id], references: [id])
+  quantity            Int
+}
+
+model variant_inventory {
+  id          String   @id @default(uuid())
+  variant_id  String   @unique
+  variant     product_variants @relation(fields: [variant_id], references: [id])
+  quantity    Int      @default(0)
+  updated_at  DateTime @default(now())
+
+  @@index([quantity(sort: Desc)])
 }

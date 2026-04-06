@@ -1,29 +1,46 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const products = await prisma.products.findMany({
       include: {
         product_flavors: {
           include: {
-            flavor: {
-              include: {
-                ingredients: {
-                  include: {
-                    raw_material: true,
-                  },
-                },
-              },
-            },
+            flavor: true,
           },
+        },
+        variants: {
+          include: {
+            flavor: true,
+            size: true,
+          },
+          orderBy: [
+            { flavor: { name: 'asc' } },
+            { size: { size: 'asc' } }
+          ],
         },
       },
       orderBy: { created_at: "desc" },
     });
-    return NextResponse.json(products);
+
+    const productsWithCounts = products.map(product => {
+      const activeCount = product.variants.filter((v: any) => v.is_active).length;
+      const inactiveCount = product.variants.filter((v: any) => !v.is_active).length;
+      return {
+        ...product,
+        variants_count: {
+          active: activeCount,
+          inactive: inactiveCount,
+          total: product.variants.length,
+        },
+      };
+    });
+
+    return NextResponse.json(productsWithCounts);
   } catch (error) {
-    console.error(error);
     return NextResponse.json({ error: "Failed to fetch" }, { status: 500 });
   }
 }
@@ -43,9 +60,8 @@ export async function POST(request: Request) {
         description,
         is_active: is_active ?? true,
         product_flavors: {
-          create: flavor_ids.map((flavorId: string, index: number) => ({
+          create: flavor_ids.map((flavorId: string) => ({
             flavor_id: flavorId,
-            is_primary: index === 0,
           })),
         },
       },
@@ -60,7 +76,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json(createdProduct);
   } catch (error) {
-    console.error(error);
     return NextResponse.json({ error: "Failed to create" }, { status: 500 });
   }
 }
@@ -80,10 +95,9 @@ export async function PUT(request: Request) {
       });
 
       await prisma.product_flavors.createMany({
-        data: flavor_ids.map((flavorId: string, index: number) => ({
+        data: flavor_ids.map((flavorId: string) => ({
           product_id: id,
           flavor_id: flavorId,
-          is_primary: index === 0,
         })),
       });
     }
@@ -106,7 +120,6 @@ export async function PUT(request: Request) {
 
     return NextResponse.json(updatedProduct);
   } catch (error) {
-    console.error(error);
     return NextResponse.json({ error: "Failed to update" }, { status: 500 });
   }
 }
@@ -126,7 +139,6 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error(error);
     return NextResponse.json({ error: "Failed to delete" }, { status: 500 });
   }
 }

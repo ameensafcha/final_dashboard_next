@@ -9,7 +9,6 @@ export async function GET() {
     });
     return NextResponse.json(receivings);
   } catch (error) {
-    console.error(error);
     return NextResponse.json({ error: "Failed to fetch" }, { status: 500 });
   }
 }
@@ -29,7 +28,7 @@ export async function POST(request: Request) {
       if (rate && currentMaterial) {
         const oldQty = currentMaterial.quantity || 0;
         const oldPrice = currentMaterial.price_per_kg || 0;
-        const newQty = parseInt(quantity);
+        const newQty = parseFloat(quantity);
         const newRate = parseFloat(rate);
 
         if (oldQty + newQty > 0) {
@@ -40,7 +39,8 @@ export async function POST(request: Request) {
       const receiving = await tx.receiving_materials.create({
         data: {
           raw_material_id: parseInt(raw_material_id),
-          quantity: parseInt(quantity),
+          quantity: parseFloat(quantity),
+          unit: currentMaterial?.unit || "kg",
           rate: rate ? parseFloat(rate) : null,
           supplier,
           date: date ? new Date(date) : new Date(),
@@ -51,17 +51,43 @@ export async function POST(request: Request) {
       const updatedMaterial = await tx.raw_materials.update({
         where: { id: parseInt(raw_material_id) },
         data: {
-          quantity: { increment: parseInt(quantity) },
+          quantity: { increment: parseFloat(quantity) },
           ...(newPricePerKg !== null && { price_per_kg: newPricePerKg }),
         },
       });
+
+      // Create raw material log for purchase
+      await tx.raw_material_logs.create({
+        data: {
+          raw_material_id: parseInt(raw_material_id),
+          quantity: parseFloat(quantity),
+          type: "purchase",
+          reference_id: receiving.id,
+        },
+      });
+
+      // Auto-create transaction for purchase
+      const transactionRate = rate ? parseFloat(rate) : (currentMaterial?.price_per_kg || 0);
+      const transactionAmount = parseFloat(quantity) * transactionRate;
+
+      if (transactionAmount > 0) {
+        await tx.transactions.create({
+          data: {
+            type: "purchase",
+            amount: transactionAmount,
+            date: date ? new Date(date) : new Date(),
+            reference_id: receiving.id,
+            person: supplier,
+            note: `Purchase: ${currentMaterial?.name || "Raw Material"}`,
+          },
+        });
+      }
 
       return { receiving, material: updatedMaterial };
     });
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error(error);
     return NextResponse.json({ error: "Failed to create" }, { status: 500 });
   }
 }
@@ -84,14 +110,19 @@ export async function PUT(request: Request) {
         where: { id: oldReceiving.raw_material_id },
       });
 
-      const qtyDiff = parseInt(quantity) - oldReceiving.quantity;
+      const newMaterial = await tx.raw_materials.findUnique({
+        where: { id: parseInt(raw_material_id) },
+      });
+
+      const qtyDiff = parseFloat(quantity) - oldReceiving.quantity;
       const oldRawMaterialId = oldReceiving.raw_material_id;
 
       await tx.receiving_materials.update({
         where: { id },
         data: {
           raw_material_id: parseInt(raw_material_id),
-          quantity: parseInt(quantity),
+          quantity: parseFloat(quantity),
+          unit: newMaterial?.unit || "kg",
           rate: rate ? parseFloat(rate) : null,
           supplier,
           date: date ? new Date(date) : new Date(),
@@ -105,15 +136,11 @@ export async function PUT(request: Request) {
           data: { quantity: { decrement: oldReceiving.quantity } },
         });
 
-        const newMaterial = await tx.raw_materials.findUnique({
-          where: { id: parseInt(raw_material_id) },
-        });
-
         let newPricePerKg = newMaterial?.price_per_kg || null;
         if (rate && newMaterial) {
           const oldQty = newMaterial.quantity || 0;
           const oldPrice = newMaterial.price_per_kg || 0;
-          const newQty = parseInt(quantity);
+          const newQty = parseFloat(quantity);
           const newRate = parseFloat(rate);
           if (oldQty + newQty > 0) {
             newPricePerKg = ((oldPrice * oldQty) + (newRate * newQty)) / (oldQty + newQty);
@@ -123,23 +150,19 @@ export async function PUT(request: Request) {
         await tx.raw_materials.update({
           where: { id: parseInt(raw_material_id) },
           data: {
-            quantity: { increment: parseInt(quantity) },
+            quantity: { increment: parseFloat(quantity) },
             ...(newPricePerKg !== null && { price_per_kg: newPricePerKg }),
           },
         });
       } else {
-        const updatedMaterial = await tx.raw_materials.findUnique({
-          where: { id: parseInt(raw_material_id) },
-        });
-
-        let newPricePerKg = updatedMaterial?.price_per_kg || null;
-        if (rate && updatedMaterial) {
-          const oldQty = (updatedMaterial.quantity || 0) - qtyDiff;
+        let newPricePerKg = newMaterial?.price_per_kg || null;
+        if (rate && newMaterial) {
+          const oldQty = (newMaterial.quantity || 0) - qtyDiff;
           const oldPrice = oldMaterial?.price_per_kg || 0;
-          const newQty = parseInt(quantity);
+          const newQty = parseFloat(quantity);
           const newRate = parseFloat(rate);
           
-          const totalQty = updatedMaterial.quantity || 0;
+          const totalQty = newMaterial.quantity || 0;
           const totalValue = (oldPrice * oldQty) + (newRate * newQty);
           if (totalQty > 0) {
             newPricePerKg = totalValue / totalQty;
@@ -155,12 +178,46 @@ export async function PUT(request: Request) {
         });
       }
 
+      // Update or create transaction
+      const existingTransaction = await tx.transactions.findFirst({
+        where: { reference_id: id },
+      });
+
+      const transactionRate = rate ? parseFloat(rate) : (newMaterial?.price_per_kg || 0);
+      const transactionAmount = parseFloat(quantity) * transactionRate;
+
+      if (existingTransaction) {
+        if (transactionAmount > 0) {
+          await tx.transactions.update({
+            where: { id: existingTransaction.id },
+            data: {
+              amount: transactionAmount,
+              date: date ? new Date(date) : new Date(),
+              person: supplier,
+              note: `Purchase: ${newMaterial?.name || "Raw Material"}`,
+            },
+          });
+        } else {
+          await tx.transactions.delete({ where: { id: existingTransaction.id } });
+        }
+      } else if (transactionAmount > 0) {
+        await tx.transactions.create({
+          data: {
+            type: "purchase",
+            amount: transactionAmount,
+            date: date ? new Date(date) : new Date(),
+            reference_id: id,
+            person: supplier,
+            note: `Purchase: ${newMaterial?.name || "Raw Material"}`,
+          },
+        });
+      }
+
       return { success: true };
     });
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error(error);
     return NextResponse.json({ error: "Failed to update" }, { status: 500 });
   }
 }
@@ -194,12 +251,21 @@ export async function DELETE(request: Request) {
         },
       });
 
+      // Delete associated raw material log
+      await tx.raw_material_logs.deleteMany({
+        where: { reference_id: id },
+      });
+
+      // Delete associated transaction
+      await tx.transactions.deleteMany({
+        where: { reference_id: id },
+      });
+
       return { success: true, material };
     });
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error(error);
     return NextResponse.json({ error: "Failed to delete" }, { status: 500 });
   }
 }

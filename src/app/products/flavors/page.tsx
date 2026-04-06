@@ -19,32 +19,12 @@ async function fetchFlavors() {
   return res.json();
 }
 
-async function fetchRawMaterials() {
-  const res = await fetch("/api/raw-materials");
-  if (!res.ok) throw new Error("Failed to fetch");
-  return res.json();
-}
-
-interface Ingredient {
-  id: string;
-  raw_material_id: number;
-  raw_material: {
-    id: number;
-    name: string;
-  };
-}
-
 interface Flavor {
   id: string;
   name: string;
   short_code: string;
   is_active: boolean;
-  ingredients: Ingredient[];
-}
-
-interface RawMaterial {
-  id: number;
-  name: string;
+  ingredients?: string;
 }
 
 interface LinkedProduct {
@@ -67,11 +47,12 @@ export default function FlavorsPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [linkedProducts, setLinkedProducts] = useState<{ id: string; name: string; sku: string }[]>([]);
+  const [ingredientInput, setIngredientInput] = useState("");
   
   const [formData, setFormData] = useState({
     name: "",
     short_code: "",
-    ingredient_ids: [] as number[],
+    ingredients: [] as string[],
     is_active: true,
   });
 
@@ -80,12 +61,6 @@ export default function FlavorsPage() {
     queryFn: fetchFlavors,
     refetchInterval: 5000,
     placeholderData: (previousData) => previousData,
-  });
-
-  const { data: rawMaterials } = useQuery({
-    queryKey: ["raw-materials"],
-    queryFn: fetchRawMaterials,
-    refetchInterval: 5000,
   });
 
   const generateShortCode = (name: string): string => {
@@ -106,11 +81,15 @@ export default function FlavorsPage() {
   };
 
   const createMutation = useMutation({
-    mutationFn: async (data: { name: string; short_code: string; ingredient_ids: number[] }) => {
+    mutationFn: async (data: { name: string; short_code: string; ingredients: string[] }) => {
       const res = await fetch("/api/flavors", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          name: data.name,
+          short_code: data.short_code,
+          ingredients: data.ingredients.join(", "),
+        }),
       });
       if (!res.ok) throw new Error("Failed to create");
       return res.json();
@@ -118,7 +97,7 @@ export default function FlavorsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["flavors"] });
       setOpen(false);
-      setFormData({ name: "", short_code: "", ingredient_ids: [], is_active: true });
+      setFormData({ name: "", short_code: "", ingredients: [], is_active: true });
       addNotification({ type: "success", message: "Flavor added successfully!" });
     },
     onError: (error: Error) => {
@@ -127,7 +106,7 @@ export default function FlavorsPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (data: { id: string; name: string; short_code: string; is_active: boolean; ingredient_ids: number[] }) => {
+    mutationFn: async (data: { id: string; name: string; short_code: string; ingredients: string; is_active: boolean }) => {
       const res = await fetch("/api/flavors", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -140,7 +119,7 @@ export default function FlavorsPage() {
       queryClient.invalidateQueries({ queryKey: ["flavors"] });
       setOpen(false);
       setEditFlavor(null);
-      setFormData({ name: "", short_code: "", ingredient_ids: [], is_active: true });
+      setFormData({ name: "", short_code: "", ingredients: [], is_active: true });
       addNotification({ type: "success", message: "Flavor updated successfully!" });
     },
     onError: (error: Error) => {
@@ -175,19 +154,21 @@ export default function FlavorsPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const ingredientsStr = formData.ingredients.join(", ");
     if (editFlavor) {
-      updateMutation.mutate({ id: editFlavor.id, name: formData.name, short_code: formData.short_code, is_active: formData.is_active, ingredient_ids: formData.ingredient_ids });
+      updateMutation.mutate({ id: editFlavor.id, name: formData.name, short_code: formData.short_code, ingredients: ingredientsStr, is_active: formData.is_active });
     } else {
-      createMutation.mutate({ name: formData.name, short_code: formData.short_code, ingredient_ids: formData.ingredient_ids });
+      createMutation.mutate({ name: formData.name, short_code: formData.short_code, ingredients: formData.ingredients });
     }
   };
 
   const handleEdit = (flavor: Flavor) => {
     setEditFlavor(flavor);
+    const ingredientList = flavor.ingredients ? flavor.ingredients.split(",").map(i => i.trim()).filter(i => i) : [];
     setFormData({
       name: flavor.name,
       short_code: flavor.short_code,
-      ingredient_ids: flavor.ingredients.map(i => i.raw_material_id),
+      ingredients: ingredientList,
       is_active: flavor.is_active,
     });
     setOpen(true);
@@ -197,7 +178,7 @@ export default function FlavorsPage() {
     if (!openState) {
       setOpen(false);
       setEditFlavor(null);
-      setFormData({ name: "", short_code: "", ingredient_ids: [], is_active: true });
+      setFormData({ name: "", short_code: "", ingredients: [], is_active: true });
     }
   };
 
@@ -209,7 +190,7 @@ export default function FlavorsPage() {
 
   if (isLoading) return (
     <div className="flex items-center justify-center h-64">
-      <div className="animate-spin w-8 h-8 border-2 border-t-transparent rounded-full" style={{ borderColor: "#7C3AED", borderTopColor: "transparent" }}></div>
+      <div className="animate-spin w-8 h-8 border-2 border-t-transparent rounded-full" style={{ borderColor: "#E8C547", borderTopColor: "transparent" }}></div>
     </div>
   );
 
@@ -219,8 +200,8 @@ export default function FlavorsPage() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: "#4C1D95" }}>Flavors</h1>
-          <p className="text-sm mt-1" style={{ color: "#A78BFA" }}>Manage product flavors</p>
+          <h1 className="text-2xl font-bold" style={{ color: "#1A1A1A" }}>Flavors</h1>
+          <p className="text-sm mt-1" style={{ color: "#C9A83A" }}>Manage product flavors</p>
         </div>
         <button 
           onClick={() => setOpen(true)}
@@ -234,29 +215,27 @@ export default function FlavorsPage() {
 
       <div 
         className="rounded-xl overflow-hidden border"
-        style={{ backgroundColor: "#FFFFFF", borderColor: "#7C3AED20" }}
+        style={{ backgroundColor: "#FFFFFF", borderColor: "#E8C54720" }}
       >
         <table className="w-full">
           <thead>
-            <tr style={{ backgroundColor: "#FAF5FF" }}>
-              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#4C1D95" }}>Name</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#4C1D95" }}>Short Code</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#4C1D95" }}>Ingredients</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#4C1D95" }}>Status</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#4C1D95" }}>Actions</th>
+            <tr style={{ backgroundColor: "#F5F4EE" }}>
+              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#1A1A1A" }}>Name</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#1A1A1A" }}>Short Code</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#1A1A1A" }}>Ingredients</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#1A1A1A" }}>Status</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#1A1A1A" }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {flavorsList.map((item, index) => (
               <tr 
                 key={item.id}
-                style={{ backgroundColor: index % 2 === 0 ? "transparent" : "#FAF5FF" }}
+                style={{ backgroundColor: index % 2 === 0 ? "transparent" : "#F5F4EE" }}
               >
-                <td className="px-4 py-3 text-sm font-medium" style={{ color: "#4C1D95" }}>{item.name}</td>
-                <td className="px-4 py-3 text-sm font-mono" style={{ color: "#7C3AED" }}>{item.short_code}</td>
-                <td className="px-4 py-3 text-sm" style={{ color: "#4C1D95" }}>
-                  {item.ingredients?.length || 0} ingredient(s)
-                </td>
+                <td className="px-4 py-3 text-sm font-medium" style={{ color: "#1A1A1A" }}>{item.name}</td>
+                <td className="px-4 py-3 text-sm font-mono" style={{ color: "#E8C547" }}>{item.short_code}</td>
+                <td className="px-4 py-3 text-sm" style={{ color: "#1A1A1A" }}>{item.ingredients || "—"}</td>
                 <td className="px-4 py-3">
                   <button 
                     className="px-2 py-1 rounded-full text-xs font-medium cursor-pointer hover:opacity-80"
@@ -272,15 +251,15 @@ export default function FlavorsPage() {
                   <div className="flex items-center gap-2">
                     <button 
                       onClick={() => setViewFlavor(item)}
-                      className="px-3 py-1 rounded-lg text-sm font-medium hover:bg-purple-100 cursor-pointer"
-                      style={{ color: "#7C3AED", backgroundColor: "#FAF5FF" }}
+                      className="px-3 py-1 rounded-lg text-sm font-medium hover:bg-yellow-100 cursor-pointer"
+                      style={{ color: "#E8C547", backgroundColor: "#F5F4EE" }}
                     >
                       View
                     </button>
                     <button 
                       onClick={() => handleEdit(item)}
-                      className="p-1.5 rounded-lg hover:bg-purple-100 cursor-pointer" 
-                      style={{ color: "#7C3AED" }}
+                      className="p-1.5 rounded-lg hover:bg-yellow-100 cursor-pointer" 
+                      style={{ color: "#E8C547" }}
                     >
                       <Edit className="w-4 h-4" />
                     </button>
@@ -299,9 +278,9 @@ export default function FlavorsPage() {
               <tr>
                 <td colSpan={5} className="px-4 py-12 text-center">
                   <div className="flex flex-col items-center gap-2">
-                    <Sparkles className="w-12 h-12 opacity-30" style={{ color: "#A78BFA" }} />
-                    <p className="font-medium" style={{ color: "#A78BFA" }}>No flavors found</p>
-                    <p className="text-sm" style={{ color: "#A78BFA" }}>Add your first flavor</p>
+                    <Sparkles className="w-12 h-12 opacity-30" style={{ color: "#C9A83A" }} />
+                    <p className="font-medium" style={{ color: "#C9A83A" }}>No flavors found</p>
+                    <p className="text-sm" style={{ color: "#C9A83A" }}>Add your first flavor</p>
                   </div>
                 </td>
               </tr>
@@ -314,24 +293,24 @@ export default function FlavorsPage() {
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent style={{ backgroundColor: "#FFFFFF" }}>
           <DialogHeader>
-            <DialogTitle style={{ color: "#4C1D95" }}>
+            <DialogTitle style={{ color: "#1A1A1A" }}>
               {editFlavor ? "Edit Flavor" : "Add Flavor"}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: "#4C1D95" }}>Name</label>
+              <label className="block text-sm font-medium mb-1" style={{ color: "#1A1A1A" }}>Name</label>
               <Input
                 type="text"
                 value={formData.name}
                 onChange={handleNameChange}
                 placeholder="e.g., Chocolate, Vanilla, Strawberry"
                 required
-                style={{ borderColor: "#7C3AED20" }}
+                style={{ borderColor: "#E8C54720" }}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: "#4C1D95" }}>Short Code (Auto-generated)</label>
+              <label className="block text-sm font-medium mb-1" style={{ color: "#1A1A1A" }}>Short Code (Auto-generated)</label>
               <Input
                 type="text"
                 value={formData.short_code}
@@ -339,43 +318,86 @@ export default function FlavorsPage() {
                 placeholder="e.g., CH, OG, VAN"
                 maxLength={5}
                 required
-                style={{ borderColor: "#7C3AED20" }}
+                style={{ borderColor: "#E8C54720" }}
               />
-              <p className="text-xs mt-1" style={{ color: "#A78BFA" }}>First 2 letters of first 2 words</p>
+              <p className="text-xs mt-1" style={{ color: "#C9A83A" }}>First 2 letters of first 2 words</p>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: "#4C1D95" }}>Ingredients (Raw Materials)</label>
-              <div className="border rounded-md p-2 space-y-1 max-h-40 overflow-y-auto" style={{ borderColor: "#7C3AED20" }}>
-                {rawMaterials?.map((rm: RawMaterial) => (
-                  <label key={rm.id} className="flex items-center gap-2 cursor-pointer hover:bg-purple-50 p-1 rounded">
-                    <input
-                      type="checkbox"
-                      checked={formData.ingredient_ids.includes(rm.id)}
+              <label className="block text-sm font-medium mb-1" style={{ color: "#1A1A1A" }}>Ingredients</label>
+              <div className="space-y-2">
+                {formData.ingredients.map((ing, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <Input
+                      type="text"
+                      value={ing}
                       onChange={(e) => {
-                        if (e.target.checked) {
-                          setFormData({ ...formData, ingredient_ids: [...formData.ingredient_ids, rm.id] });
-                        } else {
-                          setFormData({ ...formData, ingredient_ids: formData.ingredient_ids.filter((id) => id !== rm.id) });
-                        }
+                        const newIngredients = [...formData.ingredients];
+                        newIngredients[idx] = e.target.value;
+                        setFormData({ ...formData, ingredients: newIngredients });
                       }}
-                      className="w-4 h-4"
+                      placeholder="Ingredient name"
+                      className="flex-1"
+                      style={{ borderColor: "#E8C54720" }}
                     />
-                    <span className="text-sm" style={{ color: "#4C1D95" }}>{rm.name}</span>
-                  </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newIngredients = formData.ingredients.filter((_, i) => i !== idx);
+                        setFormData({ ...formData, ingredients: newIngredients });
+                      }}
+                      className="px-3 py-2 rounded-lg hover:bg-red-100 cursor-pointer"
+                      style={{ color: "#DC2626" }}
+                    >
+                      ✕
+                    </button>
+                  </div>
                 ))}
-                {(!rawMaterials || rawMaterials.length === 0) && (
-                  <p className="text-sm" style={{ color: "#A78BFA" }}>No raw materials available</p>
-                )}
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="text"
+                    value={ingredientInput}
+                    onChange={(e) => setIngredientInput(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter" && ingredientInput.trim()) {
+                        setFormData({
+                          ...formData,
+                          ingredients: [...formData.ingredients, ingredientInput.trim()],
+                        });
+                        setIngredientInput("");
+                      }
+                    }}
+                    placeholder="Type ingredient and press Enter or click Add"
+                    className="flex-1"
+                    style={{ borderColor: "#E8C54720" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (ingredientInput.trim()) {
+                        setFormData({
+                          ...formData,
+                          ingredients: [...formData.ingredients, ingredientInput.trim()],
+                        });
+                        setIngredientInput("");
+                      }
+                    }}
+                    className="px-4 py-2 rounded-lg text-white font-medium cursor-pointer hover:opacity-90"
+                    style={{ backgroundColor: "#E8C547" }}
+                  >
+                    Add
+                  </button>
+                </div>
               </div>
+              <p className="text-xs mt-1" style={{ color: "#C9A83A" }}>Add ingredients one by one</p>
             </div>
             {editFlavor && (
               <div className="flex items-center gap-2">
-                <label className="text-sm font-medium" style={{ color: "#4C1D95" }}>Status</label>
+                <label className="text-sm font-medium" style={{ color: "#1A1A1A" }}>Status</label>
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, is_active: !formData.is_active })}
                   className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer"
-                  style={{ backgroundColor: formData.is_active ? "#7C3AED" : "#DC2626" }}
+                  style={{ backgroundColor: formData.is_active ? "#E8C547" : "#DC2626" }}
                 >
                   <span
                     className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
@@ -385,13 +407,13 @@ export default function FlavorsPage() {
               </div>
             )}
             <div className="flex gap-2 justify-end pt-2">
-              <Button type="button" onClick={() => setOpen(false)} style={{ borderColor: "#7C3AED20", color: "#4C1D95" }}>
+              <Button type="button" onClick={() => setOpen(false)} style={{ borderColor: "#E8C54720", color: "#1A1A1A" }}>
                 Cancel
               </Button>
               <Button 
                 type="submit" 
                 disabled={createMutation.isPending || updateMutation.isPending}
-                style={{ backgroundColor: "#7C3AED", color: "white" }}
+                style={{ backgroundColor: "#E8C547", color: "white" }}
               >
                 {editFlavor ? (updateMutation.isPending ? "Saving..." : "Save") : (createMutation.isPending ? "Saving..." : "Save")}
               </Button>
@@ -404,7 +426,7 @@ export default function FlavorsPage() {
       <Dialog open={deleteOpen} onOpenChange={(open) => { setDeleteOpen(open); if (!open) setLinkedProducts([]); }}>
         <DialogContent style={{ backgroundColor: "#FFFFFF", maxWidth: "450px" }}>
           <DialogHeader>
-            <DialogTitle style={{ color: "#4C1D95" }}>Delete Flavor</DialogTitle>
+            <DialogTitle style={{ color: "#1A1A1A" }}>Delete Flavor</DialogTitle>
           </DialogHeader>
           {linkedProducts.length > 0 ? (
             <div className="space-y-3">
@@ -414,19 +436,19 @@ export default function FlavorsPage() {
               <div className="max-h-40 overflow-y-auto border rounded-lg p-2" style={{ borderColor: "#DC262620" }}>
                 {linkedProducts.map(p => (
                   <div key={p.id} className="flex items-center justify-between p-2 rounded" style={{ backgroundColor: "#FEE2E2" }}>
-                    <span className="text-sm font-medium" style={{ color: "#4C1D95" }}>{p.name}</span>
-                    <span className="text-xs font-mono" style={{ color: "#A78BFA" }}>{p.sku}</span>
+                    <span className="text-sm font-medium" style={{ color: "#1A1A1A" }}>{p.name}</span>
+                    <span className="text-xs font-mono" style={{ color: "#C9A83A" }}>{p.sku}</span>
                   </div>
                 ))}
               </div>
             </div>
           ) : (
-            <p style={{ color: "#4C1D95" }}>
+            <p style={{ color: "#1A1A1A" }}>
               Are you sure you want to delete this flavor?
             </p>
           )}
           <div className="flex gap-2 justify-end pt-2">
-            <Button onClick={() => { setDeleteOpen(false); setLinkedProducts([]); }} style={{ borderColor: "#7C3AED20", color: "#4C1D95" }}>
+            <Button onClick={() => { setDeleteOpen(false); setLinkedProducts([]); }} style={{ borderColor: "#E8C54720", color: "#1A1A1A" }}>
               Cancel
             </Button>
             {linkedProducts.length === 0 && (
@@ -446,7 +468,7 @@ export default function FlavorsPage() {
       <Dialog open={!!viewFlavor} onOpenChange={() => setViewFlavor(null)}>
         <DialogContent style={{ backgroundColor: "#FFFFFF", maxWidth: "450px" }}>
           <DialogHeader>
-            <DialogTitle style={{ color: "#4C1D95", fontSize: "1.5rem", fontWeight: "bold" }}>
+            <DialogTitle style={{ color: "#1A1A1A", fontSize: "1.5rem", fontWeight: "bold" }}>
               {viewFlavor?.name}
             </DialogTitle>
           </DialogHeader>
@@ -455,7 +477,7 @@ export default function FlavorsPage() {
             <div className="space-y-4">
               {/* SKU & Status */}
               <div className="flex items-center justify-between">
-                <span className="font-mono text-sm" style={{ color: "#A78BFA" }}>
+                <span className="font-mono text-sm" style={{ color: "#C9A83A" }}>
                   {viewFlavor.short_code}
                 </span>
                 <span 
@@ -471,22 +493,24 @@ export default function FlavorsPage() {
 
               {/* Ingredients */}
               <div>
-                <p className="text-xs uppercase tracking-wide mb-2" style={{ color: "#A78BFA" }}>Ingredients</p>
-                {viewFlavor.ingredients && viewFlavor.ingredients.length > 0 ? (
-                  <div className="p-3 rounded-lg space-y-2" style={{ backgroundColor: "#FAF5FF" }}>
-                    {viewFlavor.ingredients.map((ing) => (
-                      <div key={ing.id} className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: "#7C3AED" }}></span>
-                        <span className="text-sm font-medium" style={{ color: "#4C1D95" }}>
-                          {ing.raw_material.name}
-                        </span>
-                      </div>
+                <p className="text-xs uppercase tracking-wide mb-2" style={{ color: "#C9A83A" }}>Ingredients</p>
+                {viewFlavor.ingredients ? (
+                  <div className="flex flex-wrap gap-2">
+                    {viewFlavor.ingredients.split(",").map((ing: string, idx: number) => (
+                      <span 
+                        key={idx}
+                        className="px-3 py-1.5 rounded-lg text-sm"
+                        style={{ backgroundColor: "#F5F4EE", color: "#1A1A1A" }}
+                      >
+                        {ing.trim()}
+                      </span>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm" style={{ color: "#A78BFA" }}>No ingredients selected</p>
+                  <p className="text-sm" style={{ color: "#C9A83A" }}>No ingredients added</p>
                 )}
               </div>
+
             </div>
           )}
         </DialogContent>

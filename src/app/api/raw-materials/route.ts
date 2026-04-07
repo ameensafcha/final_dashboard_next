@@ -54,7 +54,7 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const id = parseInt(searchParams.get("id") || "0");
+    const id = searchParams.get("id") || "";
 
     await prisma.raw_materials.delete({
       where: { id },

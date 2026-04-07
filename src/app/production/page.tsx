@@ -43,7 +43,7 @@ interface Flavor {
 }
 
 interface RawMaterial {
-  id: number;
+  id: string;
   name: string;
   quantity: number;
   unit: string;
@@ -54,7 +54,7 @@ interface Batch {
   batch_id: string;
   date: string;
   logged_by: string;
-  raw_material_id: number | null;
+  raw_material_id: string | null;
   flavor_id: string;
   flavor: Flavor;
   leaves_in: number;
@@ -557,7 +557,7 @@ export default function ProductionPage() {
                 </select>
                 {formData.raw_material_id && (
                   <p className="text-xs mt-1" style={{ color: "#16A34A" }}>
-                    Available: {rawMaterials?.find((rm: RawMaterial) => rm.id === parseInt(formData.raw_material_id))?.quantity || 0} kg
+                    Available: {rawMaterials?.find((rm: RawMaterial) => rm.id === formData.raw_material_id)?.quantity || 0} kg
                   </p>
                 )}
               </div>

@@ -56,7 +56,7 @@ export async function POST(request: Request) {
     const wasteLoss = parseFloat(leaves_in) - parseFloat(powder_out);
     const yieldPercent = (parseFloat(powder_out) / parseFloat(leaves_in)) * 100;
     
-    const rawMaterialIdInt = raw_material_id ? parseInt(raw_material_id) : null;
+    const rawMaterialIdInt = raw_material_id || null;
     const leavesInFloat = parseFloat(leaves_in);
 
     const result = await prisma.$transaction(async (tx) => {
@@ -179,7 +179,7 @@ export async function PUT(request: Request) {
     const wasteLoss = parseFloat(leaves_in) - parseFloat(powder_out);
     const yieldPercent = (parseFloat(powder_out) / parseFloat(leaves_in)) * 100;
     
-    const rawMaterialIdInt = raw_material_id ? parseInt(raw_material_id) : null;
+    const rawMaterialIdInt = raw_material_id || null;
     const leavesInFloat = parseFloat(leaves_in);
 
     const result = await prisma.$transaction(async (tx) => {
@@ -192,7 +192,7 @@ export async function PUT(request: Request) {
       }
 
       // Deduct new raw material if selected and valid
-      if (rawMaterialIdInt && !isNaN(rawMaterialIdInt) && leavesInFloat > 0) {
+      if (rawMaterialIdInt && leavesInFloat > 0) {
         await tx.raw_materials.update({
           where: { id: rawMaterialIdInt },
           data: { quantity: { decrement: leavesInFloat } },
@@ -213,7 +213,7 @@ export async function PUT(request: Request) {
         data: {
           ...(date && { date: new Date(date) }),
           ...(logged_by && { logged_by }),
-          ...(raw_material_id && { raw_material_id: parseInt(raw_material_id) }),
+          ...(raw_material_id && { raw_material_id }),
           ...(flavor_id && { flavor_id }),
           ...(leaves_in !== undefined && { leaves_in: parseFloat(leaves_in) }),
           ...(powder_out !== undefined && { powder_out: parseFloat(powder_out) }),

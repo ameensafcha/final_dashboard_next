@@ -69,7 +69,7 @@ export function EditReceivingDialog({ receiving, open, onOpenChange, allMaterial
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: data.id,
-          raw_material_id: parseInt(data.raw_material_id),
+          raw_material_id: data.raw_material_id,
           quantity: parseFloat(data.quantity),
           rate: data.rate ? parseFloat(data.rate) : null,
           supplier: data.supplier,

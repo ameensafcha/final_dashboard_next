@@ -84,7 +84,7 @@ export default function ReceivingPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          raw_material_id: parseInt(data.raw_material_id),
+          raw_material_id: data.raw_material_id,
           quantity: parseFloat(data.quantity),
           rate: data.rate ? parseFloat(data.rate) : null,
           supplier: data.supplier,

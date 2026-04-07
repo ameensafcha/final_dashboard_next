@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     const raw_material_id = searchParams.get("raw_material_id");
 
     const where = raw_material_id 
-      ? { raw_material_id: parseInt(raw_material_id) }
+      ? { raw_material_id }
       : {};
 
     const logs = await prisma.raw_material_logs.findMany({

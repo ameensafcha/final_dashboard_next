@@ -20,7 +20,7 @@ export async function POST(request: Request) {
 
     const result = await prisma.$transaction(async (tx) => {
       const currentMaterial = await tx.raw_materials.findUnique({
-        where: { id: parseInt(raw_material_id) },
+        where: { id: raw_material_id },
       });
 
       let newPricePerKg = currentMaterial?.price_per_kg || null;
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
 
       const receiving = await tx.receiving_materials.create({
         data: {
-          raw_material_id: parseInt(raw_material_id),
+          raw_material_id,
           quantity: parseFloat(quantity),
           unit: currentMaterial?.unit || "kg",
           rate: rate ? parseFloat(rate) : null,
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
       });
 
       const updatedMaterial = await tx.raw_materials.update({
-        where: { id: parseInt(raw_material_id) },
+        where: { id: raw_material_id },
         data: {
           quantity: { increment: parseFloat(quantity) },
           ...(newPricePerKg !== null && { price_per_kg: newPricePerKg }),
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
       // Create raw material log for purchase
       await tx.raw_material_logs.create({
         data: {
-          raw_material_id: parseInt(raw_material_id),
+          raw_material_id,
           quantity: parseFloat(quantity),
           type: "purchase",
           reference_id: receiving.id,
@@ -111,7 +111,7 @@ export async function PUT(request: Request) {
       });
 
       const newMaterial = await tx.raw_materials.findUnique({
-        where: { id: parseInt(raw_material_id) },
+        where: { id: raw_material_id },
       });
 
       const qtyDiff = parseFloat(quantity) - oldReceiving.quantity;
@@ -120,7 +120,7 @@ export async function PUT(request: Request) {
       await tx.receiving_materials.update({
         where: { id },
         data: {
-          raw_material_id: parseInt(raw_material_id),
+          raw_material_id,
           quantity: parseFloat(quantity),
           unit: newMaterial?.unit || "kg",
           rate: rate ? parseFloat(rate) : null,
@@ -130,7 +130,7 @@ export async function PUT(request: Request) {
         },
       });
 
-      if (oldRawMaterialId !== parseInt(raw_material_id)) {
+      if (oldRawMaterialId !== raw_material_id) {
         await tx.raw_materials.update({
           where: { id: oldRawMaterialId },
           data: { quantity: { decrement: oldReceiving.quantity } },
@@ -148,7 +148,7 @@ export async function PUT(request: Request) {
         }
 
         await tx.raw_materials.update({
-          where: { id: parseInt(raw_material_id) },
+          where: { id: raw_material_id },
           data: {
             quantity: { increment: parseFloat(quantity) },
             ...(newPricePerKg !== null && { price_per_kg: newPricePerKg }),
@@ -170,7 +170,7 @@ export async function PUT(request: Request) {
         }
 
         await tx.raw_materials.update({
-          where: { id: parseInt(raw_material_id) },
+          where: { id: raw_material_id },
           data: {
             quantity: { increment: qtyDiff },
             ...(newPricePerKg !== null && { price_per_kg: newPricePerKg }),

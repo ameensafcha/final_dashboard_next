@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { 
   Package, 
   ChevronDown, 
@@ -16,9 +16,14 @@ import {
   DollarSign,
   Factory,
   Archive,
-  BarChart3
+  BarChart3,
+  Users,
+  LogOut,
+  ListTodo,
+  LayoutGrid
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/auth-context";
 
 const inventoryItems = [
   { label: "Raw Materials", href: "/raw-materials", icon: Package },
@@ -42,13 +47,22 @@ const financeItems = [
   { label: "Transactions", href: "/finance/transactions", icon: DollarSign },
 ];
 
+const taskItems = [
+  { label: "All Tasks", href: "/tasks", icon: ListTodo },
+  { label: "My Tasks", href: "/tasks/my-tasks", icon: Users },
+  { label: "Kanban Board", href: "/tasks/board", icon: LayoutGrid },
+];
+
 const inventoryPaths = ["/raw-materials", "/stocks", "/receiving"];
 const productsPaths = ["/products"];
 const productionPaths = ["/production", "/finished-products"];
 const financePaths = ["/finance"];
+const taskPaths = ["/tasks"];
 
 export function AppSidebar() {
   const pathname = usePathname() || "";
+  const router = useRouter();
+  const { user, employee, role, logout, isLoading } = useAuth();
   
   const [inventoryOpen, setInventoryOpen] = React.useState(() => 
     inventoryPaths.some(p => pathname.startsWith(p))
@@ -62,6 +76,9 @@ export function AppSidebar() {
   const [financeOpen, setFinanceOpen] = React.useState(() => 
     financePaths.some(p => pathname.startsWith(p))
   );
+  const [taskOpen, setTaskOpen] = React.useState(() => 
+    taskPaths.some(p => pathname.startsWith(p))
+  );
 
   React.useEffect(() => {
     const path = pathname || "";
@@ -69,9 +86,17 @@ export function AppSidebar() {
     setProductsOpen(productsPaths.some(p => path.startsWith(p)));
     setProductionOpen(productionPaths.some(p => path.startsWith(p)));
     setFinanceOpen(financePaths.some(p => path.startsWith(p)));
+    setTaskOpen(taskPaths.some(p => path.startsWith(p)));
   }, [pathname]);
 
   const isActive = (href: string) => pathname === href;
+
+  const handleLogout = async () => {
+    await logout();
+    router.push("/login");
+  };
+
+  const isLoggedIn = !isLoading && user;
 
   return (
     <aside 
@@ -87,7 +112,7 @@ export function AppSidebar() {
         </h1>
       </div>
       
-      <nav className="flex-1 p-3 space-y-2">
+      <nav className="flex-1 p-3 space-y-2 overflow-y-auto">
         {/* Dashboard Link */}
         <Link
           href="/"
@@ -278,7 +303,91 @@ export function AppSidebar() {
             </div>
           )}
         </div>
+
+        {/* Task Management Section - Only show if logged in */}
+        {isLoggedIn && (
+          <div>
+            <button
+              onClick={() => setTaskOpen(!taskOpen)}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 cursor-pointer",
+                taskOpen ? "bg-yellow-200" : "hover:bg-yellow-100"
+              )}
+              style={{ color: "#1A1A1A" }}
+            >
+              <ListTodo className="w-5 h-5" style={{ color: "#E8C547" }} />
+              <span className="flex-1 text-left font-semibold">Tasks</span>
+              {taskOpen ? (
+                <ChevronDown className="w-4 h-4 opacity-60" />
+              ) : (
+                <ChevronRight className="w-4 h-4 opacity-60" />
+              )}
+            </button>
+            
+            {taskOpen && (
+              <div className="ml-2 space-y-1 mt-1">
+                {taskItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 cursor-pointer",
+                      isActive(item.href) 
+                        ? "bg-yellow-200 font-medium" 
+                        : "hover:bg-yellow-100"
+                    )}
+                    style={{ color: "#1A1A1A" }}
+                  >
+                    <item.icon 
+                      className="w-4 h-4" 
+                      style={{ color: isActive(item.href) ? "#E8C547" : "#C9A83A" }} 
+                    />
+                    <span>{item.label}</span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Admin Section - Only show if admin */}
+        {isLoggedIn && role === "admin" && (
+          <Link
+            href="/admin"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 cursor-pointer",
+              isActive("/admin") 
+                ? "bg-yellow-200 font-medium" 
+                : "hover:bg-yellow-100"
+            )}
+            style={{ color: "#1A1A1A" }}
+          >
+            <Users className="w-5 h-5" style={{ color: isActive("/admin") ? "#E8C547" : "#C9A83A" }} />
+            <span>Admin Panel</span>
+          </Link>
+        )}
       </nav>
+
+      {/* User Info & Logout - Only show if logged in */}
+      {isLoggedIn && (
+        <div className="p-3 border-t" style={{ borderColor: "#E8C54720" }}>
+          <div className="mb-2">
+            <p className="text-sm font-medium" style={{ color: "#1A1A1A" }}>
+              {employee?.name || "User"}
+            </p>
+            <p className="text-xs" style={{ color: "#6B7280" }}>
+              {role || "guest"}
+            </p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-red-50 text-red-600 transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            <span className="text-sm">Logout</span>
+          </button>
+        </div>
+      )}
 
       <div className="p-3 border-t" style={{ borderColor: "#E8C54720" }}>
         <div className="text-xs opacity-60" style={{ color: "#1A1A1A" }}>

@@ -26,30 +26,33 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const { data: { session } } = await supabase.auth.getSession();
+  // Use getUser() instead of getSession() for better session detection
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-  const isAuthPage = request.nextUrl.pathname === "/login" || request.nextUrl.pathname === "/register";
+  const isAuthPage = request.nextUrl.pathname === "/login";
   const isApiRoute = request.nextUrl.pathname.startsWith("/api");
   const isStaticFile = 
     request.nextUrl.pathname.startsWith("/_next") ||
     request.nextUrl.pathname.startsWith("/favicon") ||
     request.nextUrl.pathname.includes(".");
 
-  if (!session && !isAuthPage && !isApiRoute && !isStaticFile) {
+  // Redirect unauthenticated users to login
+  if (!user && !isAuthPage && !isApiRoute && !isStaticFile) {
     const redirectUrl = new URL("/login", request.url);
-    redirectUrl.searchParams.set("redirect", request.nextUrl.pathname);
     return NextResponse.redirect(redirectUrl);
   }
 
-  if (session && isAuthPage) {
+  // If user is logged in and tries to access login page, redirect to dashboard
+  if (user && isAuthPage) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  if (session) {
+  // If user is logged in, check role for admin routes
+  if (user) {
     const { data: employee } = await supabase
       .from("employees")
       .select("role:roles(name)")
-      .eq("id", session.user.id)
+      .eq("id", user.id)
       .single();
 
     const role = (employee as any)?.role?.name ?? "guest";

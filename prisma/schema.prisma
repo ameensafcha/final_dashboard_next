@@ -14,7 +14,7 @@ model roles {
   created_at  DateTime @default(now())
 
   employees employees[]
-
+ 
   @@index([name])
   @@index([is_active])
 }

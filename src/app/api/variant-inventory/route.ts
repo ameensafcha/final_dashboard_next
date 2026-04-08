@@ -1,8 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { getCurrentUser, authResponse } from "@/lib/auth-helper";
 
 export async function GET() {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return authResponse("Unauthorized");
+    }
+
     const inventory = await prisma.variant_inventory.findMany({
       include: {
         variant: {

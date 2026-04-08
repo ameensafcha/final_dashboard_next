@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser, authResponse } from "@/lib/auth-helper";
 
 export async function GET() {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return authResponse("Unauthorized");
+    }
+
     const flavors = await prisma.flavors.findMany({
       orderBy: { created_at: "desc" },
     });
@@ -14,6 +20,11 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return authResponse("Unauthorized");
+    }
+
     const body = await request.json();
     const { name, short_code, ingredients } = body;
 

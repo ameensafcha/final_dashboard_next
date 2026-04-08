@@ -1,8 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { getCurrentUser, authResponse } from "@/lib/auth-helper";
 
 export async function GET() {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return authResponse("Unauthorized");
+    }
+
     const [rawMaterials, powderStock, variantInventory] = await Promise.all([
       prisma.raw_materials.findMany({
         orderBy: { name: "asc" },

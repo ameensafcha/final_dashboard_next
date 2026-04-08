@@ -15,8 +15,8 @@ export default function LoginPage() {
     }
   }, [user, isLoading, router]);
   const [formData, setFormData] = useState({
-    email: "",
-    password: "",
+    email: "admin@mail.com",
+    password: "123456",
   });
   const [error, setError] = useState("");
 

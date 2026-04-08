@@ -1,8 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { getCurrentUser, authResponse } from "@/lib/auth-helper";
 
 export async function GET() {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return authResponse("Unauthorized");
+    }
+
     const receives = await prisma.packing_receives.findMany({
       include: {
         items: {
@@ -28,6 +34,11 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return authResponse("Unauthorized");
+    }
+
     const body = await req.json();
     const { third_party_name, notes, items } = body;
 

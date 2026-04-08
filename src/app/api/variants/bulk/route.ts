@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser, authResponse } from "@/lib/auth-helper";
 
 export async function POST(request: Request) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return authResponse("Unauthorized");
+    }
+
     const body = await request.json();
     const { product_id, flavor_ids, size_ids } = body;
 

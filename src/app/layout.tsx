@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { AppSidebar } from "@/components/app-sidebar";
+import { SidebarWrapper } from "@/components/sidebar-wrapper";
 import { Providers } from "@/components/providers";
 import { ToastContainer } from "@/components/toast-container";
 import "./globals.css";
@@ -32,7 +32,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex">
         <Providers>
-          <AppSidebar />
+          <SidebarWrapper />
           <main className="flex-1">
             {children}
           </main>

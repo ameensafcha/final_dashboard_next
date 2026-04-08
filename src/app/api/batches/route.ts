@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser, authResponse } from "@/lib/auth-helper";
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return authResponse("Unauthorized");
+    }
+
     const batches = await prisma.batches.findMany({
       include: {
         flavor: true,
@@ -19,6 +25,11 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return authResponse("Unauthorized");
+    }
+
     const body = await request.json();
     const { 
       date, 

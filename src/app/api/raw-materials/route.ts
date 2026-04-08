@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser, authResponse } from "@/lib/auth-helper";
 
 export async function GET() {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return authResponse("Unauthorized");
+    }
+
     const materials = await prisma.raw_materials.findMany();
     return NextResponse.json(materials);
   } catch (error) {
@@ -12,6 +18,11 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return authResponse("Unauthorized");
+    }
+
     const body = await request.json();
     const { name, quantity, unit, price_per_kg } = body;
 

@@ -26,9 +26,6 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // Use getUser() instead of getSession() for better session detection
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-
   const isAuthPage = request.nextUrl.pathname === "/login";
   const isApiRoute = request.nextUrl.pathname.startsWith("/api");
   const isStaticFile = 
@@ -36,7 +33,10 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/favicon") ||
     request.nextUrl.pathname.includes(".");
 
-  // Redirect unauthenticated users to login
+  // Get user once for all checks
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // Redirect unauthenticated users to login (except auth pages, API, static)
   if (!user && !isAuthPage && !isApiRoute && !isStaticFile) {
     const redirectUrl = new URL("/login", request.url);
     return NextResponse.redirect(redirectUrl);
@@ -45,22 +45,6 @@ export async function middleware(request: NextRequest) {
   // If user is logged in and tries to access login page, redirect to dashboard
   if (user && isAuthPage) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
-  }
-
-  // If user is logged in, check role for admin routes
-  if (user) {
-    const { data: employee } = await supabase
-      .from("employees")
-      .select("role:roles(name)")
-      .eq("id", user.id)
-      .single();
-
-    const role = (employee as any)?.role?.name ?? "guest";
-    const isAdminRoute = request.nextUrl.pathname.startsWith("/admin");
-
-    if (isAdminRoute && role !== "admin") {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
-    }
   }
 
   return response;

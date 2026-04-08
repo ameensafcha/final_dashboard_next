@@ -37,6 +37,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
 
   const fetchEmployee = async (userId: string) => {
+    console.log("[Auth] Fetching employee for userId:", userId);
+    
     const { data, error } = await supabase
       .from("employees")
       .select(`
@@ -50,8 +52,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .eq("id", userId)
       .single();
 
+    console.log("[Auth] Employee fetch result:", { data, error });
+
     if (error) {
-      console.error("Error fetching employee:", error.message, "code:", (error as any).code);
+      console.error("[Auth] Error fetching employee:", error.message, "code:", (error as any).code);
+      setEmployee(null);
+      employeeRef.current = null;
+      return;
+    }
+
+    if (!data) {
+      console.error("[Auth] No employee data found for userId:", userId);
       setEmployee(null);
       employeeRef.current = null;
       return;
@@ -61,6 +72,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ...data,
       role: Array.isArray(data.role) ? data.role[0] : data.role,
     } as Employee & { role: { name: string } | null };
+    console.log("[Auth] Employee loaded - full data:", JSON.stringify(data, null, 2));
+    console.log("[Auth] Employee parsed - role:", emp.role);
+    console.log("[Auth] Role name:", emp.role?.name);
     setEmployee(emp);
     employeeRef.current = emp;
   };
@@ -83,6 +97,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
 
+        if (event === "SIGNED_IN" && session?.user) {
+          await fetchEmployee(session.user.id);
+        }
+
         if (event === "SIGNED_OUT") {
           setEmployee(null);
           employeeRef.current = null;
@@ -96,13 +114,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
+    console.log("[Auth] Login attempt for:", email);
+    
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    if (error) throw error;
-    if (!data.session) throw new Error("No session created");
+    if (error) {
+      console.error("[Auth] Login error:", error.message);
+      throw error;
+    }
+    
+    if (!data.session) {
+      console.error("[Auth] No session created");
+      throw new Error("No session created");
+    }
+
+    console.log("[Auth] Login successful, session exists");
 
     // Fetch employee and validate in one go
     const { data: emp, error: empError } = await supabase
@@ -118,12 +147,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .eq("id", data.user.id)
       .single();
 
+    console.log("[Auth] Employee query result:", { emp, empError });
+
     if (empError || !emp) {
+      console.error("[Auth] Employee not found or error:", empError);
       await supabase.auth.signOut();
       throw new Error("Access denied. Contact admin.");
     }
 
     if (!emp.is_active) {
+      console.error("[Auth] Employee is inactive");
       await supabase.auth.signOut();
       throw new Error("Your account is deactivated.");
     }
@@ -133,6 +166,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ...emp,
       role: Array.isArray(emp.role) ? emp.role[0] : emp.role,
     } as Employee & { role: { name: string } | null };
+    
+    console.log("[Auth] Employee set:", employee);
     setEmployee(employee);
     employeeRef.current = employee;
 

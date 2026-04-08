@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUIStore } from "@/lib/stores";
+import { supabase } from "@/lib/supabase";
 import { TaskForm } from "./task-form";
 import { TaskDetail } from "./task-detail";
 import { Button } from "@/components/ui/button";
@@ -36,7 +37,12 @@ interface Task {
   subtasks?: { id: string; title: string; is_completed: boolean }[];
 }
 
-export function TasksTable({ filterAssigneeId }: { filterAssigneeId?: string }) {
+interface TasksTableProps {
+  initialData?: Task[];
+  filterAssigneeId?: string;
+}
+
+export function TasksTable({ initialData = [], filterAssigneeId }: TasksTableProps) {
   const queryClient = useQueryClient();
   const { addNotification } = useUIStore();
   const [showForm, setShowForm] = useState(false);
@@ -45,22 +51,39 @@ export function TasksTable({ filterAssigneeId }: { filterAssigneeId?: string }) 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("");
+  const [tasks, setTasks] = useState<Task[]>(initialData);
 
-  const { data: tasks = [], isLoading } = useQuery<Task[]>({
-    queryKey: ["tasks", filterAssigneeId],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (filterAssigneeId) params.set("assignee_id", filterAssigneeId);
-      if (statusFilter) params.set("status", statusFilter);
-      if (priorityFilter) params.set("priority", priorityFilter);
-      if (search) params.set("search", search);
-      
-      const res = await fetch(`/api/tasks?${params}`);
-      const json = await res.json();
-      if (json.error) throw new Error(json.error);
-      return json.data || [];
-    },
-  });
+  // Real-time subscription
+  useEffect(() => {
+    const channel = supabase
+      .channel("tasks-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "tasks",
+        },
+        (payload) => {
+          console.log("Real-time update:", payload);
+          
+          // Fetch fresh data after any change to get full relations
+          fetch('/api/tasks')
+            .then(res => res.json())
+            .then(json => {
+              if (json.data) {
+                setTasks(json.data);
+              }
+            })
+            .catch(err => console.error('Failed to fetch fresh data:', err));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -87,19 +110,31 @@ export function TasksTable({ filterAssigneeId }: { filterAssigneeId?: string }) 
     return true;
   });
 
-  if (isLoading) {
+  if (tasks.length === 0 && !search && !statusFilter && !priorityFilter) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin w-8 h-8 border-2 border-t-transparent rounded-full" style={{ borderColor: "#E8C547", borderTopColor: "transparent" }}></div>
-      </div>
+      <>
+        <div className="text-center py-12 text-gray-500">
+          No tasks found
+        </div>
+        <TaskForm
+          open={showForm}
+          onClose={() => { setShowForm(false); setEditingTask(null); }}
+          task={editingTask}
+        />
+        <TaskDetail
+          task={selectedTask}
+          open={!!selectedTask}
+          onClose={() => setSelectedTask(null)}
+        />
+      </>
     );
   }
 
   return (
     <>
-      <div className="space-y-4">
-        <div className="flex gap-3 items-center flex-wrap">
-          <div className="relative flex-1 min-w-[200px]">
+      <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
+        <div className="flex gap-3 items-center flex-1 min-w-[200px]">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
@@ -135,89 +170,97 @@ export function TasksTable({ filterAssigneeId }: { filterAssigneeId?: string }) 
           </select>
         </div>
 
-        <div className="bg-white rounded-lg border overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-amber-50">
-              <tr>
-                <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Task</th>
-                <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Status</th>
-                <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Priority</th>
-                <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Assignee</th>
-                <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Due Date</th>
-                <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredTasks.map((task) => (
-                <tr key={task.id} className="border-t hover:bg-gray-50">
-                  <td className="p-4">
-                    <div>
-                      <p className="font-medium text-sm" style={{ color: "#1A1A1A" }}>{task.title}</p>
-                      {task.description && (
-                        <p className="text-xs text-gray-500 mt-1 line-clamp-1">{task.description}</p>
-                      )}
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <StatusBadge status={task.status} />
-                  </td>
-                  <td className="p-4">
-                    <PriorityBadge priority={task.priority} />
-                  </td>
-                  <td className="p-4">
-                    {task.assignee ? (
-                      <div className="flex items-center gap-2">
-                        <Avatar name={task.assignee.name} size="sm" />
-                        <span className="text-sm text-gray-600">{task.assignee.name}</span>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-gray-400">Unassigned</span>
-                    )}
-                  </td>
-                  <td className="p-4 text-sm text-gray-600">
-                    {task.due_date ? new Date(task.due_date).toLocaleDateString() : "-"}
-                  </td>
-                  <td className="p-4">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setSelectedTask(task)}
-                        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                      >
-                        View
-                      </button>
-                      <button
-                        onClick={() => { setEditingTask(task); setShowForm(true); }}
-                        className="text-gray-600 hover:text-gray-800 text-sm"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (confirm("Delete this task?")) {
-                            deleteMutation.mutate(task.id);
-                          }
-                        }}
-                        className="text-red-600 hover:text-red-800 text-sm"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {filteredTasks.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="p-8 text-center text-gray-500">
-                    No tasks found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <Button
+          onClick={() => setShowForm(true)}
+          style={{ backgroundColor: "#E8C547", color: "#1A1A1A" }}
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Add Task
+        </Button>
       </div>
 
-      <TaskForm
+      <div className="bg-white rounded-lg border overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-amber-50">
+            <tr>
+              <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Task</th>
+              <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Status</th>
+              <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Priority</th>
+              <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Assignee</th>
+              <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Due Date</th>
+              <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredTasks.map((task) => (
+              <tr key={task.id} className="border-t hover:bg-gray-50">
+                <td className="p-4">
+                  <div>
+                    <p className="font-medium text-sm" style={{ color: "#1A1A1A" }}>{task.title}</p>
+                    {task.description && (
+                      <p className="text-xs text-gray-500 mt-1 line-clamp-1">{task.description}</p>
+                    )}
+                  </div>
+                </td>
+                <td className="p-4">
+                  <StatusBadge status={task.status} />
+                </td>
+                <td className="p-4">
+                  <PriorityBadge priority={task.priority} />
+                </td>
+                <td className="p-4">
+                  {task.assignee ? (
+                    <div className="flex items-center gap-2">
+                      <Avatar name={task.assignee.name} size="sm" />
+                      <span className="text-sm text-gray-600">{task.assignee.name}</span>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-gray-400">Unassigned</span>
+                  )}
+                </td>
+                <td className="p-4 text-sm text-gray-600">
+                  {task.due_date ? new Date(task.due_date).toLocaleDateString() : "-"}
+                </td>
+                <td className="p-4">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setSelectedTask(task)}
+                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                    >
+                      View
+                    </button>
+                    <button
+                      onClick={() => { setEditingTask(task); setShowForm(true); }}
+                      className="text-gray-600 hover:text-gray-800 text-sm"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm("Delete this task?")) {
+                          deleteMutation.mutate(task.id);
+                        }
+                      }}
+                      className="text-red-600 hover:text-red-800 text-sm"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {filteredTasks.length === 0 && (
+              <tr>
+                <td colSpan={6} className="p-8 text-center text-gray-500">
+                  No tasks found
+                </td>
+              </tr>
+            )}
+          </tbody>
+          </table>
+        </div>
+
+        <TaskForm
         open={showForm}
         onClose={() => { setShowForm(false); setEditingTask(null); }}
         task={editingTask}

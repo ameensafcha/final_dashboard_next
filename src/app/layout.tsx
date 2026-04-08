@@ -16,8 +16,29 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Inventory App",
-  description: "Raw materials inventory management",
+  title: {
+    template: "%s | Inventory App",
+    default: "Inventory App",
+  },
+  description: "Raw materials inventory management system for tracking materials, production, and stock",
+  keywords: ["inventory", "raw materials", "stock management", "production"],
+  authors: [{ name: "Inventory Team" }],
+  openGraph: {
+    title: "Inventory App",
+    description: "Raw materials inventory management system",
+    type: "website",
+    locale: "en_US",
+    siteName: "Inventory App",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Inventory App",
+    description: "Raw materials inventory management system",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({

@@ -528,37 +528,277 @@ ALTER TABLE tasks REPLICA IDENTITY FULL;
 
 ---
 
-## Summary Table
+## Summary Table - COMPLETED
 
-| Priority | Issue | Effort | Impact |
-|----------|-------|--------|--------|
-| 1 | Add loading.tsx | Low | High |
-| 2 | Add error.tsx | Low | High |
-| 3 | Real-time updates (Issue #8) | Medium | HIGH (Critical) |
-| 4 | Fix Providers wrapper | Medium | High |
-| 5 | Server-side data + realtime | High | High |
-| 6 | Route groups | Medium | Medium |
-| 7 | Metadata improvements | Low | Medium |
-
----
-
-## Next Steps
-
-1. **Immediately**: Add loading.tsx and error.tsx files
-2. **High Priority**: Implement real-time with hybrid approach (Issue #8)
-3. **Soon**: Fix Providers wrapper
-4. **Later**: Apply same pattern to all other pages
-5. **Optional**: Organize routes with groups
+| Priority | Issue | Status | Notes |
+|----------|-------|--------|-------|
+| 1 | Add loading.tsx | ✅ Done | All routes implemented |
+| 2 | Add error.tsx | ✅ Done | All routes implemented |
+| 3 | Real-time updates (Issue #8) | ✅ Done | Tasks + Raw Materials + Stocks |
+| 4 | Metadata improvements | ✅ Done | OpenGraph, Twitter cards added |
+| 5 | Server Component conversion | ✅ Done | tasks, raw-materials, stocks |
+| 6 | Hardcoded login credentials | ⚠️ Pending | Need to remove from login/page.tsx |
 
 ---
 
-## Real-time Implementation Checklist
+## Next Steps - REMAINING
 
-- [ ] Enable Supabase Realtime on database
-- [ ] Update tasks/page.tsx to Server Component
-- [ ] Update tasks-table.tsx with subscribe logic
-- [ ] Repeat for other pages (dashboard, stocks, etc.)
-- [ ] Test with multiple browser tabs
+1. **Remove hardcoded credentials** from login/page.tsx
+2. **Apply real-time** to other pages (production, receiving, etc.) - optional
+3. **Fix Providers wrapper** - optional performance improvement
+4. **Organize route groups** - optional code organization
+
+---
+
+## Completed Implementation Checklist
+
+- [x] Enable Supabase Realtime on database (user ran SQL)
+- [x] Update tasks/page.tsx to Server Component
+- [x] Update tasks-table.tsx with subscribe logic
+- [x] Update raw-materials/page.tsx to Server Component
+- [x] Update raw-materials-table.tsx with subscribe logic
+- [x] Update stocks/page.tsx to Server Component
+- [x] Create stocks-table.tsx with subscribe logic
+- [x] Add loading.tsx to all routes
+- [x] Add error.tsx to all routes
+- [x] Update metadata in layout.tsx
+
+---
+
+## Pages with Real-time Enabled
+
+| Page | Type | Real-time Tables |
+|------|------|-----------------|
+| `/tasks` | Server + Client | tasks |
+| `/raw-materials` | Server + Client | raw_materials |
+| `/stocks` | Server + Client | raw_materials, variant_inventory, powder_stock |
+
+---
+
+## Remaining Issues
+
+1. **Hardcoded login credentials** - Remove default email/password in login/page.tsx ✅ FIXED
+2. **Other pages** - Can apply same pattern if needed
+
+---
+
+## Issue #9: Database-Level Stock Calculation (CRITICAL)
+
+### Problem
+Stocks calculation currently happens on **frontend/API level**, not database level.
+
+### Current Flow (Not Good)
+```
+Packing Receive Entry → packing_receive_items (table)
+                           ↓
+                    [NO AUTO UPDATE]
+                           ↓
+                    variant_inventory (STALE)
+                           ↓
+Stocks page → Shows wrong/old data
+```
+
+### Target Flow (Like Tasks - Working)
+```
+Packing Receive Entry → packing_receive_items (table)
+                           ↓
+                    [DATABASE TRIGGER]
+                           ↓
+                    variant_inventory (auto-updated)
+                           ↓
+Stocks page → Always accurate data
+```
+
+---
+
+### Why This Matters
+
+| Approach | DB Work | Frontend Work | Real-time |
+|----------|---------|---------------|-----------|
+| **Current** (API calculate) | ❌ | ✅ High | Complex |
+| **Proposed** (Stock tables + Triggers) | ✅ | ✅ Low | Simple |
+
+---
+
+### Solution: Add Stock Tables with Triggers
+
+Create **dedicated stock tables** that auto-update via database triggers:
+
+#### New Tables to Create
+
+```sql
+-- 1. Raw Material Stock Table
+CREATE TABLE raw_material_stock (
+  id          String PRIMARY KEY,  -- links to raw_materials.id
+  name        String,
+  quantity    Float,
+  unit        String,
+  price_per_kg Float,
+  updated_at  DateTime @default(now())
+);
+
+-- 2. Product Stock Table  
+CREATE TABLE product_stock (
+  variant_id  String PRIMARY KEY,
+  quantity    Int,
+  updated_at  DateTime @default(now())
+);
+
+-- 3. Powder Stock Table
+CREATE TABLE powder_stock_new (
+  id              Int PRIMARY KEY DEFAULT 1,
+  received        Float,
+  sent            Float,
+  available       Float,
+  updated_at      DateTime @default(now())
+);
+```
+
+#### Triggers to Auto-Update
+
+```sql
+-- Trigger: raw_material_stock on receiving_materials
+CREATE OR REPLACE FUNCTION update_raw_material_stock()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    UPDATE raw_material_stock 
+    SET quantity = quantity + NEW.quantity, updated_at = NOW()
+    WHERE id = NEW.raw_material_id;
+  ELSIF TG_OP = 'DELETE' THEN
+    UPDATE raw_material_stock 
+    SET quantity = quantity - OLD.quantity, updated_at = NOW()
+    WHERE id = OLD.raw_material_id;
+  ELSIF TG_OP = 'UPDATE' THEN
+    UPDATE raw_material_stock 
+    SET quantity = quantity - OLD.quantity + NEW.quantity, updated_at = NOW()
+    WHERE id = NEW.raw_material_id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER raw_material_stock_trigger
+AFTER INSERT OR UPDATE OR DELETE ON receiving_materials
+FOR EACH ROW EXECUTE FUNCTION update_raw_material_stock();
+
+-- Trigger: product_stock on packing_receive_items
+CREATE OR REPLACE FUNCTION update_product_stock()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    UPDATE product_stock 
+    SET quantity = quantity + NEW.quantity, updated_at = NOW()
+    WHERE variant_id = NEW.variant_id;
+  ELSIF TG_OP = 'DELETE' THEN
+    UPDATE product_stock 
+    SET quantity = quantity - OLD.quantity, updated_at = NOW()
+    WHERE variant_id = OLD.variant_id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER product_stock_trigger
+AFTER INSERT OR DELETE ON packing_receive_items
+FOR EACH ROW EXECUTE FUNCTION update_product_stock();
+
+-- Trigger: powder_stock_new on finished_products + packing_logs
+-- (Calculate: available = sum(finished_products) - sum(packing_logs))
+```
+
+---
+
+### User Action Required (Supabase SQL)
+
+```sql
+-- Step 1: Create new stock tables
+CREATE TABLE raw_material_stock (
+  id          String PRIMARY KEY,
+  name        String,
+  quantity    Float DEFAULT 0,
+  unit        String DEFAULT 'kg',
+  price_per_kg Float,
+  updated_at  DateTime DEFAULT NOW()
+);
+
+CREATE TABLE product_stock (
+  variant_id  String PRIMARY KEY,
+  quantity    Int DEFAULT 0,
+  updated_at  DateTime DEFAULT NOW()
+);
+
+CREATE TABLE powder_stock_new (
+  id              Int PRIMARY KEY DEFAULT 1,
+  received        Float DEFAULT 0,
+  sent            Float DEFAULT 0,
+  available       Float DEFAULT 0,
+  updated_at      DateTime DEFAULT NOW()
+);
+
+-- Step 2: Enable realtime on new tables
+ALTER PUBLICATION supabase_realtime ADD TABLE raw_material_stock, product_stock, powder_stock_new;
+ALTER TABLE raw_material_stock REPLICA IDENTITY FULL;
+ALTER TABLE product_stock REPLICA IDENTITY FULL;
+ALTER TABLE powder_stock_new REPLICA IDENTITY FULL;
+
+-- Step 3: Create triggers (functions + triggers)
+-- (Add functions from above)
+
+-- Step 4: Initialize stock tables with current data
+INSERT INTO raw_material_stock (id, name, quantity, unit, price_per_kg)
+SELECT id, name, quantity, unit, price_per_kg FROM raw_materials;
+
+INSERT INTO product_stock (variant_id, quantity)
+SELECT variant_id, COALESCE(quantity, 0) FROM variant_inventory;
+
+INSERT INTO powder_stock_new (received, sent, available)
+SELECT 
+  COALESCE(SUM(quantity), 0),
+  COALESCE(SUM(total_kg), 0),
+  COALESCE(SUM(quantity), 0) - COALESCE(SUM(total_kg), 0)
+FROM finished_products, packing_logs;
+```
+
+---
+
+### Frontend Changes Required
+
+After triggers setup, stocks page will be simpler:
+
+```tsx
+// src/app/stocks/page.tsx - Simplified
+export default async function StocksPage() {
+  const [rawMaterials, products, powder] = await Promise.all([
+    prisma.raw_material_stock.findMany(),      // Direct from stock table
+    prisma.product_stock.findMany({ include: { variant: {...} } }),
+    prisma.powder_stock_new.findFirst(),
+  ]);
+  
+  // No calculation needed - data already calculated in DB!
+  return <StocksTable initialData={...} />;
+}
+```
+
+---
+
+### Benefits
+
+1. ✅ **Accurate** - Always correct stock numbers
+2. ✅ **Fast** - No calculation on every request
+3. ✅ **Simple real-time** - Just subscribe to stock tables
+4. ✅ **Scalable** - Works for multi-user
+
+---
+
+### Files to Modify
+
+| File | Change |
+|------|--------|
+| `prisma/schema.prisma` | Add new stock models |
+| `src/app/stocks/page.tsx` | Simplify to read from stock tables |
+| `src/components/stocks-table.tsx` | Subscribe to new stock tables |
+| Supabase SQL | Create tables + triggers |
 
 ---
 

@@ -103,6 +103,7 @@ model product_variants {
   product       products                @relation(fields: [product_id], references: [id], onDelete: Cascade)
   size          sizes                   @relation(fields: [size_id], references: [id])
   inventory     variant_inventory?
+  stock         product_stock?
 
   @@unique([product_id, flavor_id, size_id])
   @@index([product_id])
@@ -207,6 +208,31 @@ model powder_stock {
   total_sent         Float
   available          Float
   updated_at         DateTime @default(now())
+}
+
+// New stock tables with auto-update via triggers
+model raw_material_stock {
+  id           String   @id
+  name         String
+  quantity     Float    @default(0)
+  unit         String   @default("kg")
+  price_per_kg Float?
+  updated_at   DateTime @default(now())
+}
+
+model product_stock {
+  variant_id   String   @id
+  quantity     Int      @default(0)
+  updated_at   DateTime @default(now())
+  variant      product_variants @relation(fields: [variant_id], references: [id], onDelete: Cascade)
+}
+
+model powder_stock_new {
+  id          Int      @id @default(1)
+  received    Float    @default(0)
+  sent        Float    @default(0)
+  available   Float    @default(0)
+  updated_at  DateTime @default(now())
 }
 
 model packing_receives {

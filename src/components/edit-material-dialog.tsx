@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 interface Material {
-  id: number;
+  id: string | number;
   name: string;
   quantity: number;
   unit: string;
@@ -60,7 +60,7 @@ export function EditMaterialDialog({ material, open, onOpenChange }: EditMateria
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     updateMutation.mutate({
-      id: material.id,
+      id: Number(material.id),
       name,
       quantity: parseFloat(quantity),
       unit,

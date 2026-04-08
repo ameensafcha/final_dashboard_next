@@ -1,4 +1,4 @@
-import { createBrowserClient, createServerClient } from '@supabase/ssr'
+import { createBrowserClient, createServerClient, type CookieOptions } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -8,21 +8,20 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey)
 
 // Server client - for API routes (reads cookies from request)
-export function createServerSupabaseClient(cookies: {
+export function createServerSupabaseClient(cookieHandlers: {
   getAll: () => { name: string; value: string }[]
+  setAll?: (cookiesToSet: Array<{ name: string; value: string; options: CookieOptions }>) => void
 }) {
   return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       getAll() {
-        return cookies.getAll()
+        return cookieHandlers.getAll()
       },
       setAll(cookiesToSet) {
         try {
-          cookiesToSet.forEach(({ name, value }) => {
-            // Server-side cookies are set via response headers
-          })
+          cookieHandlers.setAll?.(cookiesToSet)
         } catch {
-          // Called from Server Component
+          // Called from Server Component where cookies are read-only
         }
       },
     },

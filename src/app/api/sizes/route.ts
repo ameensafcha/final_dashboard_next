@@ -20,6 +20,9 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
+    const user = await getCurrentUser();
+    if (!user) return authResponse("Unauthorized");
+
     const body = await request.json();
     const { id, is_active } = body;
 
@@ -61,6 +64,9 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
+    const user = await getCurrentUser();
+    if (!user) return authResponse("Unauthorized");
+
     const body = await request.json();
     const { id, size, unit, pack_type } = body;
 
@@ -77,6 +83,9 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const user = await getCurrentUser();
+    if (!user) return authResponse("Unauthorized");
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 

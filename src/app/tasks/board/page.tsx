@@ -4,10 +4,13 @@ import { useState } from "react";
 import { TaskBoard } from "@/components/task-board";
 import { TaskForm } from "@/components/task-form";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/auth-context";
 import { Plus } from "lucide-react";
 
 export default function KanbanPage() {
   const [showForm, setShowForm] = useState(false);
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
 
   return (
     <div className="p-6 h-full flex flex-col">
@@ -29,7 +32,7 @@ export default function KanbanPage() {
         <TaskBoard />
       </div>
 
-      <TaskForm open={showForm} onClose={() => setShowForm(false)} />
+      <TaskForm open={showForm} onClose={() => setShowForm(false)} canChangeAssignee={isAdmin} />
     </div>
   );
 }

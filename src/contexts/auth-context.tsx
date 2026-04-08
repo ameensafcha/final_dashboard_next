@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
@@ -22,8 +22,10 @@ interface AuthContextType {
   employee: Employee | null;
   role: string | null;
   isLoading: boolean;
+  authError: string | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  retryAuth: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,7 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const employeeRef = useRef<Employee | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const fetchEmployee = async (userId: string) => {
@@ -57,14 +59,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) {
       console.error("[Auth] Error fetching employee:", error.message, "code:", (error as any).code);
       setEmployee(null);
-      employeeRef.current = null;
+      setAuthError("Failed to load user profile");
       return;
     }
 
     if (!data) {
       console.error("[Auth] No employee data found for userId:", userId);
       setEmployee(null);
-      employeeRef.current = null;
+      setAuthError("User profile not found");
       return;
     }
 
@@ -72,45 +74,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ...data,
       role: Array.isArray(data.role) ? data.role[0] : data.role,
     } as Employee & { role: { name: string } | null };
-    console.log("[Auth] Employee loaded - full data:", JSON.stringify(data, null, 2));
-    console.log("[Auth] Employee parsed - role:", emp.role);
-    console.log("[Auth] Role name:", emp.role?.name);
+    console.log("[Auth] Employee loaded:", emp.role?.name);
     setEmployee(emp);
-    employeeRef.current = emp;
   };
 
   useEffect(() => {
+    let initialSessionHandled = false;
+
     const initAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setSession(session);
-        setUser(session.user);
-        await fetchEmployee(session.user.id);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          setSession(session);
+          setUser(session.user);
+          await fetchEmployee(session.user.id);
+          initialSessionHandled = true;
+        } else {
+          console.log("[Auth] No session found on init");
+        }
+      } catch (err) {
+        console.error("[Auth] Error initializing auth:", err);
+        setAuthError("Failed to initialize auth");
       }
-      setIsLoading(false);
+      // Do NOT set isLoading=false here — let onAuthStateChange handle it
     };
 
     initAuth();
+
+    const timeoutId = setTimeout(() => {
+      console.log("[Auth] Auth timeout reached - forcing loading to false");
+      setIsLoading(false);
+    }, 10000);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
 
-        if (event === "SIGNED_IN" && session?.user) {
+        // Only fetch employee on SIGNED_IN if initAuth hasn't already fetched it
+        if (event === "SIGNED_IN" && session?.user && !initialSessionHandled) {
           await fetchEmployee(session.user.id);
         }
 
         if (event === "SIGNED_OUT") {
           setEmployee(null);
-          employeeRef.current = null;
+          setAuthError(null);
         }
 
         setIsLoading(false);
+        clearTimeout(timeoutId);
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -169,7 +188,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     console.log("[Auth] Employee set:", employee);
     setEmployee(employee);
-    employeeRef.current = employee;
 
     queryClient.invalidateQueries();
   };
@@ -179,7 +197,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSession(null);
     setEmployee(null);
+    setAuthError(null);
     queryClient.clear();
+  };
+
+  const retryAuth = async () => {
+    setAuthError(null);
+    setIsLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setSession(session);
+        setUser(session.user);
+        await fetchEmployee(session.user.id);
+      } else {
+        setAuthError("Session expired");
+      }
+    } catch (err) {
+      console.error("[Auth] Retry auth error:", err);
+      setAuthError("Failed to restore session");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const role = employee?.role?.name ?? null;
@@ -192,8 +231,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         employee,
         role,
         isLoading,
+        authError,
         login,
         logout,
+        retryAuth,
       }}
     >
       {children}

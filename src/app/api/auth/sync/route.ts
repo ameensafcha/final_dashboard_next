@@ -1,14 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
+import { getCurrentUser, authResponse } from "@/lib/auth-helper";
 
-export async function POST(request: Request) {
+export async function POST() {
   try {
-    // This endpoint just returns a response
-    // The middleware will intercept and set cookies from the browser's session
+    const user = await getCurrentUser();
+    if (!user) return authResponse("Unauthorized");
+
     return NextResponse.json({ ok: true });
   } catch (error) {
-    return NextResponse.json(
-      { error: 'Failed to sync auth' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to sync auth" }, { status: 500 });
   }
 }

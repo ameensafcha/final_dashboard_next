@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUIStore } from "@/lib/stores";
 import { supabase } from "@/lib/supabase";
 import { TaskForm } from "./task-form";
@@ -17,6 +17,7 @@ interface Task {
   id: string;
   title: string;
   description: string | null;
+  area: string | null;
   status: string;
   priority: string;
   assignee_id: string | null;
@@ -40,9 +41,16 @@ interface Task {
 interface TasksTableProps {
   initialData?: Task[];
   filterAssigneeId?: string;
+  currentUserId?: string;
+  currentUserRole?: string;
 }
 
-export function TasksTable({ initialData = [], filterAssigneeId }: TasksTableProps) {
+export function TasksTable({
+  initialData = [],
+  filterAssigneeId,
+  currentUserId,
+  currentUserRole,
+}: TasksTableProps) {
   const queryClient = useQueryClient();
   const { addNotification } = useUIStore();
   const [showForm, setShowForm] = useState(false);
@@ -51,7 +59,30 @@ export function TasksTable({ initialData = [], filterAssigneeId }: TasksTablePro
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("");
-  const [tasks, setTasks] = useState<Task[]>(initialData);
+  const [areaFilter, setAreaFilter] = useState("");
+  const [now, setNow] = useState(() => Date.now());
+  const [tasks, setTasks] = useState<Task[]>(() => 
+    filterAssigneeId 
+      ? initialData.filter(t => t.assignee?.id === filterAssigneeId)
+      : initialData
+  );
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Initial fetch for filtered view
+  useEffect(() => {
+    if (filterAssigneeId && initialData.length === 0) {
+      fetch(`/api/tasks?assignee_id=${filterAssigneeId}`)
+        .then(res => res.json())
+        .then(json => {
+          if (json.data) setTasks(json.data);
+        })
+        .catch(err => console.error('Failed to fetch initial tasks:', err));
+    }
+  }, [filterAssigneeId]);
 
   // Real-time subscription
   useEffect(() => {
@@ -68,7 +99,8 @@ export function TasksTable({ initialData = [], filterAssigneeId }: TasksTablePro
           console.log("Real-time update:", payload);
           
           // Fetch fresh data after any change to get full relations
-          fetch('/api/tasks')
+          const url = filterAssigneeId ? `/api/tasks?assignee_id=${filterAssigneeId}` : '/api/tasks';
+          fetch(url)
             .then(res => res.json())
             .then(json => {
               if (json.data) {
@@ -83,7 +115,7 @@ export function TasksTable({ initialData = [], filterAssigneeId }: TasksTablePro
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [queryClient]);
+  }, [queryClient, filterAssigneeId]);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -107,10 +139,13 @@ export function TasksTable({ initialData = [], filterAssigneeId }: TasksTablePro
     if (search && !task.title.toLowerCase().includes(search.toLowerCase())) {
       return false;
     }
+    if (areaFilter && task.area !== areaFilter) {
+      return false;
+    }
     return true;
   });
 
-  if (tasks.length === 0 && !search && !statusFilter && !priorityFilter) {
+  if (tasks.length === 0 && !search && !statusFilter && !priorityFilter && !areaFilter) {
     return (
       <>
         <div className="text-center py-12 text-gray-500">
@@ -168,15 +203,33 @@ export function TasksTable({ initialData = [], filterAssigneeId }: TasksTablePro
             <option value="high">High</option>
             <option value="urgent">Urgent</option>
           </select>
+
+          <select
+            value={areaFilter}
+            onChange={(e) => setAreaFilter(e.target.value)}
+            className="px-3 py-2 border rounded-lg text-sm"
+          >
+            <option value="">All Areas</option>
+            <option value="Production">Production</option>
+            <option value="Quality">Quality</option>
+            <option value="Warehouse">Warehouse</option>
+            <option value="Procurement">Procurement</option>
+            <option value="HR">HR</option>
+            <option value="Admin">Admin</option>
+            <option value="Maintenance">Maintenance</option>
+            <option value="Finance">Finance</option>
+          </select>
         </div>
 
-        <Button
-          onClick={() => setShowForm(true)}
-          style={{ backgroundColor: "#E8C547", color: "#1A1A1A" }}
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Task
-        </Button>
+        {!filterAssigneeId && (
+          <Button
+            onClick={() => setShowForm(true)}
+            style={{ backgroundColor: "#E8C547", color: "#1A1A1A" }}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Task
+          </Button>
+        )}
       </div>
 
       <div className="bg-white rounded-lg border overflow-hidden">
@@ -184,74 +237,131 @@ export function TasksTable({ initialData = [], filterAssigneeId }: TasksTablePro
           <thead className="bg-amber-50">
             <tr>
               <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Task</th>
+              <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Area</th>
               <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Status</th>
               <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Priority</th>
-              <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Assignee</th>
-              <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Due Date</th>
+              {!filterAssigneeId && (
+                <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Assignee</th>
+              )}
+              <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Creator</th>
+              <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Created</th>
+              <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Start</th>
+              <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Due</th>
+              <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Days Left</th>
+              <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Completed</th>
               <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filteredTasks.map((task) => (
-              <tr key={task.id} className="border-t hover:bg-gray-50">
-                <td className="p-4">
-                  <div>
-                    <p className="font-medium text-sm" style={{ color: "#1A1A1A" }}>{task.title}</p>
-                    {task.description && (
-                      <p className="text-xs text-gray-500 mt-1 line-clamp-1">{task.description}</p>
-                    )}
-                  </div>
-                </td>
-                <td className="p-4">
-                  <StatusBadge status={task.status} />
-                </td>
-                <td className="p-4">
-                  <PriorityBadge priority={task.priority} />
-                </td>
-                <td className="p-4">
-                  {task.assignee ? (
-                    <div className="flex items-center gap-2">
-                      <Avatar name={task.assignee.name} size="sm" />
-                      <span className="text-sm text-gray-600">{task.assignee.name}</span>
+            {filteredTasks.map((task) => {
+              const daysLeft = task.due_date 
+                ? Math.ceil((new Date(task.due_date).getTime() - now) / (1000 * 60 * 60 * 24))
+                : null;
+              
+              return (
+                <tr key={task.id} className="border-t hover:bg-gray-50">
+                  <td className="p-4">
+                    <div>
+                      <p className="font-medium text-sm" style={{ color: "#1A1A1A" }}>{task.title}</p>
+                      {task.description && (
+                        <p className="text-xs text-gray-500 mt-1 line-clamp-1">{task.description}</p>
+                      )}
                     </div>
-                  ) : (
-                    <span className="text-sm text-gray-400">Unassigned</span>
+                  </td>
+                  <td className="p-4">
+                    {task.area ? (
+                      <span className="text-xs px-2 py-1 bg-gray-100 rounded">{task.area}</span>
+                    ) : (
+                      <span className="text-sm text-gray-400">-</span>
+                    )}
+                  </td>
+                  <td className="p-4">
+                    <StatusBadge status={task.status} />
+                  </td>
+                  <td className="p-4">
+                    <PriorityBadge priority={task.priority} />
+                  </td>
+                  {!filterAssigneeId && (
+                    <td className="p-4">
+                      {task.assignee ? (
+                        <div className="flex items-center gap-2">
+                          <Avatar name={task.assignee.name} size="sm" />
+                          <span className="text-sm text-gray-600">{task.assignee.name}</span>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-gray-400">-</span>
+                      )}
+                    </td>
                   )}
-                </td>
-                <td className="p-4 text-sm text-gray-600">
-                  {task.due_date ? new Date(task.due_date).toLocaleDateString() : "-"}
-                </td>
-                <td className="p-4">
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setSelectedTask(task)}
-                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                    >
-                      View
-                    </button>
-                    <button
-                      onClick={() => { setEditingTask(task); setShowForm(true); }}
-                      className="text-gray-600 hover:text-gray-800 text-sm"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (confirm("Delete this task?")) {
-                          deleteMutation.mutate(task.id);
-                        }
-                      }}
-                      className="text-red-600 hover:text-red-800 text-sm"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  <td className="p-4">
+                    {task.creator ? (
+                      <span className="text-sm text-gray-600">{task.creator.name}</span>
+                    ) : (
+                      <span className="text-sm text-gray-400">-</span>
+                    )}
+                  </td>
+                  <td className="p-4 text-sm text-gray-600">
+                    {task.created_at ? new Date(task.created_at).toLocaleDateString() : "-"}
+                  </td>
+                  <td className="p-4 text-sm text-gray-600">
+                    {task.start_date ? new Date(task.start_date).toLocaleDateString() : "-"}
+                  </td>
+                  <td className="p-4 text-sm text-gray-600">
+                    {task.due_date ? new Date(task.due_date).toLocaleDateString() : "-"}
+                  </td>
+                  <td className="p-4">
+                    {daysLeft !== null ? (
+                      <span className={`text-xs px-2 py-1 rounded ${
+                        daysLeft < 0 ? "bg-red-100 text-red-700" :
+                        daysLeft <= 2 ? "bg-orange-100 text-orange-700" :
+                        daysLeft <= 7 ? "bg-yellow-100 text-yellow-700" :
+                        "bg-green-100 text-green-700"
+                      }`}>
+                        {daysLeft < 0 ? `${Math.abs(daysLeft)}d overdue` : `${daysLeft}d`}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-gray-400">-</span>
+                    )}
+                  </td>
+                  <td className="p-4 text-sm text-gray-600">
+                    {task.completed_at ? new Date(task.completed_at).toLocaleDateString() : "-"}
+                  </td>
+                  <td className="p-4">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setSelectedTask(task)}
+                        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                      >
+                        View
+                      </button>
+                      {(currentUserRole === "admin" || task.creator?.id === currentUserId) && (
+                        <button
+                          onClick={() => { setEditingTask(task); setShowForm(true); }}
+                          className="text-gray-600 hover:text-gray-800 text-sm"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                      )}
+                      {(currentUserRole === "admin" || task.creator?.id === currentUserId) && (
+                        <button
+                          onClick={() => {
+                            if (confirm("Delete this task?")) {
+                              deleteMutation.mutate(task.id);
+                            }
+                          }}
+                          className="text-red-600 hover:text-red-800 text-sm"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
             {filteredTasks.length === 0 && (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-gray-500">
+                <td colSpan={12} className="p-8 text-center text-gray-500">
                   No tasks found
                 </td>
               </tr>
@@ -264,6 +374,7 @@ export function TasksTable({ initialData = [], filterAssigneeId }: TasksTablePro
         open={showForm}
         onClose={() => { setShowForm(false); setEditingTask(null); }}
         task={editingTask}
+        canChangeAssignee={currentUserRole === "admin"}
       />
 
       <TaskDetail

@@ -15,12 +15,24 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value;
         },
         set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({ name, value, ...options });
-          response.cookies.set({ name, value, ...options });
+          const cookieOptions = {
+            ...options,
+            sameSite: 'lax' as const,
+            secure: process.env.NODE_ENV === 'production',
+            path: '/',
+          };
+          request.cookies.set({ name, value, ...cookieOptions });
+          response.cookies.set({ name, value, ...cookieOptions });
         },
         remove(name: string, options: CookieOptions) {
-          request.cookies.set({ name, value: "", ...options });
-          response.cookies.set({ name, value: "", ...options });
+          const cookieOptions = {
+            ...options,
+            sameSite: 'lax' as const,
+            secure: process.env.NODE_ENV === 'production',
+            path: '/',
+          };
+          request.cookies.set({ name, value: "", ...cookieOptions });
+          response.cookies.set({ name, value: "", ...cookieOptions });
         },
       },
     }
@@ -28,16 +40,12 @@ export async function middleware(request: NextRequest) {
 
   const isAuthPage = request.nextUrl.pathname === "/login";
   const isApiRoute = request.nextUrl.pathname.startsWith("/api");
-  const isStaticFile = 
-    request.nextUrl.pathname.startsWith("/_next") ||
-    request.nextUrl.pathname.startsWith("/favicon") ||
-    request.nextUrl.pathname.includes(".");
 
   // Get user once for all checks
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Redirect unauthenticated users to login (except auth pages, API, static)
-  if (!user && !isAuthPage && !isApiRoute && !isStaticFile) {
+  // Redirect unauthenticated users to login (except auth pages and API routes)
+  if (!user && !isAuthPage && !isApiRoute) {
     const redirectUrl = new URL("/login", request.url);
     return NextResponse.redirect(redirectUrl);
   }

@@ -1,8 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { getCurrentUser, authResponse } from "@/lib/auth-helper";
 
 export async function POST() {
   try {
+    const user = await getCurrentUser();
+    if (!user) return authResponse("Unauthorized");
+    if (!user.isAdmin) return authResponse("Forbidden: Admin only", 403);
     // Initialize raw_material_stock
     const rawMaterials = await prisma.raw_materials.findMany();
     

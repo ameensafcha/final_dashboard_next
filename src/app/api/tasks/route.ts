@@ -1,36 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
-
-async function getSupabaseServerClient() {
-  const cookieStore = await cookies();
-  const { createServerClient } = await import("@supabase/ssr");
-
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
-        },
-      },
-    }
-  );
-}
+import { getCurrentUser, authResponse } from "@/lib/auth-helper";
 
 export async function GET(request: Request) {
   try {
-    const supabase = await getSupabaseServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getCurrentUser();
+    if (!user) {
+      return authResponse("Unauthorized");
     }
 
     const { searchParams } = new URL(request.url);
@@ -40,50 +16,66 @@ export async function GET(request: Request) {
     const created_by = searchParams.get("created_by");
     const search = searchParams.get("search");
 
-    const currentEmployee = await prisma.employees.findUnique({
-      where: { id: user.id },
-      include: { role: true },
-    });
-
-    if (!currentEmployee) {
-      return NextResponse.json({ error: "Employee not found" }, { status: 404 });
-    }
-
     const where: any = {};
 
-    // Role-based filtering
-    if (currentEmployee.role?.name !== "admin") {
-      // Non-admin users can only see their tasks (created or assigned)
+    // Role-based filtering + search
+    if (!user.isAdmin) {
+      const roleFilter = { OR: [{ created_by: user.id }, { assignee_id: user.id }] };
+      if (search) {
+        where.AND = [
+          roleFilter,
+          {
+            OR: [
+              { title: { contains: search, mode: "insensitive" } },
+              { description: { contains: search, mode: "insensitive" } },
+            ],
+          },
+        ];
+      } else {
+        where.OR = [roleFilter.OR[0], roleFilter.OR[1]];
+      }
+    } else if (search) {
       where.OR = [
-        { created_by: user.id },
-        { assignee_id: user.id },
-      ];
-    }
-
-    // Apply filters
-    if (status) {
-      where.status = status;
-    }
-    if (priority) {
-      where.priority = priority;
-    }
-    if (assignee_id) {
-      where.assignee_id = assignee_id;
-    }
-    if (created_by) {
-      where.created_by = created_by;
-    }
-    if (search) {
-      where.OR = [
-        ...(where.OR || []),
         { title: { contains: search, mode: "insensitive" } },
         { description: { contains: search, mode: "insensitive" } },
       ];
     }
 
+    // Apply additional filters
+    const statusFilter = status ? { status } : null;
+    const priorityFilter = priority ? { priority } : null;
+    const assigneeFilter = assignee_id ? { assignee_id } : null;
+    const createdByFilter = created_by ? { created_by } : null;
+
+    const extraFilters = [statusFilter, priorityFilter, assigneeFilter, createdByFilter].filter(Boolean);
+
+    if (!user.isAdmin) {
+      if (where.AND) {
+        where.AND.push(...extraFilters);
+      } else if (extraFilters.length > 0) {
+        where.AND = [...(where.OR ? [{ OR: where.OR }] : []), ...extraFilters];
+        delete where.OR;
+      }
+    } else {
+      if (status) where.status = status;
+      if (priority) where.priority = priority;
+      if (assignee_id) where.assignee_id = assignee_id;
+      if (created_by) where.created_by = created_by;
+    }
+
     const tasks = await prisma.tasks.findMany({
       where,
-      include: {
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        area: true,
+        status: true,
+        priority: true,
+        due_date: true,
+        start_date: true,
+        completed_at: true,
+        created_at: true,
         assignee: {
           select: { id: true, name: true, email: true },
         },
@@ -110,32 +102,22 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const supabase = await getSupabaseServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getCurrentUser();
+    if (!user) {
+      return authResponse("Unauthorized");
     }
 
-    const { title, description, priority, assignee_id, due_date, start_date } = await request.json();
+    const { title, description, area, priority, assignee_id, due_date, start_date } = await request.json();
 
     if (!title) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
-    }
-
-    const currentEmployee = await prisma.employees.findUnique({
-      where: { id: user.id },
-      include: { role: true },
-    });
-
-    if (!currentEmployee) {
-      return NextResponse.json({ error: "Employee not found" }, { status: 404 });
     }
 
     const task = await prisma.tasks.create({
       data: {
         title,
         description,
+        area,
         priority: priority || "medium",
         status: "not_started",
         created_by: user.id,
@@ -162,26 +144,15 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const supabase = await getSupabaseServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getCurrentUser();
+    if (!user) {
+      return authResponse("Unauthorized");
     }
 
-    const { id, title, description, status, priority, assignee_id, due_date, start_date, completed_at } = await request.json();
+    const { id, title, description, area, status, priority, assignee_id, due_date, start_date, completed_at } = await request.json();
 
     if (!id) {
       return NextResponse.json({ error: "Task ID is required" }, { status: 400 });
-    }
-
-    const currentEmployee = await prisma.employees.findUnique({
-      where: { id: user.id },
-      include: { role: true },
-    });
-
-    if (!currentEmployee) {
-      return NextResponse.json({ error: "Employee not found" }, { status: 404 });
     }
 
     const existingTask = await prisma.tasks.findUnique({
@@ -193,29 +164,42 @@ export async function PUT(request: Request) {
     }
 
     // Permission check: only admin or task creator/assignee can update
-    const isAdmin = currentEmployee.role?.name === "admin";
     const isCreator = existingTask.created_by === user.id;
     const isAssignee = existingTask.assignee_id === user.id;
 
-    if (!isAdmin && !isCreator && !isAssignee) {
+    if (!user.isAdmin && !isCreator && !isAssignee) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    // Field-level permissions
+    const isAdminOrCreator = user.isAdmin || isCreator;
+
+    // Fields allowed for Admin + Creator
+    const fullUpdate = {
+      ...(title !== undefined && { title }),
+      ...(description !== undefined && { description }),
+      ...(area !== undefined && { area }),
+      ...(status !== undefined && { status }),
+      ...(priority !== undefined && { priority }),
+      ...(assignee_id !== undefined && { assignee_id: assignee_id || null }),
+      ...(due_date !== undefined && { due_date: due_date ? new Date(due_date) : null }),
+      ...(start_date !== undefined && { start_date: start_date ? new Date(start_date) : null }),
+      ...(completed_at !== undefined && { completed_at: completed_at ? new Date(completed_at) : null }),
+    };
+
+    // Fields allowed for Assignee-only
+    const restrictedUpdate = {
+      ...(status !== undefined && { status }),
+      ...(due_date !== undefined && { due_date: due_date ? new Date(due_date) : null }),
+      ...(start_date !== undefined && { start_date: start_date ? new Date(start_date) : null }),
+      ...(completed_at !== undefined && { completed_at: completed_at ? new Date(completed_at) : null }),
+    };
+
+    const updateData = isAdminOrCreator ? fullUpdate : restrictedUpdate;
+
     const task = await prisma.tasks.update({
       where: { id },
-      data: {
-        ...(title && { title }),
-        ...(description !== undefined && { description }),
-        ...(status && { status }),
-        ...(priority && { priority }),
-        ...(assignee_id !== undefined && { assignee_id: assignee_id || null }),
-        ...(due_date !== undefined && { due_date: due_date ? new Date(due_date) : null }),
-        ...(start_date !== undefined && { start_date: start_date ? new Date(start_date) : null }),
-        ...(completed_at !== undefined && {
-          completed_at: completed_at ? new Date(completed_at) : null,
-          ...(completed_at && { status: "completed" }),
-        }),
-      },
+      data: updateData,
       include: {
         assignee: {
           select: { id: true, name: true, email: true },
@@ -236,11 +220,9 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const supabase = await getSupabaseServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getCurrentUser();
+    if (!user) {
+      return authResponse("Unauthorized");
     }
 
     const { searchParams } = new URL(request.url);
@@ -248,15 +230,6 @@ export async function DELETE(request: Request) {
 
     if (!id) {
       return NextResponse.json({ error: "Task ID is required" }, { status: 400 });
-    }
-
-    const currentEmployee = await prisma.employees.findUnique({
-      where: { id: user.id },
-      include: { role: true },
-    });
-
-    if (!currentEmployee) {
-      return NextResponse.json({ error: "Employee not found" }, { status: 404 });
     }
 
     const existingTask = await prisma.tasks.findUnique({
@@ -268,10 +241,9 @@ export async function DELETE(request: Request) {
     }
 
     // Permission check: only admin or task creator can delete
-    const isAdmin = currentEmployee.role?.name === "admin";
     const isCreator = existingTask.created_by === user.id;
 
-    if (!isAdmin && !isCreator) {
+    if (!user.isAdmin && !isCreator) {
       return NextResponse.json({ error: "Forbidden - Only admin or task creator can delete" }, { status: 403 });
     }
 

@@ -1,10 +1,13 @@
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth-helper";
+import { redirect } from "next/navigation";
 import { TasksTable } from "@/components/tasks-table";
-import { TaskForm } from "@/components/task-form";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
 
 export default async function TasksPage() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  if (!user.isAdmin) redirect("/dashboard");
+
   const tasks = await prisma.tasks.findMany({
     include: {
       assignee: true,
@@ -18,6 +21,7 @@ export default async function TasksPage() {
     id: task.id,
     title: task.title,
     description: task.description,
+    area: task.area,
     status: task.status,
     priority: task.priority,
     assignee_id: task.assignee_id,
@@ -55,7 +59,11 @@ export default async function TasksPage() {
         </div>
       </div>
 
-      <TasksTable initialData={serializedTasks} />
+      <TasksTable 
+        initialData={serializedTasks} 
+        currentUserId={user.id}
+        currentUserRole={user.role ?? undefined}
+      />
     </div>
   );
 }

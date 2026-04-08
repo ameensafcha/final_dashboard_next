@@ -326,25 +326,30 @@ export function AppSidebar() {
             
             {taskOpen && (
               <div className="ml-2 space-y-1 mt-1">
-                {taskItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 cursor-pointer",
-                      isActive(item.href) 
-                        ? "bg-yellow-200 font-medium" 
-                        : "hover:bg-yellow-100"
-                    )}
-                    style={{ color: "#1A1A1A" }}
-                  >
-                    <item.icon 
-                      className="w-4 h-4" 
-                      style={{ color: isActive(item.href) ? "#E8C547" : "#C9A83A" }} 
-                    />
-                    <span>{item.label}</span>
-                  </Link>
-                ))}
+                {taskItems.map((item) => {
+                  if (item.label === "All Tasks" && role !== "admin") {
+                    return null;
+                  }
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 cursor-pointer",
+                        isActive(item.href) 
+                          ? "bg-yellow-200 font-medium" 
+                          : "hover:bg-yellow-100"
+                      )}
+                      style={{ color: "#1A1A1A" }}
+                    >
+                      <item.icon 
+                        className="w-4 h-4" 
+                        style={{ color: isActive(item.href) ? "#E8C547" : "#C9A83A" }} 
+                      />
+                      <span>{item.label}</span>
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </div>

@@ -11,6 +11,7 @@ interface Task {
   id: string;
   title: string;
   description: string | null;
+  area: string | null;
   status: string;
   priority: string;
   assignee_id: string | null;
@@ -28,15 +29,18 @@ interface TaskFormProps {
   open: boolean;
   onClose: () => void;
   task?: Task | null;
+  defaultAssigneeId?: string;
+  canChangeAssignee?: boolean;
 }
 
-export function TaskForm({ open, onClose, task }: TaskFormProps) {
+export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssignee = false }: TaskFormProps) {
   const queryClient = useQueryClient();
   const { addNotification } = useUIStore();
   
   const [formData, setFormData] = useState({
     title: "",
     description: "",
+    area: "",
     priority: "medium",
     assignee_id: "",
     due_date: "",
@@ -48,6 +52,7 @@ export function TaskForm({ open, onClose, task }: TaskFormProps) {
       setFormData({
         title: task.title,
         description: task.description || "",
+        area: task.area || "",
         priority: task.priority,
         assignee_id: task.assignee_id || "",
         due_date: task.due_date ? task.due_date.split("T")[0] : "",
@@ -57,13 +62,14 @@ export function TaskForm({ open, onClose, task }: TaskFormProps) {
       setFormData({
         title: "",
         description: "",
+        area: "",
         priority: "medium",
-        assignee_id: "",
+        assignee_id: defaultAssigneeId || "",
         due_date: "",
         start_date: "",
       });
     }
-  }, [task, open]);
+  }, [task, open, defaultAssigneeId]);
 
   const { data: employees = [] } = useQuery<Employee[]>({
     queryKey: ["employees"],
@@ -72,6 +78,7 @@ export function TaskForm({ open, onClose, task }: TaskFormProps) {
       const json = await res.json();
       return json.data || [];
     },
+    enabled: canChangeAssignee,
   });
 
   const createMutation = useMutation({
@@ -82,8 +89,9 @@ export function TaskForm({ open, onClose, task }: TaskFormProps) {
         body: JSON.stringify({
           title: data.title,
           description: data.description || null,
+          area: data.area || null,
           priority: data.priority,
-          assignee_id: data.assignee_id || null,
+          assignee_id: data.assignee_id || defaultAssigneeId || null,
           due_date: data.due_date || null,
           start_date: data.start_date || null,
         }),
@@ -113,8 +121,9 @@ export function TaskForm({ open, onClose, task }: TaskFormProps) {
           id: task!.id,
           title: data.title,
           description: data.description || null,
+          area: data.area || null,
           priority: data.priority,
-          assignee_id: data.assignee_id || null,
+          assignee_id: data.assignee_id || defaultAssigneeId || null,
           due_date: data.due_date || null,
           start_date: data.start_date || null,
         }),
@@ -174,6 +183,25 @@ export function TaskForm({ open, onClose, task }: TaskFormProps) {
             />
           </div>
 
+          <div>
+            <label className="block text-sm font-medium mb-1">Area / Department</label>
+            <select
+              value={formData.area}
+              onChange={(e) => setFormData({ ...formData, area: e.target.value })}
+              className="w-full px-3 py-2 border rounded-lg text-sm"
+            >
+              <option value="">Select Area</option>
+              <option value="Production">Production</option>
+              <option value="Quality">Quality</option>
+              <option value="Warehouse">Warehouse</option>
+              <option value="Procurement">Procurement</option>
+              <option value="HR">HR</option>
+              <option value="Admin">Admin</option>
+              <option value="Maintenance">Maintenance</option>
+              <option value="Finance">Finance</option>
+            </select>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Priority</label>
@@ -191,16 +219,24 @@ export function TaskForm({ open, onClose, task }: TaskFormProps) {
 
             <div>
               <label className="block text-sm font-medium mb-1">Assignee</label>
-              <select
-                value={formData.assignee_id}
-                onChange={(e) => setFormData({ ...formData, assignee_id: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg text-sm"
-              >
-                <option value="">Unassigned</option>
-                {employees.map((emp) => (
-                  <option key={emp.id} value={emp.id}>{emp.name}</option>
-                ))}
-              </select>
+              {canChangeAssignee ? (
+                <select
+                  value={formData.assignee_id}
+                  onChange={(e) => setFormData({ ...formData, assignee_id: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg text-sm"
+                >
+                  <option value="">Unassigned</option>
+                  {employees.map((emp) => (
+                    <option key={emp.id} value={emp.id}>{emp.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  value="You (auto-assigned)"
+                  disabled
+                  className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 text-gray-500 cursor-not-allowed"
+                />
+              )}
             </div>
           </div>
 

@@ -161,18 +161,21 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
+    const user = await getCurrentUser();
+    if (!user) return authResponse("Unauthorized");
+
     const body = await request.json();
-    const { 
-      id, 
-      date, 
-      logged_by, 
+    const {
+      id,
+      date,
+      logged_by,
       raw_material_id,
-      flavor_id, 
-      leaves_in, 
-      powder_out, 
-      quality_check, 
-      status, 
-      notes 
+      flavor_id,
+      leaves_in,
+      powder_out,
+      quality_check,
+      status,
+      notes
     } = body;
 
     if (!id) {
@@ -269,6 +272,9 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const user = await getCurrentUser();
+    if (!user) return authResponse("Unauthorized");
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 

@@ -222,7 +222,7 @@ export function TaskDetail({ task, open, onClose }: TaskDetailProps) {
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent className="w-[500px] sm:max-w-[500px] overflow-y-auto">
+      <SheetContent className="w-full md:w-1/2 md:max-w-[50%] bg-yellow-100 overflow-y-auto">
         <SheetHeader>
           <SheetTitle className="text-lg font-bold">{task.title}</SheetTitle>
         </SheetHeader>

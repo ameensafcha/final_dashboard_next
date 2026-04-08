@@ -154,7 +154,7 @@ export function RawMaterialsTable({ initialData = [] }: RawMaterialsTableProps) 
       <DeleteConfirmDialog
         open={!!deleteId}
         onOpenChange={(open) => !open && setDeleteId(null)}
-        onConfirm={() => deleteId && deleteMutation.mutate(deleteId)}
+        onConfirm={() => deleteId && deleteMutation.mutate(Number(deleteId))}
         isPending={deleteMutation.isPending}
       />
     </>

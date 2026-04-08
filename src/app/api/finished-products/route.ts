@@ -56,6 +56,9 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
+    const user = await getCurrentUser();
+    if (!user) return authResponse("Unauthorized");
+
     const body = await request.json();
     const { id, quantity } = body;
 

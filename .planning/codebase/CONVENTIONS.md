@@ -5,167 +5,236 @@
 ## Naming Patterns
 
 **Files:**
-- Utilities: kebab-case (`auth-helper.ts`, `use-mobile.ts`)
-- Components/Types: PascalCase (`TaskCard.tsx`, `Button.tsx`)
-- API Routes: kebab-case (`products/route.ts`)
-- Stores: kebab-case with descriptive names (`ui.ts`, `index.ts`)
+- **Utilities/Lib**: kebab-case - `auth-helper.ts`, `utils.ts`, `prisma.ts`
+- **Components/React**: PascalCase - `TaskCard.tsx`, `TaskForm.tsx`, `Button.tsx`
+- **API Routes**: PascalCase - `route.ts` (Next.js App Router convention)
+- **Store**: kebab-case - `ui.ts`, `index.ts`
 
 **Functions:**
-- camelCase throughout
-- Verb prefixes for actions: `getCurrentUser()`, `requireAuth()`, `createPrismaClient()`
-- Helper prefixes: `cn()` for className merging, `authResponse()` for auth responses
+- camelCase with verb prefix - `getCurrentUser()`, `createTask()`, `addNotification()`
+- Use descriptive, action-oriented names
 
 **Variables:**
-- camelCase: `user`, `tasks`, `existingTask`
-- Private/public not used (TypeScript)
-- Type annotations for function parameters and return types
+- camelCase - `currentUser`, `formData`, `isLoading`
+- Boolean variables: prefix with `is`, `has`, `can` - `isAdmin`, `hasRole`, `canEdit`
 
-**Types:**
-- PascalCase interfaces: `AuthUser`, `UIStore`, `TaskCardProps`
-- Inline types for component props
-- Descriptive names ending with context: `TaskDetailTask`, `SerializedTask`, `KPIData`
+**Types/Interfaces:**
+- PascalCase - `interface Task`, `type TaskCardProps`, `AuthUser`
+- Optional prefix `T` not used (e.g., `Product`, not `TProduct`)
+
+**Constants:**
+- UPPER_SNAKE_CASE for true constants (less common in codebase)
+- Regular naming for configuration objects
 
 ## Code Style
 
 **Formatting:**
-- 2 spaces for indentation (default)
+- Tool: Prettier (integrated with ESLint)
+- 2 spaces for indentation
 - Single quotes for strings
 - Trailing commas enabled
-- Prettier integrated with ESLint
+- Semicolons at end of statements
 
 **Linting:**
-- ESLint 9 with `eslint-config-next` (core-web-vitals + typescript)
-- Custom rule: `"react-hooks/set-state-in-effect": "off"`
-- Ignored: `.next/**`, `out/**`, `build/**`, `next-env.d.ts`
+- Tool: ESLint with Next.js config (`eslint-config-next`)
+- Config file: `eslint.config.mjs`
+- Custom rule: `react-hooks/set-state-in-effect` turned OFF
+- Ignores: `.next/`, `out/`, `build/`, `next-env.d.ts`
+
+**TypeScript:**
+- Strict mode enabled in `tsconfig.json`
+- Explicit return types required for API routes
+- Avoid `any` - use `unknown` or proper types
+- Use explicit type imports: `import { type NextResponse } from "next/server"`
+
+```typescript
+// Correct - explicit return type
+export async function GET(): Promise<NextResponse> {
+  const products = await prisma.products.findMany();
+  return NextResponse.json(products);
+}
+
+// Avoid - implicit any return type
+export async function GET() {
+  const products = await prisma.products.findMany();
+  return NextResponse.json(products);
+}
+```
 
 ## Import Organization
 
-**Order (as seen in codebase):**
-1. External libraries: `next/server`, `@tanstack/react-query`, `react`
-2. Internal libs: `@/lib/prisma`, `@/lib/utils`, `@/lib/stores`
-3. Components: `@/components/ui/*`, `@/components/*`
-4. Types: Inline or from `@/types`
+**Order (per AGENTS.md):**
+1. External libraries - `import { useState } from "react"`
+2. Internal lib - `import { prisma } from "@/lib/prisma"`
+3. Components - `import { Button } from "@/components/ui/button"`
+4. Types - `import { type Task } from "@/types"`
 
 **Path Aliases:**
 - `@/*` maps to `./src/*`
-- Used consistently across all imports
+- Example: `@/lib/utils` resolves to `src/lib/utils.ts`
+
+**Explicit Type Imports:**
+```typescript
+import { NextResponse, type NextRequest } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getCurrentUser, authResponse } from "@/lib/auth-helper";
+```
 
 ## Error Handling
 
 **API Routes:**
-- Try-catch wrapping all route handlers
-- `console.error()` with descriptive messages before returning 500
-- Specific error messages: "Failed to fetch", "Failed to create", "Failed to update", "Failed to delete"
-- HTTP status codes: 200 (success), 400 (bad request), 401 (unauthorized), 403 (forbidden), 404 (not found), 500 (server error)
+- Always wrap in try-catch
+- Return appropriate HTTP status codes:
+  - `200` for success
+  - `400` for bad request (validation errors)
+  - `401` for unauthorized
+  - `403` for forbidden
+  - `404` for not found
+  - `500` for server errors
 
-**Auth Pattern:**
-- `getCurrentUser()` returns null on auth failure
-- `authResponse("Unauthorized")` helper for 401 responses
-- `requireAuth()` throws Error("Unauthorized")
-- `requireAdmin()` throws Error("Forbidden: Admin only")
+```typescript
+export async function GET(request: Request) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return authResponse("Unauthorized"); // Returns 401
+    }
+    // ... logic
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error("Error fetching tasks:", error);
+    return NextResponse.json({ error: "Failed to fetch tasks" }, { status: 500 });
+  }
+}
+```
 
-**Validation:**
-- Early returns for required field checks
-- Status 400 with descriptive error messages for validation failures
-- URL search params used for DELETE request IDs
+**Error Response Helper:**
+- Use `authResponse()` from `@/lib/auth-helper` for auth errors
+- Custom error messages: `NextResponse.json({ error: "Message" }, { status: 400 })`
 
 ## Logging
 
-**Framework:** `console` (no external logging library)
+**Framework:** console logging (no structured logger)
 
 **Patterns:**
-- `console.error()` for error logging in API routes and auth helpers
-- No info/debug logging in current codebase
-- Error messages include operation context: `"Error fetching tasks:"`, `"Auth check error:"`
+- API routes: `console.error("Error message:", error)` for errors
+- Minimal logging otherwise
+- No info/debug logging observed in codebase
 
 ## Comments
 
 **When to Comment:**
-- Role-based filtering logic: `// Role-based filtering + search`
-- Permission checks: `// Permission check: only admin or task creator can delete`
-- Field-level permissions: `// Field-level permissions`
-- Auto-set logic: `// Auto-set completed_at when status changes to completed`
+- Complex business logic
+- Non-obvious workarounds (with explanation)
+- TODO items for future work
 
 **JSDoc/TSDoc:**
-- Not used in current codebase
-- Interface/type definitions serve as documentation
+- Minimal usage in codebase
+- Not enforced by linting
 
 ## Function Design
 
-**Size:**
-- Keep route handlers focused (~50-100 lines typical)
-- Complex logic broken into helper functions like `createSupabaseServerClient()`
+**Size:** Keep functions focused and small
 
 **Parameters:**
-- Typed via TypeScript interfaces
-- Destructuring for request body/params
-- Default values for optional parameters: `priority || "medium"`
+- Use interfaces for related parameters
+- Optional parameters with defaults
+
+```typescript
+interface TaskFormProps {
+  open: boolean;
+  onClose: () => void;
+  task?: Task | null;
+  defaultAssigneeId?: string;
+  canChangeAssignee?: boolean;
+}
+```
 
 **Return Values:**
-- Explicit return types for API routes: `Promise<NextResponse>`
-- NextResponse.json() for all responses
-- Try-catch ensures consistent return structure
+- Always explicit return types for API routes
+- Use `Promise<T>` for async functions
+
+## Component Patterns
+
+**Functional Components:**
+- Use functional components with explicit props
+- Server components by default
+- Add `'use client'` only when needed (hooks, browser APIs, event handlers)
+
+**ClassName Merging:**
+- Use `cn()` utility from `@/lib/utils`
+```typescript
+import { cn } from "@/lib/utils";
+
+className={cn(
+  "base-class",
+  condition && "conditional-class",
+  variant === "primary" && "bg-primary"
+)}
+```
+
+**Data Fetching:**
+- Use TanStack React Query for server state
+- Avoid useEffect for data fetching
+
+```typescript
+const { data: employees = [] } = useQuery<Employee[]>({
+  queryKey: ["employees"],
+  queryFn: async () => {
+    const res = await fetch("/api/employees");
+    const json = await res.json();
+    return json.data || [];
+  },
+});
+```
+
+## State Management
+
+**Server State:** TanStack React Query
+**Client State:** Zustand stores in `@/lib/stores`
+**UI State:** Local state (keep minimal)
+
+Example from `src/lib/stores/ui.ts`:
+```typescript
+import { create } from "zustand";
+
+interface UIStore {
+  sidebarOpen: boolean;
+  setSidebarOpen: (open: boolean) => void;
+  notifications: Notification[];
+  addNotification: (notification: Omit<Notification, "id" | "timestamp">) => void;
+}
+
+export const useUIStore = create<UIStore>((set) => ({
+  sidebarOpen: true,
+  setSidebarOpen: (open) => set({ sidebarOpen: open }),
+  // ...
+}));
+```
+
+## Database (Prisma)
+
+**Client Pattern:** Single instance via `@/lib/prisma`
+```typescript
+// src/lib/prisma.ts
+export const prisma = globalForPrisma.prisma ?? createPrismaClient();
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+```
+
+**Usage:**
+- Always use transactions for multi-step operations
+- Include related records with `include`
+- Use proper relation names (singular for to-one, plural for to-many)
 
 ## Module Design
 
 **Exports:**
-- Named exports for utilities: `export function cn()`
-- Default exports for API routes: `export default nextConfig`
-- Barrel files for stores: `src/lib/stores/index.ts` re-exports
+- Named exports preferred
+- Re-export from barrel files in `index.ts`
 
 **Barrel Files:**
-- Used in stores (`index.ts` re-exports from `ui.ts`)
-- Components organized in directories, imported individually
-
-## Component Patterns
-
-**Server Components:**
-- Default (no `'use client'` directive)
-- Used for data fetching pages
-
-**Client Components:**
-- `'use client'` at top for interactive components
-- Components using hooks: `useState`, `useEffect`, `useSortable`
-- Event handlers and callbacks
-
-**Props:**
-- Interface-based prop typing
-- Optional props with defaults: `isDragging?: boolean`
-- Destructuring in function signature
-
-## Database (Prisma)
-
-**Client:**
-- Single instance via global pattern (`globalForPrisma`)
-- Adapter-based: `@prisma/adapter-pg` with `pg` Pool
-- Connection via `DATABASE_URL` env var
-
-**Patterns:**
-- `include` for related records
-- `select` for specific fields
-- `where` clauses for filtering
-- `orderBy` for sorting
-- Transaction needed for multi-step operations
-
-## State Management
-
-**Server State:**
-- TanStack React Query (not yet fully utilized - can be added)
-
-**Client State:**
-- Zustand stores: `useUIStore` in `@/lib/stores`
-- Pattern: `create<StoreInterface>((set) => ({ ... }))`
-- Immutable updates via spread operator
-
-## Tailwind CSS
-
-**Version:** Tailwind v4 (no config file)
-
-**Patterns:**
-- `cn()` utility from `@/lib/utils` for conditional classes
-- CSS variables via Tailwind v4
-- Semantic class names: `bg-white`, `text-gray-900` (not arbitrary colors in components)
-- Responsive classes: `lg:grid-cols-2`, `hidden lg:block`
+- Used in stores: `src/lib/stores/index.ts`
+- Not heavily used in components
 
 ---
 

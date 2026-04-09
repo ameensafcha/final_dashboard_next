@@ -5,72 +5,72 @@
 ## APIs & External Services
 
 **Authentication & Identity:**
-- Supabase Auth - User authentication
-  - Browser client: `@supabase/ssr` (createBrowserClient)
-  - Server client: `@supabase/ssr` (createServerClient) for API routes
-  - Admin client: `@supabase/supabase-js` (createClient) with service role key for privileged operations
-  - Env vars: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
-  - Implementation: Custom auth helpers in `src/lib/auth-helper.ts` and `src/lib/supabase.ts`
+- **Supabase** - User authentication and session management
+  - SDK: `@supabase/supabase-js` v2.101.1
+  - Auth: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  - Implementation: Browser client (`src/lib/supabase.ts`), Server client (cookie-based), Admin client (service role)
+  - Environment: `SUPABASE_SERVICE_ROLE_KEY` for privileged operations
 
 ## Data Storage
 
-**Databases:**
-- PostgreSQL
-  - Connection: `DATABASE_URL` (primary), `DIRECT_URL` (Prisma config)
-  - Client: Prisma with `@prisma/adapter-pg` adapter
-  - Location: `src/lib/prisma.ts`
+**Database:**
+- **PostgreSQL** - Primary relational database
+  - Connection: `DATABASE_URL` (Prisma with pg driver)
+  - Client: Prisma 7.6.0 with `@prisma/adapter-pg`
+  - ORM: Prisma schema at `prisma/schema.prisma` with 17 models
 
 **File Storage:**
-- Not applicable - No external file storage detected
+- None detected - application uses database for all persistence
 
 **Caching:**
-- Not applicable - No external caching service
+- None detected - relies on React Query for request deduplication
 
 ## Authentication & Identity
 
 **Auth Provider:**
-- Supabase (custom implementation)
-  - Approach: Supabase Auth for authentication, synced with local `employees` table in PostgreSQL
-  - User sync endpoint: `src/app/api/auth/sync/route.ts`
-  - Login page: `src/app/login/page.tsx`
-  - Auth middleware: `src/middleware.ts`
-  - Session management via cookies (SSR), Supabase SSR package handles cookie operations
+- **Supabase Auth** - Custom implementation
+  - Users authenticated via Supabase (email/password)
+  - Employee records linked to Supabase user IDs in `employees` table
+  - Role-based access via `roles` table with admin/employee roles
+  - Session handling: Supabase SSR cookies
+  - Implementation: `src/lib/auth-helper.ts` with `getCurrentUser()`, `requireAuth()`, `requireAdmin()`
 
 ## Monitoring & Observability
 
 **Error Tracking:**
-- Not detected - No external error tracking service integrated
+- None detected (no Sentry, LogRocket, etc.)
 
 **Logs:**
-- Console logging only (console.error in auth-helper.ts)
+- Console logging via `console.log/error` (not structured)
 
 ## CI/CD & Deployment
 
 **Hosting:**
-- Not specified in codebase
+- Not explicitly defined in codebase
+- Compatible with Vercel (Next.js native support)
 
 **CI Pipeline:**
-- Not detected in codebase
+- None detected in codebase (no GitHub Actions, etc.)
 
 ## Environment Configuration
 
 **Required env vars:**
-- `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anonymous key
-- `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key (admin operations)
+- `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL (public)
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anon key (public)
+- `SUPABASE_SERVICE_ROLE_KEY` - Service role key for admin operations (secret)
 - `DATABASE_URL` - PostgreSQL connection string
-- `DIRECT_URL` - Prisma direct database URL (for migrations)
+- `DIRECT_URL` - Direct database URL for Prisma (used in `prisma.config.ts`)
 
 **Secrets location:**
-- `.env` file (not read - contains secrets)
+- `.env` file (gitignored, contains sensitive credentials)
 
 ## Webhooks & Callbacks
 
 **Incoming:**
-- None detected
+- None detected - no webhook endpoints for external services
 
 **Outgoing:**
-- None detected
+- None detected - no outgoing webhooks configured
 
 ---
 

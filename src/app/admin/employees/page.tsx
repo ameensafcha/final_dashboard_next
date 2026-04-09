@@ -34,10 +34,20 @@ export default function EmployeesPage() {
     onConfirm: () => void;
   }>({ open: false, title: "", message: "", onConfirm: () => {} });
 
-  const { data: employees, isLoading } = useQuery<Employee[]>({
+const { data: employees, isLoading } = useQuery<Employee[]>({
     queryKey: ["employees"],
     queryFn: async () => {
       const res = await fetch("/api/employees");
+
+      // FIX: Agar API chup-chaap login page pe redirect ho gayi hai, toh crash roko
+      if (res.redirected) {
+        window.location.href = "/login";
+        return [];
+      }
+
+      // FIX: Agar API fail ho jaye, toh crash roko
+      if (!res.ok) throw new Error("Failed to fetch employees");
+
       const json = await res.json();
       if (json.error) throw new Error(json.error);
       return json.data || [];

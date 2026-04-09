@@ -68,14 +68,14 @@ const priorityColors = {
   low: "bg-gray-100 text-gray-700",
   medium: "bg-amber-100 text-amber-800",
   high: "bg-orange-100 text-orange-800",
-  urgent: "bg-red-100 text-red-800",
+  urgent: "bg-red-100 text-red-800 border border-red-200",
 };
 
 const statusColors = {
-  not_started: "border-gray-300 text-gray-700 bg-white",
-  in_progress: "border-blue-400 text-blue-700 bg-blue-50",
-  review: "border-amber-400 text-amber-700 bg-amber-50",
-  completed: "border-green-400 text-green-700 bg-green-50",
+  not_started: "border-gray-200 text-gray-700 bg-gray-50",
+  in_progress: "border-blue-300 text-blue-700 bg-blue-50",
+  review: "border-amber-300 text-amber-700 bg-amber-50",
+  completed: "border-green-300 text-green-700 bg-green-50",
 };
 
 const statusOptions = [
@@ -242,21 +242,22 @@ export function TaskDetail({ task, open, onClose }: TaskDetailProps) {
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent className="w-full md:w-1/2 md:max-w-[50%] bg-yellow-100 overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle className="text-lg font-bold">{currentTask.title}</SheetTitle>
-        </SheetHeader>
+      <SheetContent className="w-full sm:max-w-xl md:w-1/2 md:max-w-[50%] bg-[#FAFAFA] overflow-y-auto border-l-0 shadow-2xl p-0">
+        <div className="p-6">
+          <SheetHeader className="mb-6">
+            <SheetTitle className="text-2xl font-bold text-gray-900">{currentTask.title}</SheetTitle>
+          </SheetHeader>
 
-        <div className="mt-4">
-          <div className="flex gap-2 border-b mb-4">
+          {/* Modern Segmented Tabs */}
+          <div className="flex gap-1 p-1.5 bg-gray-200/60 rounded-xl mb-6 overflow-x-auto hide-scrollbar">
             {(["overview", "subtasks", "comments", "time"] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-3 py-2 text-sm font-medium capitalize ${
+                className={`flex-1 px-4 py-2 text-sm font-semibold capitalize rounded-lg transition-all duration-200 whitespace-nowrap ${
                   activeTab === tab
-                    ? "border-b-2 border-amber-400 text-amber-700"
-                    : "text-gray-500"
+                    ? "bg-white text-amber-700 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-200/50"
                 }`}
               >
                 {tab === "overview" && "Overview"}
@@ -267,275 +268,299 @@ export function TaskDetail({ task, open, onClose }: TaskDetailProps) {
             ))}
           </div>
 
-          {activeTab === "overview" && (
-            <div className="space-y-3">
+          <div className="mt-2">
+            {activeTab === "overview" && (
+              <div className="space-y-4">
 
-              {/* Status */}
-              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                <div className="flex items-center gap-2 mb-2">
-                  <Activity className="w-4 h-4 text-gray-400" />
-                  <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Status</span>
-                </div>
-                <select
-                  value={currentTask.status}
-                  onChange={(e) => updateTaskMutation.mutate({ status: e.target.value })}
-                  className={`w-full px-3 py-2 border-2 rounded-lg text-sm font-medium cursor-pointer focus:outline-none ${statusColors[currentTask.status as keyof typeof statusColors] || statusColors.not_started}`}
-                >
-                  {statusOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Priority + Assignee */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Flag className="w-4 h-4 text-gray-400" />
-                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Priority</span>
+                {/* Status Dropdown */}
+                <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Activity className="w-4 h-4 text-gray-400" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-gray-400">Status</span>
                   </div>
-                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${priorityColors[currentTask.priority as keyof typeof priorityColors]}`}>
-                    {currentTask.priority.charAt(0).toUpperCase() + currentTask.priority.slice(1)}
-                  </span>
+                  <select
+                    value={currentTask.status}
+                    onChange={(e) => updateTaskMutation.mutate({ status: e.target.value })}
+                    className={`w-full px-4 py-3 border rounded-xl text-sm font-semibold cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-400/50 transition-all ${statusColors[currentTask.status as keyof typeof statusColors] || statusColors.not_started}`}
+                  >
+                    {statusOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
                 </div>
 
-                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                  <div className="flex items-center gap-2 mb-2">
-                    <User className="w-4 h-4 text-gray-400" />
-                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Assignee</span>
-                  </div>
-                  <p className="text-sm font-medium text-gray-800">
-                    {currentTask.assignee?.name || <span className="text-gray-400 font-normal">Unassigned</span>}
-                  </p>
-                </div>
-              </div>
-
-              {/* Created By */}
-              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                <div className="flex items-center gap-2 mb-2">
-                  <UserCheck className="w-4 h-4 text-gray-400" />
-                  <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Created By</span>
-                </div>
-                <p className="text-sm font-medium text-gray-800">{currentTask.creator?.name || "-"}</p>
-              </div>
-
-              {/* Dates */}
-              {(currentTask.start_date || currentTask.due_date) && (
-                <div className="grid grid-cols-2 gap-3">
-                  {currentTask.start_date && (
-                    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Calendar className="w-4 h-4 text-gray-400" />
-                        <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Start Date</span>
-                      </div>
-                      <p className="text-sm font-medium text-gray-800">
-                        {new Date(currentTask.start_date).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}
-                      </p>
+                {/* Priority + Assignee Grid */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Flag className="w-4 h-4 text-gray-400" />
+                      <span className="text-xs font-bold uppercase tracking-wider text-gray-400">Priority</span>
                     </div>
-                  )}
-                  {currentTask.due_date && (
-                    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Calendar className="w-4 h-4 text-gray-400" />
-                        <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Due Date</span>
-                      </div>
-                      <p className="text-sm font-medium text-gray-800">
-                        {new Date(currentTask.due_date).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Completed */}
-              {currentTask.completed_at && (
-                <div className="bg-white rounded-xl p-4 shadow-sm border border-green-100">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Check className="w-4 h-4 text-green-500" />
-                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Completed On</span>
-                  </div>
-                  <p className="text-sm font-medium text-green-700">
-                    {new Date(currentTask.completed_at).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}
-                  </p>
-                </div>
-              )}
-
-              {/* Progress */}
-              {subtasks.length > 0 && (
-                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-gray-400" />
-                      <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Progress</span>
-                    </div>
-                    <span className="text-xs font-semibold text-gray-500">{completedSubtasks}/{subtasks.length}</span>
-                  </div>
-                  <div className="w-full bg-gray-100 rounded-full h-2.5">
-                    <div
-                      className="bg-green-500 h-2.5 rounded-full transition-all duration-300"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-gray-400 mt-1.5">
-                    {Math.round(progress)}% complete
-                  </p>
-                </div>
-              )}
-
-              {/* Description — always at bottom */}
-              {currentTask.description && (
-                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                  <div className="flex items-center gap-2 mb-2">
-                    <FileText className="w-4 h-4 text-gray-400" />
-                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Description</span>
-                  </div>
-                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{currentTask.description}</p>
-                </div>
-              )}
-
-            </div>
-          )}
-
-          {activeTab === "subtasks" && (
-            <div className="space-y-3">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newSubtask}
-                  onChange={(e) => setNewSubtask(e.target.value)}
-                  placeholder="Add subtask..."
-                  className="flex-1 px-3 py-2 border rounded-lg text-sm"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && newSubtask.trim()) {
-                      createSubtaskMutation.mutate(newSubtask.trim());
-                    }
-                  }}
-                />
-                <button
-                  onClick={() => newSubtask.trim() && createSubtaskMutation.mutate(newSubtask.trim())}
-                  className="px-3 py-2 bg-amber-400 text-white rounded-lg text-sm"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="space-y-2">
-                {subtasks.map((subtask) => (
-                  <div key={subtask.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                    <button
-                      onClick={() => toggleSubtaskMutation.mutate({ id: subtask.id, is_completed: !subtask.is_completed })}
-                      className={`w-5 h-5 rounded border flex items-center justify-center ${
-                        subtask.is_completed ? "bg-green-500 border-green-500" : "border-gray-300"
-                      }`}
-                    >
-                      {subtask.is_completed && <Check className="w-3 h-3 text-white" />}
-                    </button>
-                    <span className={`flex-1 text-sm ${subtask.is_completed ? "line-through text-gray-400" : "text-gray-700"}`}>
-                      {subtask.title}
+                    <span className={`inline-flex px-3.5 py-1.5 rounded-full text-xs font-bold ${priorityColors[currentTask.priority as keyof typeof priorityColors]}`}>
+                      {currentTask.priority.charAt(0).toUpperCase() + currentTask.priority.slice(1)}
                     </span>
-                    <button
-                      onClick={() => deleteSubtaskMutation.mutate(subtask.id)}
-                      className="text-gray-400 hover:text-red-500"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
                   </div>
-                ))}
-                {subtasks.length === 0 && (
-                  <p className="text-center text-gray-400 text-sm py-4">No subtasks yet</p>
+
+                  <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-2 mb-3">
+                      <User className="w-4 h-4 text-gray-400" />
+                      <span className="text-xs font-bold uppercase tracking-wider text-gray-400">Assignee</span>
+                    </div>
+                    <p className="text-sm font-semibold text-gray-900 truncate">
+                      {currentTask.assignee?.name || <span className="text-gray-400 font-normal italic">Unassigned</span>}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Created By */}
+                <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2 mb-3">
+                    <UserCheck className="w-4 h-4 text-gray-400" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-gray-400">Created By</span>
+                  </div>
+                  <p className="text-sm font-semibold text-gray-900">{currentTask.creator?.name || "-"}</p>
+                </div>
+
+                {/* Dates Grid */}
+                {(currentTask.start_date || currentTask.due_date) && (
+                  <div className="grid grid-cols-2 gap-4">
+                    {currentTask.start_date && (
+                      <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Calendar className="w-4 h-4 text-gray-400" />
+                          <span className="text-xs font-bold uppercase tracking-wider text-gray-400">Start Date</span>
+                        </div>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {new Date(currentTask.start_date).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}
+                        </p>
+                      </div>
+                    )}
+                    {currentTask.due_date && (
+                      <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Calendar className="w-4 h-4 text-gray-400" />
+                          <span className="text-xs font-bold uppercase tracking-wider text-gray-400">Due Date</span>
+                        </div>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {new Date(currentTask.due_date).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 )}
-              </div>
-            </div>
-          )}
 
-          {activeTab === "comments" && (
-            <div className="space-y-3">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Add comment..."
-                  className="flex-1 px-3 py-2 border rounded-lg text-sm"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && newComment.trim()) {
-                      createCommentMutation.mutate(newComment.trim());
-                    }
-                  }}
-                />
-                <button
-                  onClick={() => newComment.trim() && createCommentMutation.mutate(newComment.trim())}
-                  className="px-3 py-2 bg-amber-400 text-white rounded-lg text-sm"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                </button>
-              </div>
+                {/* Completed Banner */}
+                {currentTask.completed_at && (
+                  <div className="bg-green-50 rounded-2xl p-5 shadow-sm border border-green-200 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-green-100 rounded-full">
+                        <Check className="w-5 h-5 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wider text-green-700 mb-1">Completed On</p>
+                        <p className="text-sm font-semibold text-green-800">
+                          {new Date(currentTask.completed_at).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
-              <div className="space-y-2">
-                {comments.map((comment) => (
-                  <div key={comment.id} className="p-2 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-medium text-gray-700">{comment.employee.name}</span>
-                      <span className="text-xs text-gray-400">
-                        {new Date(comment.created_at).toLocaleDateString()}
+                {/* Progress Bar */}
+                {subtasks.length > 0 && (
+                  <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <Check className="w-4 h-4 text-gray-400" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-gray-400">Progress</span>
+                      </div>
+                      <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded-md">{completedSubtasks}/{subtasks.length} tasks</span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                      <div
+                        className="bg-amber-400 h-full rounded-full transition-all duration-500 ease-out"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                    <p className="text-xs font-medium text-gray-400 mt-2 text-right">
+                      {Math.round(progress)}% complete
+                    </p>
+                  </div>
+                )}
+
+                {/* Description */}
+                {currentTask.description && (
+                  <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-2 mb-3">
+                      <FileText className="w-4 h-4 text-gray-400" />
+                      <span className="text-xs font-bold uppercase tracking-wider text-gray-400">Description</span>
+                    </div>
+                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{currentTask.description}</p>
+                  </div>
+                )}
+
+              </div>
+            )}
+
+            {/* --- SUBTASKS TAB --- */}
+            {activeTab === "subtasks" && (
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newSubtask}
+                    onChange={(e) => setNewSubtask(e.target.value)}
+                    placeholder="Add a new subtask..."
+                    className="flex-1 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50 transition-all shadow-sm"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && newSubtask.trim()) {
+                        createSubtaskMutation.mutate(newSubtask.trim());
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={() => newSubtask.trim() && createSubtaskMutation.mutate(newSubtask.trim())}
+                    className="px-4 py-2.5 bg-[#E8C547] hover:bg-[#D6B53D] text-[#1A1A1A] font-semibold rounded-xl text-sm transition-colors shadow-sm flex items-center justify-center"
+                  >
+                    <Plus className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {subtasks.map((subtask) => (
+                    <div key={subtask.id} className="group flex items-center gap-3 p-4 bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all">
+                      <button
+                        onClick={() => toggleSubtaskMutation.mutate({ id: subtask.id, is_completed: !subtask.is_completed })}
+                        className={`shrink-0 w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${
+                          subtask.is_completed ? "bg-green-500 border-green-500" : "border-gray-300 hover:border-amber-400"
+                        }`}
+                      >
+                        {subtask.is_completed && <Check className="w-4 h-4 text-white" />}
+                      </button>
+                      <span className={`flex-1 text-sm font-medium transition-colors ${subtask.is_completed ? "line-through text-gray-400" : "text-gray-700"}`}>
+                        {subtask.title}
                       </span>
+                      <button
+                        onClick={() => deleteSubtaskMutation.mutate(subtask.id)}
+                        className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
-                    <p className="text-sm text-gray-600">{comment.content}</p>
-                  </div>
-                ))}
-                {comments.length === 0 && (
-                  <p className="text-center text-gray-400 text-sm py-4">No comments yet</p>
-                )}
+                  ))}
+                  {subtasks.length === 0 && (
+                    <div className="text-center py-10 bg-white rounded-xl border border-dashed border-gray-200">
+                      <p className="text-gray-400 text-sm font-medium">No subtasks added yet</p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {activeTab === "time" && (
-            <div className="space-y-3">
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  value={newTimeHours}
-                  onChange={(e) => setNewTimeHours(e.target.value)}
-                  placeholder="Hours"
-                  className="w-20 px-3 py-2 border rounded-lg text-sm"
-                  min="0"
-                  step="0.5"
-                />
-                <input
-                  type="text"
-                  value={newTimeNotes}
-                  onChange={(e) => setNewTimeNotes(e.target.value)}
-                  placeholder="Notes (optional)"
-                  className="flex-1 px-3 py-2 border rounded-lg text-sm"
-                />
-                <button
-                  onClick={() => newTimeHours && createTimeLogMutation.mutate({ hours: parseFloat(newTimeHours), notes: newTimeNotes || undefined })}
-                  disabled={!newTimeHours}
-                  className="px-3 py-2 bg-amber-400 text-white rounded-lg text-sm disabled:opacity-50"
-                >
-                  <Clock className="w-4 h-4" />
-                </button>
-              </div>
+            {/* --- COMMENTS TAB --- */}
+            {activeTab === "comments" && (
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Write a comment..."
+                    className="flex-1 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50 transition-all shadow-sm"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && newComment.trim()) {
+                        createCommentMutation.mutate(newComment.trim());
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={() => newComment.trim() && createCommentMutation.mutate(newComment.trim())}
+                    className="px-4 py-2.5 bg-[#E8C547] hover:bg-[#D6B53D] text-[#1A1A1A] font-semibold rounded-xl text-sm transition-colors shadow-sm flex items-center justify-center"
+                  >
+                    <MessageSquare className="w-5 h-5" />
+                  </button>
+                </div>
 
-              <div className="space-y-2">
-                {timeLogs.map((log) => (
-                  <div key={log.id} className="p-2 bg-gray-50 rounded-lg flex items-center justify-between">
-                    <div>
-                      <span className="text-sm font-medium text-gray-700">{log.hours}h</span>
-                      {log.notes && <span className="text-xs text-gray-500 ml-2">{log.notes}</span>}
+                <div className="space-y-3">
+                  {comments.map((comment) => (
+                    <div key={comment.id} className="p-4 bg-white border border-gray-100 rounded-xl shadow-sm">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-bold text-gray-900">{comment.employee.name}</span>
+                        <span className="text-xs font-medium text-gray-400 bg-gray-50 px-2 py-1 rounded-md">
+                          {new Date(comment.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 leading-relaxed">{comment.content}</p>
                     </div>
-                    <div className="text-xs text-gray-400">
-                      {log.employee.name} • {new Date(log.created_at).toLocaleDateString()}
+                  ))}
+                  {comments.length === 0 && (
+                    <div className="text-center py-10 bg-white rounded-xl border border-dashed border-gray-200">
+                      <p className="text-gray-400 text-sm font-medium">No comments yet. Start the conversation!</p>
                     </div>
-                  </div>
-                ))}
-                {timeLogs.length === 0 && (
-                  <p className="text-center text-gray-400 text-sm py-4">No time logged yet</p>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+
+            {/* --- TIME LOGS TAB --- */}
+            {activeTab === "time" && (
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="number"
+                    value={newTimeHours}
+                    onChange={(e) => setNewTimeHours(e.target.value)}
+                    placeholder="Hours (e.g. 1.5)"
+                    className="w-full sm:w-32 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50 transition-all shadow-sm"
+                    min="0"
+                    step="0.5"
+                  />
+                  <input
+                    type="text"
+                    value={newTimeNotes}
+                    onChange={(e) => setNewTimeNotes(e.target.value)}
+                    placeholder="What did you work on? (optional)"
+                    className="flex-1 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50 transition-all shadow-sm"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && newTimeHours) {
+                        createTimeLogMutation.mutate({ hours: parseFloat(newTimeHours), notes: newTimeNotes || undefined });
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={() => newTimeHours && createTimeLogMutation.mutate({ hours: parseFloat(newTimeHours), notes: newTimeNotes || undefined })}
+                    disabled={!newTimeHours}
+                    className="px-4 py-2.5 bg-[#E8C547] hover:bg-[#D6B53D] text-[#1A1A1A] font-semibold rounded-xl text-sm transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    <Clock className="w-5 h-5" />
+                    <span className="sm:hidden">Log Time</span>
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {timeLogs.map((log) => (
+                    <div key={log.id} className="p-4 bg-white border border-gray-100 rounded-xl shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-bold text-gray-900 bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded-md">{log.hours}h</span>
+                          <span className="text-sm font-semibold text-gray-700">{log.employee.name}</span>
+                        </div>
+                        {log.notes && <p className="text-sm text-gray-500 mt-1">{log.notes}</p>}
+                      </div>
+                      <div className="text-xs font-medium text-gray-400 bg-gray-50 px-2 py-1 rounded-md self-start sm:self-auto">
+                        {new Date(log.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      </div>
+                    </div>
+                  ))}
+                  {timeLogs.length === 0 && (
+                    <div className="text-center py-10 bg-white rounded-xl border border-dashed border-gray-200">
+                      <p className="text-gray-400 text-sm font-medium">No time logged for this task yet.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </SheetContent>
     </Sheet>

@@ -4,173 +4,141 @@
 
 ## Test Framework
 
-**Status:** NOT CONFIGURED
+**Status:** No test framework currently configured.
 
-**Current State:**
-- No test runner installed (no `vitest`, `jest`, or `playwright` in dependencies)
-- No test configuration files present
-- No test files found in codebase (`*.test.ts`, `*.spec.ts`, `__tests__/`)
+The codebase has **no test files** and no test runner configured. According to AGENTS.md:
+> **No test framework is currently configured.** If adding tests, use Vitest for React/Next.js.
 
-**Recommendation:**
-- Install Vitest for React/Next.js testing: `npm install -D vitest @vitejs/plugin-react`
-- Add test script to `package.json`: `"test": "vitest"`
-
-**Config Location (if implemented):**
-- `vitest.config.ts` (recommended for Next.js)
+**Recommended:**
+- Runner: Vitest
+- Assertion Library: Built into Vitest
+- React Testing: @testing-library/react
 
 ## Test File Organization
 
-**Location:**
-- Not yet established
+**Location:** Not established - no existing tests to reference.
+
+**Recommended Pattern (if following AGENTS.md):**
+- Unit tests co-located with source files: `src/lib/utils.test.ts`
+- Integration tests in `__tests__/` directory or `tests/` at project root
 
 **Naming:**
-- Recommended pattern: `[module].test.ts`, `[module].spec.ts`
-- Example: `utils.test.ts`, `auth-helper.test.ts`
-
-**Structure (recommended):**
-```
-src/
-├── lib/
-│   ├── utils.ts
-│   └── __tests__/           # Test directory
-│       └── utils.test.ts
-├── components/
-│   └── __tests__/
-│       └── task-card.test.tsx
-└── app/api/
-    └── __tests__/
-        └── products.test.ts
-```
+- `*.test.ts` or `*.test.tsx` for unit tests
+- `*.spec.ts` or `*.spec.tsx` as alternative
+- `*.integration.ts` for integration tests
 
 ## Test Structure
 
-**Recommended Suite Organization:**
-```typescript
-import { describe, it, expect, beforeEach } from 'vitest';
-import { cn } from '@/lib/utils';
-
-describe('cn', () => {
-  it('should merge class names', () => {
-    expect(cn('foo', 'bar')).toBe('foo bar');
-  });
-  
-  it('should handle conditional classes', () => {
-    expect(cn('foo', false && 'bar')).toBe('foo');
-  });
-});
-```
-
-**Patterns to Implement:**
-- Setup: `beforeEach()` for resetting state
-- Teardown: Cleanup after each test
-- Assertions: Vitest's built-in `expect()`
+**Not applicable** - no existing test files to analyze patterns.
 
 ## Mocking
 
-**Status:** NOT CONFIGURED
+**Not applicable** - no existing test files to analyze mocking patterns.
 
-**Recommended Framework:** Vitest with `vi.fn()`
-
-**Patterns (recommended):**
-```typescript
-import { vi, describe, it, expect, beforeEach } from 'vitest';
-
-// Mock modules
-vi.mock('@/lib/prisma', () => ({
-  prisma: {
-    products: {
-      findMany: vi.fn(),
-      create: vi.fn(),
-    },
-  },
-}));
-
-// Mock Next.js modules
-vi.mock('next/server', () => ({
-  NextResponse: {
-    json: vi.fn((data, init) => ({ data, status: init?.status })),
-  },
-}));
-```
-
-**What to Mock:**
-- Prisma client for database tests
-- External services (Supabase)
-- Environment variables
-- Time/date (for consistent date testing)
-
-**What NOT to Mock:**
-- Utility functions being tested (`cn()` should be tested directly)
-- Simple pure functions
+**Expected Patterns (based on codebase architecture):**
+- Mock Prisma client for database tests
+- Mock Supabase client for auth tests
+- Mock React Query with query client
+- Use MSW (Mock Service Worker) for API route tests
 
 ## Fixtures and Factories
 
-**Location (recommended):**
-- `src/__fixtures__/` for shared test data
-- Or inline in test files for specific tests
+**Not applicable** - no existing test files to analyze fixtures.
 
-**Recommended Pattern:**
-```typescript
-// src/__fixtures__/tasks.ts
-export const mockTask = {
-  id: 'task-1',
-  title: 'Test Task',
-  description: 'Test description',
-  status: 'not_started',
-  priority: 'medium',
-  due_date: null,
-  start_date: null,
-  created_at: new Date().toISOString(),
-};
-
-export const createMockTask = (overrides = {}) => ({
-  ...mockTask,
-  ...overrides,
-});
-```
+**Expected Patterns:**
+- Create factory functions for test data
+- Store fixtures in `__fixtures__/` or `fixtures/` directory
+- Use type-safe fixture builders
 
 ## Coverage
 
-**Requirements:** NOT ENFORCED
+**Status:** No coverage requirements enforced.
 
-**Target (recommended):**
-- Minimum 70% line coverage for business logic
-- 100% coverage for utility functions
-
-**View Coverage:**
+**Recommended:**
 ```bash
-npm run test -- --coverage
+# With Vitest
+npx vitest --coverage
 ```
 
 ## Test Types
 
 **Unit Tests:**
-- Priority: High
-- Focus: Utility functions (`cn()`, `auth-helper.ts`), Zustand stores
+- Not implemented
+- Recommended: Test individual utilities, components, and functions
 
 **Integration Tests:**
-- Priority: Medium
-- Focus: API routes, database operations
+- Not implemented
+- Recommended: Test API routes, database operations, auth flows
 
 **E2E Tests:**
-- Not recommended without separate setup
-- Consider Playwright if E2E testing is needed
+- Not implemented
+- Could use Playwright or Cypress if needed
 
-## Priority Test Files
+## Common Patterns (Expected)
 
-**Immediate Needs:**
-1. `src/lib/utils.ts` - Simple, high-value unit tests
-2. `src/lib/stores/ui.ts` - Zustand store tests
-3. `src/lib/auth-helper.ts` - Authentication logic
+**Async Testing:**
+```typescript
+// Vitest async testing
+test("should create task", async () => {
+  const task = await createTask(mockData);
+  expect(task.id).toBeDefined();
+});
+```
 
-**API Routes (Integration):**
-1. `src/app/api/products/route.ts`
-2. `src/app/api/tasks/route.ts`
+**Error Testing:**
+```typescript
+// Error case testing
+test("should throw on missing required field", async () => {
+  await expect(createTask({})).rejects.toThrow("Title is required");
+});
+```
 
-**Components:**
-1. `src/components/task-card.tsx` - Component rendering
-2. `src/components/ui/button.tsx` - Variant testing
+**Component Testing:**
+```typescript
+// React Testing Library
+import { render, screen, fireEvent } from "@testing-library/react";
+
+test("renders task form", () => {
+  render(<TaskForm open={true} onClose={fn} />);
+  expect(screen.getByText("Create Task")).toBeInTheDocument();
+});
+```
+
+## Testing Checklist for Future Implementation
+
+If tests are added to this codebase:
+
+1. **Install Vitest:**
+   ```bash
+   npm install -D vitest @testing-library/react @testing-library/jest-dom jsdom
+   ```
+
+2. **Create vitest.config.ts:**
+   ```typescript
+   import { defineConfig } from "vitest/config";
+   
+   export default defineConfig({
+     test: {
+       environment: "jsdom",
+       globals: true,
+       setupFiles: ["./vitest.setup.ts"],
+     },
+   });
+   ```
+
+3. **Add test scripts to package.json:**
+   ```json
+   "test": "vitest",
+   "test:run": "vitest --run",
+   "test:coverage": "vitest --coverage"
+   ```
+
+4. **Follow existing conventions:**
+   - Use path alias `@/*` for imports
+   - Use the same TypeScript strict mode
+   - Mock external dependencies (Supabase, Prisma)
 
 ---
 
 *Testing analysis: 2026-04-09*
+*Note: This codebase currently has zero test files. Testing infrastructure needs to be set up if tests are required.*

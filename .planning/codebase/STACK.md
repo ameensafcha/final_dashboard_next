@@ -5,91 +5,90 @@
 ## Languages
 
 **Primary:**
-- TypeScript 5.x - Full-stack TypeScript across all source files
+- TypeScript 5.x - Full-stack type safety, strict mode enabled
 
 **Secondary:**
-- None detected
+- CSS (Tailwind v4) - Styling via PostCSS
 
 ## Runtime
 
 **Environment:**
-- Node.js (Next.js runtime)
-- Next.js 16.2.2 (App Router)
+- Node.js 20.x (via @types/node)
 
 **Package Manager:**
-- npm (package.json based)
-- Lockfile: Not present in repository
+- npm (Node Package Manager)
+- Lockfile: Present (package-lock.json)
 
 ## Frameworks
 
 **Core:**
-- Next.js 16.2.2 - React framework with App Router, Turbopack enabled
-- React 19.2.4 - UI library for both client and server components
+- Next.js 16.2.2 - App Router, React 19 Server Components
+- React 19.2.4 - UI framework with Server Components
 
 **State Management:**
-- TanStack React Query 5.96.2 - Server state fetching/caching
-- Zustand 5.0.12 - Client-side state management
+- TanStack React Query 5.96.2 - Server state management
+- Zustand 5.0.12 - Client state management (stores in `src/lib/stores/`)
 
-**UI:**
+**Styling:**
 - Tailwind CSS 4.2.2 - Utility-first CSS framework
-- shadcn/ui 4.1.2 - Component library built on Radix UI
-- Base UI 1.3.0 - Headless UI primitives from MUI
-- Lucide React 1.7.0 - Icon library
+- shadcn 4.1.2 - Component library (UI primitives)
+- class-variance-authority 0.7.1 - Component variant management
 
 **Database:**
 - Prisma 7.6.0 - ORM with PostgreSQL adapter
-- @prisma/adapter-pg 7.6.0 - PostgreSQL-specific Prisma adapter
+- PostgreSQL - Primary database (via @prisma/adapter-pg and pg driver)
 
-**Testing:**
-- No test framework configured (as per project documentation)
+**Authentication:**
+- Supabase 2.101.1 - Auth and session management (@supabase/supabase-js, @supabase/ssr)
 
 ## Key Dependencies
 
-**Authentication:**
-- @supabase/ssr 0.10.0 - Server-side Supabase utilities
-- @supabase/supabase-js 2.101.1 - Supabase JavaScript client
+**UI Components:**
+- @base-ui/react 1.3.0 - Headless UI primitives
+- @dnd-kit/core 6.3.1 - Drag and drop (Kanban boards)
+- @dnd-kit/sortable 10.0.0 - Sortable lists
+- @dnd-kit/utilities 3.2.2 - DnD utilities
+- lucide-react 1.7.0 - Icon library
 
-**Drag & Drop:**
-- @dnd-kit/core 6.3.1 - Drag and drop primitives
-- @dnd-kit/sortable 10.0.0 - Sortable list components
-- @dnd-kit/utilities 3.2.2 - Drag and drop utilities
-
-**Utilities:**
-- class-variance-authority 0.7.1 - Class variance utility
+**Utility:**
 - clsx 2.1.1 - Conditional class names
 - tailwind-merge 3.5.0 - Tailwind class merging
 - tw-animate-css 1.4.0 - CSS animations
-- dotenv 17.4.0 - Environment variable loading
-- pg 8.20.0 - PostgreSQL client
+
+**Database:**
+- @prisma/adapter-pg 7.6.0 - PostgreSQL adapter
+- pg 8.20.0 - Node PostgreSQL driver
+- @types/pg 8.20.0 - TypeScript types
 
 ## Configuration
 
 **Environment:**
-- `.env` file present (contains secrets - not read)
-- `prisma.config.ts` uses `DIRECT_URL` environment variable for database
-- `src/lib/prisma.ts` uses `DATABASE_URL` environment variable
+- `.env` file for local development
+- Required variables via `process.env`:
+  - `NEXT_PUBLIC_SUPABASE_URL`
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  - `SUPABASE_SERVICE_ROLE_KEY`
+  - `DATABASE_URL`
+  - `DIRECT_URL`
 
-**Build:**
-- `next.config.ts` - Next.js configuration with Turbopack and allowed dev origins
-- `tsconfig.json` - TypeScript configuration with path aliases (@/* maps to ./src/*)
-- `eslint.config.mjs` - ESLint with Next.js rules
-- `postcss.config.mjs` - PostCSS with Tailwind CSS plugin
-
-**TypeScript:**
-- Strict mode enabled
-- Module resolution: bundler
-- JSX: react-jsx
+**Build/Config Files:**
+- `tsconfig.json` - TypeScript with strict mode, path aliases (@/* → ./src/*)
+- `next.config.ts` - Next.js with Turbopack support
+- `postcss.config.mjs` - Tailwind CSS via @tailwindcss/postcss
+- `eslint.config.mjs` - ESLint with Next.js core-web-vitals and TypeScript rules
+- `prisma.config.ts` - Prisma configuration with PostgreSQL
 
 ## Platform Requirements
 
 **Development:**
-- Node.js (version not specified)
-- npm for package management
+- Node.js compatible environment
+- PostgreSQL database (local or hosted)
+- Supabase project for authentication
 
 **Production:**
-- Next.js deployment (hosting platform not specified in codebase)
-- PostgreSQL database
-- Supabase project for authentication
+- Deployment target: Vercel or similar Next.js-compatible host
+- Requires PostgreSQL connection string
+- Requires Supabase project with configured auth
 
 ---
 

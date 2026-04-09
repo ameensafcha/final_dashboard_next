@@ -27,6 +27,30 @@ async function getSupabaseServerClient() {
 
 export async function GET(request: Request) {
   try {
+    // Check for active-only filter (used by production page for team dropdown)
+    const { searchParams } = new URL(request.url);
+    const activeOnly = searchParams.get("active") === "true";
+
+    // If active-only filter, allow any authenticated user (for team dropdown)
+    if (activeOnly) {
+      const supabase = await getSupabaseServerClient();
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !user) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+
+      // For active-only, just return active employees (no role check needed)
+      const employees = await prisma.employees.findMany({
+        where: { is_active: true },
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      });
+
+      return NextResponse.json({ data: employees });
+    }
+
+    // Full employee list requires admin authentication
     const supabase = await getSupabaseServerClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
@@ -37,17 +61,18 @@ export async function GET(request: Request) {
     }
 
     // Check if user is admin
-    const employee = await prisma.employees.findUnique({
+    const currentEmployee = await prisma.employees.findUnique({
       where: { id: user.id },
       include: { role: true },
     });
 
-    if (!employee || employee.role?.name !== "admin") {
+    if (!currentEmployee || currentEmployee.role?.name !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Fetch all employees
+    // Fetch employees with optional active filter
     const employees = await prisma.employees.findMany({
+      where: activeOnly ? { is_active: true } : undefined,
       include: { role: true },
       orderBy: { created_at: "desc" },
     });

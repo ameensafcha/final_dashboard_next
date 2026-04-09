@@ -202,15 +202,7 @@ model packing_logs {
   @@index([created_at(sort: Desc)])
 }
 
-model powder_stock {
-  id                 Int      @id @default(autoincrement())
-  total_from_batches Float
-  total_sent         Float
-  available          Float
-  updated_at         DateTime @default(now())
-}
-
-// New stock tables with auto-update via triggers
+// Consolidated powder stock model (replaces powder_stock and powder_stock_new)
 model raw_material_stock {
   id           String   @id
   name         String
@@ -227,12 +219,14 @@ model product_stock {
   variant      product_variants @relation(fields: [variant_id], references: [id], onDelete: Cascade)
 }
 
-model powder_stock_new {
-  id          Int      @id @default(1)
-  received    Float    @default(0)
-  sent        Float    @default(0)
-  available   Float    @default(0)
-  updated_at  DateTime @default(now())
+model powder_stock {
+  id                 Int      @id @default(autoincrement())
+  received           Float    @default(0)  // From batches/finished products
+  sent               Float    @default(0)  // Sent to packing
+  total_from_batches Float    @default(0)  // Legacy field for backward compatibility
+  total_sent         Float    @default(0)  // Legacy field for backward compatibility
+  available          Float    @default(0)
+  updated_at         DateTime @default(now())
 }
 
 model packing_receives {

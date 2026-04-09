@@ -47,7 +47,7 @@ export async function POST() {
       });
     }
 
-    // Initialize powder_stock_new
+    // Initialize powder_stock (consolidated model)
     const finishedProducts = await prisma.finished_products.findMany();
     const packingLogs = await prisma.packing_logs.findMany();
     
@@ -55,10 +55,10 @@ export async function POST() {
     const sent = packingLogs.reduce((sum, log) => sum + log.total_kg, 0);
     const available = received - sent;
 
-    await prisma.powder_stock_new.upsert({
+    await prisma.powder_stock.upsert({
       where: { id: 1 },
-      update: { received, sent, available, updated_at: new Date() },
-      create: { id: 1, received, sent, available }
+      update: { received, sent, total_from_batches: received, total_sent: sent, available, updated_at: new Date() },
+      create: { id: 1, received, sent, total_from_batches: received, total_sent: sent, available }
     });
 
     return NextResponse.json({ 

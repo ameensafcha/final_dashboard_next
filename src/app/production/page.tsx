@@ -37,6 +37,13 @@ async function fetchFinishedProducts() {
   return res.json();
 }
 
+async function fetchEmployees() {
+  const res = await fetch("/api/employees?active=true");
+  if (!res.ok) throw new Error("Failed to fetch");
+  const data = await res.json();
+  return data.employees || data.data || [];
+}
+
 interface Flavor {
   id: string;
   name: string;
@@ -76,7 +83,6 @@ interface FinishedProduct {
   created_at: string;
 }
 
-const TEAMS = ["Jeffrey", "Team Member 1", "Team Member 2"];
 const STATUSES = ["Draft", "Running", "Complete", "Sent in Factory"];
 
 export default function ProductionPage() {
@@ -110,26 +116,36 @@ export default function ProductionPage() {
   const { data: batches, isLoading } = useQuery({
     queryKey: ["batches"],
     queryFn: fetchBatches,
-    refetchInterval: 5000,
+    refetchInterval: 30000,
   });
 
   const { data: flavors } = useQuery({
     queryKey: ["flavors"],
     queryFn: fetchFlavors,
-    refetchInterval: 5000,
+    refetchInterval: 30000,
   });
 
   const { data: rawMaterials } = useQuery({
     queryKey: ["raw-materials"],
     queryFn: fetchRawMaterials,
-    refetchInterval: 5000,
+    refetchInterval: 30000,
   });
 
   const { data: finishedProducts } = useQuery({
     queryKey: ["finished-products"],
     queryFn: fetchFinishedProducts,
-    refetchInterval: 5000,
+    refetchInterval: 30000,
   });
+
+  const { data: employees = [] } = useQuery({
+    queryKey: ["employees"],
+    queryFn: fetchEmployees,
+    staleTime: 60000,
+  });
+
+  const teamOptions = employees.length > 0 
+    ? employees.map((emp: any) => emp.name) 
+    : ["Jeffrey", "Team Member 1", "Team Member 2"];
 
   const { data: defaultRmSetting } = useQuery({
     queryKey: ["settings", "default_raw_material_id"],
@@ -553,7 +569,7 @@ export default function ProductionPage() {
                   style={{ borderColor: "#E8C547", borderWidth: "2px" }}
                   required
                 >
-                  {TEAMS.map(team => (
+                  {teamOptions.map((team: string) => (
                     <option key={team} value={team}>{team}</option>
                   ))}
                 </select>

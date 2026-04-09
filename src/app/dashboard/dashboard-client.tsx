@@ -55,7 +55,7 @@ interface TaskListTask {
   creator?: { id: string; name: string; email?: string } | null;
 }
 
-export function DashboardClient({ kpis, tasks }: { kpis: KPIData; tasks: SerializedTask[] }) {
+export function DashboardClient({ kpis, tasks, error }: { kpis: KPIData; tasks: SerializedTask[]; error?: string | null }) {
   const [selectedTask, setSelectedTask] = useState<TaskDetailTask | null>(null);
 
   const handleTaskClick = (task: TaskListTask) => {
@@ -86,6 +86,12 @@ export function DashboardClient({ kpis, tasks }: { kpis: KPIData; tasks: Seriali
 
   return (
     <div className="p-6 space-y-6">
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          {error}
+        </div>
+      )}
+
       <div>
         <h1 className="text-2xl font-bold" style={{ color: "#1A1A1A" }}>
           Welcome!

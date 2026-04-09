@@ -5,6 +5,8 @@ import { RawMaterialsTable } from "@/components/raw-materials-table";
 import { AddMaterialDialog } from "@/components/add-material-dialog";
 import Link from "next/link";
 
+export const dynamic = 'force-dynamic';
+
 export default async function RawMaterialsPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");

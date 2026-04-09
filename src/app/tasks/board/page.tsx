@@ -3,6 +3,8 @@ import { getCurrentUser } from "@/lib/auth-helper";
 import { redirect } from "next/navigation";
 import { KanbanClient } from "./kanban-client";
 
+export const dynamic = 'force-dynamic';
+
 export default async function KanbanPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");

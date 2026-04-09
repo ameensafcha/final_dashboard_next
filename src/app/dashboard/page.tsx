@@ -3,17 +3,27 @@ import { getCurrentUser } from "@/lib/auth-helper";
 import { redirect } from "next/navigation";
 import { DashboardClient } from "./dashboard-client";
 
+export const dynamic = 'force-dynamic';
+
 export default async function DashboardPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const tasks = await prisma.tasks.findMany({
-    include: {
-      assignee: true,
-      creator: true,
-    },
-    orderBy: { created_at: "desc" },
-  });
+  let tasks: any[] = [];
+  let error: string | null = null;
+
+  try {
+    tasks = await prisma.tasks.findMany({
+      include: {
+        assignee: true,
+        creator: true,
+      },
+      orderBy: { created_at: "desc" },
+    });
+  } catch (err) {
+    console.error("[Dashboard] Failed to fetch tasks:", err);
+    error = "Failed to load tasks";
+  }
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -54,5 +64,5 @@ export default async function DashboardPage() {
     overdue: overdueTasks,
   };
 
-  return <DashboardClient kpis={kpis} tasks={serializedTasks} />;
+  return <DashboardClient kpis={kpis} tasks={serializedTasks} error={error} />;
 }

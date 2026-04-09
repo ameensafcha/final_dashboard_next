@@ -61,6 +61,8 @@ export async function POST(request: Request) {
     const yieldPercent = (powderOutFloat / leavesInFloat) * 100;
 
     const result = await prisma.$transaction(async (tx) => {
+      console.log("[Batch Create] Starting transaction for batch:", batchId);
+      
       const batch = await tx.batches.create({
         data: {
           batch_id: batchId,
@@ -79,6 +81,8 @@ export async function POST(request: Request) {
         include: { flavor: true },
       });
 
+      console.log("[Batch Create] Batch created:", batch.id);
+
       // Deduct raw material (UUID string — !isNaN removed, was breaking deduction)
       if (raw_material_id && leavesInFloat > 0) {
         await tx.raw_materials.update({
@@ -88,27 +92,40 @@ export async function POST(request: Request) {
         await tx.raw_material_logs.create({
           data: { raw_material_id, quantity: leavesInFloat, type: "batch_used", reference_id: batch.id },
         });
+        console.log("[Batch Create] Raw material deducted:", leavesInFloat);
       }
 
       // powder_stock update on "Sent in Factory"
       if ((status?.trim() || "") === "Sent in Factory") {
+        console.log("[Batch Create] Status is Sent in Factory, updating powder stock");
         await tx.finished_products.create({
           data: { flavor_id: batch.flavor_id, quantity: powderOutFloat, batch_reference: batch.batch_id },
         });
+        
         const powderStock = await tx.powder_stock.findFirst();
         if (powderStock) {
           await tx.powder_stock.update({
             where: { id: powderStock.id },
-            data: { total_from_batches: { increment: powderOutFloat }, available: { increment: powderOutFloat }, updated_at: new Date() },
+            data: { 
+              total_from_batches: { increment: powderOutFloat }, 
+              received: { increment: powderOutFloat },
+              available: { increment: powderOutFloat }, 
+              updated_at: new Date() 
+            },
           });
         } else {
           await tx.powder_stock.create({
-            data: { total_from_batches: powderOutFloat, total_sent: 0, available: powderOutFloat },
+            data: { total_from_batches: powderOutFloat, total_sent: 0, received: powderOutFloat, available: powderOutFloat },
           });
         }
+        console.log("[Batch Create] Powder stock updated for Sent in Factory");
       }
 
+      console.log("[Batch Create] Transaction completed successfully");
       return batch;
+    }).catch((error) => {
+      console.error("[Batch Create] Transaction failed:", error);
+      throw error;
     });
 
     return NextResponse.json(result, { status: 201 });
@@ -191,19 +208,21 @@ export async function PUT(request: Request) {
 
       // Status changed TO "Sent in Factory"
       if (oldStatus !== "Sent in Factory" && newStatus === "Sent in Factory") {
+        console.log("[Batch Update] Status changed to Sent in Factory, updating powder stock");
         await tx.finished_products.create({
           data: { flavor_id: batch.flavor_id, quantity: powderOutFloat, batch_reference: batch.batch_id },
         });
         await tx.powder_stock.updateMany({
-          data: { total_from_batches: { increment: powderOutFloat }, available: { increment: powderOutFloat }, updated_at: new Date() },
+          data: { total_from_batches: { increment: powderOutFloat }, received: { increment: powderOutFloat }, available: { increment: powderOutFloat }, updated_at: new Date() },
         });
       }
 
       // Status changed FROM "Sent in Factory"
       if (oldStatus === "Sent in Factory" && newStatus !== "Sent in Factory") {
+        console.log("[Batch Update] Status changed from Sent in Factory, reversing powder stock");
         await tx.finished_products.deleteMany({ where: { batch_reference: batch.batch_id } });
         await tx.powder_stock.updateMany({
-          data: { total_from_batches: { decrement: existing.powder_out }, available: { decrement: existing.powder_out }, updated_at: new Date() },
+          data: { total_from_batches: { decrement: existing.powder_out }, received: { decrement: existing.powder_out }, available: { decrement: existing.powder_out }, updated_at: new Date() },
         });
       }
 

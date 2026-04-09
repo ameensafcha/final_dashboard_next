@@ -22,6 +22,7 @@ export default function AdminSettingsPage() {
     queryKey: ["raw-materials"],
     queryFn: async () => {
       const res = await fetch("/api/raw-materials");
+      if (!res.ok) return []; // <-- Ye crash rokega
       const json = await res.json();
       return json.data || json || [];
     },
@@ -31,6 +32,7 @@ export default function AdminSettingsPage() {
     queryKey: ["settings", "default_raw_material_id"],
     queryFn: async () => {
       const res = await fetch("/api/settings?key=default_raw_material_id");
+      if (!res.ok) return null; // <-- Ye crash rokega
       const json = await res.json();
       return json.data;
     },
@@ -40,7 +42,7 @@ export default function AdminSettingsPage() {
     if (setting?.value) {
       setSelectedRmId(setting.value);
     }
-  }, [setting]);
+  }, [setting?.value]);
 
   const saveMutation = useMutation({
     mutationFn: async (value: string) => {
@@ -97,17 +99,6 @@ export default function AdminSettingsPage() {
               </option>
             ))}
           </select>
-
-          {selectedMaterial && (
-            <div className="mt-3 p-3 rounded-lg" style={{ backgroundColor: "#F5F4EE" }}>
-              <p className="text-sm font-medium" style={{ color: "#1A1A1A" }}>
-                {selectedMaterial.name}
-              </p>
-              <p className="text-xs mt-0.5" style={{ color: "#C9A83A" }}>
-                Available: {selectedMaterial.quantity.toFixed(2)} {selectedMaterial.unit}
-              </p>
-            </div>
-          )}
         </div>
 
         <Button

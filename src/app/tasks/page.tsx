@@ -3,6 +3,8 @@ import { getCurrentUser } from "@/lib/auth-helper";
 import { redirect } from "next/navigation";
 import { TasksTable } from "@/components/tasks-table";
 
+export const dynamic = 'force-dynamic';
+
 export default async function TasksPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");

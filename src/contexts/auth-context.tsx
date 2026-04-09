@@ -71,6 +71,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Validate is_active before setting
+    if (!data.is_active) {
+      console.error("[Auth] Employee is inactive, clearing session");
+      setEmployee(null);
+      setAuthError("Your account has been deactivated");
+      await supabase.auth.signOut();
+      return;
+    }
+
     const emp = {
       ...data,
       role: Array.isArray(data.role) ? data.role[0] : data.role,
@@ -78,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     console.log("[Auth] Employee loaded:", emp.role?.name);
     employeeRef.current = emp;
     setEmployee(emp);
+    setAuthError(null); // Clear any previous auth errors
   };
 
   useEffect(() => {

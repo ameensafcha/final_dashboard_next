@@ -5,213 +5,266 @@
 ## Directory Layout
 
 ```
-claude2/
-├── prisma/
-│   └── schema.prisma          # Database schema (PostgreSQL)
-├── src/
-│   ├── app/                 # Next.js App Router (pages + API)
-│   │   ├── api/             # API routes (REST endpoints)
-│   │   ├── (routes)/       # Route groups
-│   │   ├── login/           # Login page
-│   │   ├── dashboard/       # Dashboard
-│   │   ├── tasks/           # Task management
-│   │   ├── production/     # Production
-│   │   ├── stocks/         # Stock management
-│   │   ├── raw-materials/  # Raw materials
-│   │   ├── finished-products/
-│   │   ├── variant-inventory/
-│   │   ├── packing-logs/
-│   │   ├── packing-receives/
-│   │   ├── finance/         # Finance/transactions
-│   │   ├── admin/          # Admin panel
-│   │   └── layout.tsx      # Root layout
-│   ├── components/          # React components
-│   │   └── ui/            # shadcn/ui components
-│   ├── contexts/           # React contexts
-│   ├── hooks/             # Custom hooks
-│   ├── lib/               # Utilities, clients, stores
-│   │   └── stores/        # Zustand stores
-│   ├── middleware.ts      # Next.js middleware
-│   └── types/             # TypeScript types (if any)
-├── package.json
-├── next.config.ts
-├── tsconfig.json
-├── tailwind.config.ts
-└── .env*                  # Environment files (secrets)
+src/
+├── app/                          # Next.js App Router - pages and API routes
+│   ├── api/                      # API route handlers (RESTful endpoints)
+│   │   ├── auth/                 # Authentication endpoints
+│   │   │   ├── employee/         # Current user endpoint
+│   │   │   ├── logout/           # Session termination
+│   │   │   ├── role/             # Role management
+│   │   │   └── sync/             # Sync auth state
+│   │   ├── tasks/                # Task CRUD operations
+│   │   │   └── [id]/             # Task detail endpoints
+│   │   ├── employees/            # Employee management
+│   │   ├── batches/              # Batch operations
+│   │   ├── stocks/               # Stock management
+│   │   └── [resource]/           # Other domain entities (products, variants, etc.)
+│   ├── login/                    # Login page (client component)
+│   ├── dashboard/                # Main dashboard (server + client components)
+│   ├── admin/                    # Admin panel (role-protected pages)
+│   │   ├── employees/            # Employee management UI
+│   │   └── settings/             # System settings
+│   ├── tasks/                    # Task management pages
+│   │   ├── board/                # Kanban-style task board
+│   │   └── my-tasks/             # User's assigned tasks
+│   ├── products/                 # Product management
+│   │   ├── entry/                # Product entry form
+│   │   ├── flavors/              # Flavor configuration
+│   │   ├── sizes/                # Size configuration
+│   │   └── variants/             # Product variants
+│   ├── [domain]/                 # Other domain pages (production, finance, raw-materials, etc.)
+│   └── middleware.ts             # Route protection and session validation
+│
+├── components/                   # Reusable React components
+│   ├── ui/                       # shadcn/ui components (Button, Card, Dialog, etc.)
+│   ├── auth-guard.tsx            # Auth-protected component wrapper
+│   ├── app-sidebar.tsx           # Main navigation sidebar
+│   ├── tasks-table.tsx           # Task list display
+│   ├── task-board.tsx            # Kanban board implementation
+│   ├── task-card.tsx             # Individual task card
+│   ├── task-form.tsx             # Task creation/edit form
+│   ├── employee-form.tsx         # Employee data form
+│   ├── raw-materials-table.tsx   # Materials management table
+│   ├── providers.tsx             # Global providers (AuthProvider, QueryClientProvider)
+│   └── [other-components].tsx    # Domain-specific components
+│
+├── contexts/                     # React Context for state management
+│   └── auth-context.tsx          # Authentication state and login/logout logic
+│
+├── hooks/                        # Custom React hooks
+│   └── use-mobile.ts             # Mobile responsive detection
+│
+├── lib/                          # Utility functions and helpers
+│   ├── auth-helper.ts            # Core auth functions (getCurrentUser, requireAuth, requireRole)
+│   ├── auth-rbac.ts              # RBAC utilities (role checking, permission validation)
+│   ├── permissions.ts            # Permission definitions and role mappings
+│   ├── prisma.ts                 # Prisma client singleton
+│   ├── supabase.ts               # Supabase client setup
+│   ├── utils.ts                  # General utilities
+│   └── stores/                   # Zustand state stores
+│       ├── ui.ts                 # UI state (sidebar toggle)
+│       └── index.ts              # Store exports
+│
+└── middleware.ts                 # Next.js middleware for route protection
+
 ```
 
 ## Directory Purposes
 
-### `src/app/`
-- **Purpose:** Next.js App Router - pages and API routes
-- **Contains:** 
-  - Page components (`page.tsx`)
-  - API route handlers (`route.ts`)
-  - Layouts (`layout.tsx`)
-  - Loading states (`loading.tsx`)
-  - Error states (`error.tsx`)
+**`src/app/`:**
+- Purpose: Next.js App Router - all pages and API endpoints
+- Contains: Page components (.tsx), API route handlers (route.ts), error boundaries, loading states
+- Key pattern: One file per route; nested folders map to URL paths
 
-### `src/components/`
-- **Purpose:** Reusable React components
-- **Contains:**
-  - `task-board.tsx` - Kanban board
-  - `task-detail.tsx` - Task detail
-  - `task-form.tsx` - Task form
-  - `task-card.tsx` - Task card
-  - `app-sidebar.tsx` - Sidebar navigation
-  - `auth-guard.tsx` - Auth protection
-  - `providers.tsx` - React providers
-  - `toast.tsx`, `toast-container.tsx` - Notifications
+**`src/app/api/`:**
+- Purpose: RESTful API endpoints accessed by client components
+- Contains: GET/POST/PUT/DELETE handlers, data validation, authorization checks
+- Pattern: `route.ts` in each folder handles requests for that path
+- All API endpoints require `getCurrentUser()` validation before returning data
 
-### `src/components/ui/`
-- **Purpose:** UI component library (shadcn/ui style)
-- **Contains:** `button.tsx`, `input.tsx`, `dialog.tsx`, `sheet.tsx`, etc.
+**`src/app/admin/`:**
+- Purpose: Admin-only management pages
+- Contains: Role-protected pages requiring admin role
+- Key files: `page.tsx` (index), `employees/page.tsx`, `settings/page.tsx`
+- Access control: Middleware allows through, server components redirect if not admin
 
-### `src/lib/`
-- **Purpose:** Core utilities and integrations
-- **Contains:**
-  - `prisma.ts` - Prisma client
-  - `supabase.ts` - Supabase client factory
-  - `auth-helper.ts` - Authentication utilities
-  - `utils.ts` - Utilities (`cn()`)
-  - `stores/index.ts`, `stores/ui.ts` - Zustand stores
+**`src/app/tasks/`:**
+- Purpose: Task management UI
+- Contains: Task listing, task board (Kanban), individual task pages
+- Key files: `board/page.tsx` (Kanban), `my-tasks/page.tsx` (user's tasks), `[id]/page.tsx` (detail)
+- Data source: `/api/tasks` endpoint with role-based filtering
 
-### `src/contexts/`
-- **Purpose:** React contexts
-- **Contains:** `auth-context.tsx`
+**`src/components/`:**
+- Purpose: Reusable UI components
+- Contains: React components (client and server), component composition
+- UI library: shadcn/ui for consistent design system
+- Pattern: One component per file, export as default
 
-### `src/hooks/`
-- **Purpose:** Custom React hooks
-- **Contains:** `use-mobile.ts`
+**`src/components/ui/`:**
+- Purpose: shadcn/ui library components
+- Contains: Button, Card, Dialog, Sidebar, Toast, Table, etc.
+- Note: Do NOT modify without permission - this is working system
+- Used by: All pages and domain components
 
-### `prisma/`
-- **Purpose:** Database schema and migrations
-- **Contains:** `schema.prisma`
+**`src/contexts/auth-context.tsx`:**
+- Purpose: Global auth state management
+- Contains: User session, employee data, role, auth functions (login, logout)
+- Pattern: React Context + custom hook (`useAuth()`)
+- Scope: Client-side only; syncs with Supabase on mount, fetches employee from API
+
+**`src/lib/auth-helper.ts`:**
+- Purpose: Core authentication utilities
+- Key exports:
+  - `getCurrentUser()`: Get authenticated user + role + admin flag
+  - `requireAuth()`: Redirect to login if not authenticated
+  - `requireAdmin()`: Redirect if not admin
+  - `requireRole(role)`: Check role hierarchy
+  - `requirePermission(permission)`: Check specific permission
+- Pattern: Combines Supabase session + Prisma user lookup
+
+**`src/lib/auth-rbac.ts`:**
+- Purpose: Role-Based Access Control logic
+- Key exports:
+  - `isPublicRoute()`, `isProtectedRoute()`: Route classification
+  - `getRoleByUserId()`, `getUserRoleFromRequest()`: Get user role
+  - `checkRoutePermission()`: Validate route access
+  - `hasRole()`, `hasPermission()`, `hasAllPermissions()`: Permission checks
+- Pattern: Hybrid - code defaults + database overrides
+
+**`src/lib/permissions.ts`:**
+- Purpose: Permission and role definitions
+- Exports:
+  - `Permission`: Union type of all permissions
+  - `RolePermissions`: Role-to-permissions mapping
+  - Helper functions: `roleHasPermission()`, `getRolePermissions()`
+- Roles: viewer, employee, admin (with permission inheritance)
+
+**`src/lib/prisma.ts`:**
+- Purpose: Singleton Prisma client instance
+- Pattern: Simple export of `new PrismaClient()` with singleton wrapper
+- Usage: Import and use directly in any server-side code
+
+**`src/lib/stores/`:**
+- Purpose: Zustand state stores for client-side state
+- Files:
+  - `ui.ts`: UI state (sidebar toggle)
+  - `index.ts`: Re-export all stores
 
 ## Key File Locations
 
-### Entry Points
-- **`src/app/layout.tsx`:** Root layout, loads sidebar, providers, toast
-- **`src/app/page.tsx`:** Root redirect (goes to login or dashboard)
-- **`src/middleware.ts`:** Route protection on every request
+**Entry Points:**
 
-### Authentication
-- **`src/lib/auth-helper.ts`:** `getCurrentUser()`, `requireAuth()`, `requireAdmin()`
-- **`src/middleware.ts`:** Protected route enforcement
-- **`src/app/login/page.tsx`:** Login page
+- `src/app/login/page.tsx`: Login form (client component)
+- `src/app/dashboard/page.tsx`: Main dashboard (server component)
+- `src/app/admin/page.tsx`: Admin index (client component with role check)
+- `src/app/layout.tsx` (Next.js root layout): Global layout, providers
+- `src/middleware.ts`: HTTP middleware for session validation
 
-### Database
-- **`src/lib/prisma.ts`:** Prisma client singleton
-- **`prisma/schema.prisma`:** Database schema
+**Configuration:**
 
-### API Routes
-- **`src/app/api/tasks/route.ts`:** Tasks CRUD
-- **`src/app/api/products/route.ts`:** Products CRUD
-- **`src/app/api/transactions/route.ts`:** Transactions
-- **`src/app/api/batches/route.ts`:** Production batches
-- **`src/app/api/employees/route.ts`:** Employee management
+- `src/lib/prisma.ts`: Database client setup
+- `src/lib/supabase.ts`: Supabase client configuration
+- `tsconfig.json`: TypeScript config with `@/*` path alias
+- `next.config.ts`: Next.js configuration
+- `package.json`: Dependencies and scripts
 
-### Pages
-- **`src/app/dashboard/page.tsx`:** Dashboard KPIs
-- **`src/app/tasks/page.tsx`:** Task list
-- **`src/app/tasks/board/page.tsx`:** Kanban view
-- **`src/app/production/page.tsx`:** Production tracking
-- **`src/app/stocks/page.tsx`:** Stock view
-- **`src/app/finance/page.tsx`:** Finance overview
+**Core Logic:**
 
-### State
-- **`src/lib/stores/ui.ts`:** `useUIStore` (Zustand)
+- `src/lib/auth-helper.ts`: User authentication and role retrieval
+- `src/lib/auth-rbac.ts`: Role-based access control
+- `src/lib/permissions.ts`: Permission and role mappings
+- `src/contexts/auth-context.tsx`: Client auth state management
+
+**Testing:**
+
+- No test files present in src/ (vitest configured but not yet used)
+- Run tests with: `npm test` or `npm run test:watch`
 
 ## Naming Conventions
 
 **Files:**
-- Pages: `kebab-case/page.tsx` → `dashboard/page.tsx`, `tasks/route.ts`
-- Components: `kebab-case.tsx` → `task-board.tsx`, `app-sidebar.tsx`
-- Utils: `kebab-case.ts` → `auth-helper.ts`, `supabase.ts`
-- Stores: `kebab-case.ts` → `ui.ts`
+
+- **Page components:** `page.tsx` in route folders (Next.js convention)
+- **Layout components:** `layout.tsx` in route folders
+- **API routes:** `route.ts` in api/ folders
+- **Component files:** kebab-case with .tsx extension (e.g., `task-board.tsx`, `auth-guard.tsx`)
+- **Utility files:** kebab-case with .ts extension (e.g., `auth-helper.ts`, `use-mobile.ts`)
+- **Store files:** kebab-case with .ts extension (e.g., `ui.ts`)
 
 **Directories:**
-- `kebab-case` → `raw-materials`, `finished-products`
-- Route groups: `(kebab-case)` → `(routes)`
 
-**Database Models:**
-- PascalCase → `employees`, `products`, `tasks`
+- **Next.js routes:** kebab-case lowercase (e.g., `/dashboard`, `/admin/employees`, `/raw-materials`)
+- **Dynamic routes:** Bracket notation (e.g., `[id]` for `/tasks/[id]`)
+- **Feature folders:** kebab-case (e.g., `auth`, `tasks`, `products`)
 
-**API Routes:**
-- Plural nouns: `/api/tasks`, `/api/products`
-- Nested: `/api/tasks/[id]/comments`
+**Code:**
+
+- **Variables & functions:** camelCase (e.g., `getCurrentUser`, `userRole`, `isActive`)
+- **Constants:** UPPER_SNAKE_CASE (e.g., `ROLE_HIERARCHY`, `PUBLIC_ROUTES`)
+- **React components:** PascalCase (e.g., `TaskBoard`, `AuthGuard`, `EmployeeForm`)
+- **Types/Interfaces:** PascalCase (e.g., `AuthUser`, `Permission`, `EmployeeResponse`)
+- **Database:** snake_case in Prisma schema; exposed as-is in queries (e.g., `is_active`, `created_by`)
 
 ## Where to Add New Code
 
-### New API Endpoint
-```bash
-# 1. Create route file
-src/app/api/[resource]/route.ts
+**New Feature (with database):**
+- Primary code: `src/app/api/[feature]/route.ts` (API endpoint)
+- Pages: `src/app/[feature]/page.tsx` or `src/app/[feature]/index/page.tsx`
+- Components: `src/components/[feature]-*.tsx` (e.g., `feature-form.tsx`, `feature-table.tsx`)
+- Auth: Add permission to `src/lib/permissions.ts` if role-gated
+- Hooks: `src/hooks/use-[feature].ts` if complex state needed
 
-# 2. Pattern:
-export async function GET() { }
-export async function POST(request: Request) { }
-export async function PUT(request: Request) { }
-export async function DELETE(request: Request) { }
-```
+**New Component (reusable):**
+- Implementation: `src/components/[name].tsx` (PascalCase component export)
+- If simple: Keep in single file
+- If complex: Create folder with `index.tsx` + subcomponents
 
-### New Page
-```bash
-# 1. Create folder + page.tsx
-src/app/[path]/page.tsx
+**Utilities & Helpers:**
+- Shared helpers: `src/lib/[purpose].ts` (e.g., `src/lib/date-utils.ts`)
+- Custom hooks: `src/hooks/use-[name].ts` (must start with "use")
+- Stores: `src/lib/stores/[name].ts` (Zustand)
 
-# 2. If needs layout: create layout.tsx
-src/app/[path]/layout.tsx
-```
+**New Page with Protected Route:**
+1. Create folder: `src/app/[route-name]/`
+2. Add page: `src/app/[route-name]/page.tsx`
+3. If server component: Call `getCurrentUser()` at top, redirect if not authenticated
+4. If client component: Wrap in `<AuthGuard>` component
+5. If role-specific: Check role in component or use `requireRole()` in API endpoint
+6. Add route to `PROTECTED_ROUTES` in `src/lib/auth-rbac.ts` if middleware protection needed
 
-### New Component
-```bash
-# 1. Add to components folder
-src/components/my-component.tsx
-```
-
-### New Database Model
-```bash
-# 1. Add to prisma/schema.prisma
-# 2. Run: npx prisma db push
-# 3. Update src/lib/prisma.ts if needed
-```
-
-### New Store
-```bash
-# 1. Add to src/lib/stores/
-src/lib/stores/my-store.ts
-
-# 2. Export from index.ts
-```
-
-### New Utility
-```bash
-# 1. Add to src/lib/
-src/lib/my-utility.ts
-```
+**API Endpoint:**
+1. Create folder: `src/app/api/[resource]/`
+2. Add route: `src/app/api/[resource]/route.ts`
+3. Start with: `const user = await getCurrentUser(); if (!user) return authResponse("Unauthorized");`
+4. Check role if needed: `const roleCheck = await requireRole('admin'); if (roleCheck instanceof NextResponse) return roleCheck;`
+5. Return data: `return NextResponse.json({ data })` or error response
+6. Set `export const dynamic = 'force-dynamic'` if data changes frequently
 
 ## Special Directories
 
-### `src/app/api/`
-- **Purpose:** REST API endpoints
-- **Generated:** No
-- **Committed:** Yes
+**`.next/`:**
+- Purpose: Build output directory (Next.js)
+- Generated: Yes (by `npm run build`)
+- Committed: No (in .gitignore)
 
-### `src/components/ui/`
-- **Purpose:** shadcn/ui style components
-- **Generated:** No (manually written)
-- **Committed:** Yes
+**`.env` & `.env.local`:**
+- Purpose: Environment variables for database, Supabase credentials
+- Generated: No (created manually)
+- Committed: No (in .gitignore for security)
+- Required variables: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `DATABASE_URL`
 
-### `prisma/`
-- **Purpose:** Database schema
-- **Generated:** No (version controlled)
-- **Comitted:** Yes
+**`node_modules/`:**
+- Purpose: Installed dependencies
+- Generated: Yes (by `npm install`)
+- Committed: No (in .gitignore)
 
-### Dynamic Routes
-- **Pattern:** `[id]/route.ts` → `src/app/api/tasks/[id]/route.ts`
-- **Captured params:** Available in `request` parameter
+**`.planning/codebase/`:**
+- Purpose: Architecture and codebase documentation (this file)
+- Generated: No (human written, CI/CD generated)
+- Committed: Yes (to track documentation changes)
 
----
-
-*Structure analysis: 2026-04-09*
+**`prisma/`:**
+- Purpose: Database schema and migrations
+- Key files: `schema.prisma` (data model), `migrations/` (migration history)
+- Generated: Migrations auto-generated
+- Committed: Yes

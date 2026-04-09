@@ -5,236 +5,179 @@
 ## Naming Patterns
 
 **Files:**
-- **Utilities/Lib**: kebab-case - `auth-helper.ts`, `utils.ts`, `prisma.ts`
-- **Components/React**: PascalCase - `TaskCard.tsx`, `TaskForm.tsx`, `Button.tsx`
-- **API Routes**: PascalCase - `route.ts` (Next.js App Router convention)
-- **Store**: kebab-case - `ui.ts`, `index.ts`
+- Page components: `page.tsx` (e.g., `src/app/admin/page.tsx`, `src/app/login/page.tsx`)
+- Layout files: `layout.tsx` (e.g., `src/app/admin/layout.tsx`)
+- API routes: `route.ts` (e.g., `src/app/api/auth/role/route.ts`)
+- Components: PascalCase with `.tsx` extension (e.g., `TaskForm.tsx`, `AuthGuard.tsx`)
+- Utility files: camelCase with `.ts` extension (e.g., `auth-helper.ts`, `auth-rbac.ts`)
+- Error/Loading pages: `error.tsx`, `loading.tsx` (Next.js patterns)
+- Kebab-case for multi-word filenames in directories (e.g., `auth-guard.tsx`, `app-sidebar.tsx`)
 
 **Functions:**
-- camelCase with verb prefix - `getCurrentUser()`, `createTask()`, `addNotification()`
-- Use descriptive, action-oriented names
+- camelCase for all functions, async or not (e.g., `getCurrentUser()`, `requireAdmin()`, `fetchEmployee()`)
+- Prefixed with action verbs: `get`, `fetch`, `require`, `check`, `is`, `has`, `set`
+- React component functions: PascalCase (e.g., `function LoginForm()`, `function TaskForm()`)
+- Handler functions: `handle` prefix (e.g., `handleSubmit()`, `handleChange()`)
 
 **Variables:**
-- camelCase - `currentUser`, `formData`, `isLoading`
-- Boolean variables: prefix with `is`, `has`, `can` - `isAdmin`, `hasRole`, `canEdit`
+- camelCase for all variables (e.g., `employeeRef`, `isLoading`, `authError`, `queryClient`)
+- State variables: descriptive names (e.g., `isLoading`, `authError`, `employee`, `role`)
+- Boolean prefixes: `is`, `has`, `can`, `should` (e.g., `isLoading`, `canChangeAssignee`, `isPublicRoute`)
+- Event handlers: `on` prefix (e.g., `onClose()`, `onSuccess()`, `onError()`)
 
-**Types/Interfaces:**
-- PascalCase - `interface Task`, `type TaskCardProps`, `AuthUser`
-- Optional prefix `T` not used (e.g., `Product`, not `TProduct`)
+**Types:**
+- PascalCase for interfaces and types (e.g., `AuthUser`, `Employee`, `TaskFormProps`)
+- Union types for specific strings: `type Permission = 'view:dashboard' | 'edit:dashboard'` (kebab-case values with colon separator)
+- Suffix `Props` for component props types (e.g., `TaskFormProps`, `TasksTableProps`)
+- Suffix `Type` or explicit naming for context types (e.g., `AuthContextType`)
 
 **Constants:**
-- UPPER_SNAKE_CASE for true constants (less common in codebase)
-- Regular naming for configuration objects
+- UPPER_SNAKE_CASE for truly constant values (e.g., `ROLE_HIERARCHY`, `PROTECTED_ROUTES`, `PUBLIC_ROUTES`)
+- camelCase for constant objects/arrays that may change (e.g., `DEFAULT_ROUTE_PERMISSIONS`, `RolePermissions`)
+
+**Database/Prisma:**
+- snake_case for database column names in Prisma schema
+- snake_case fields in TypeScript when they represent database columns (e.g., `role_id`, `is_active`, `created_at`)
+- Prisma model names: PascalCase singular (e.g., `employees`, `roles`)
+- Query operations: descriptive (e.g., `prisma.employees.findUnique()`, `prisma.batches.findMany()`)
 
 ## Code Style
 
 **Formatting:**
-- Tool: Prettier (integrated with ESLint)
-- 2 spaces for indentation
-- Single quotes for strings
-- Trailing commas enabled
-- Semicolons at end of statements
+- No dedicated prettier config (default Next.js/TypeScript conventions)
+- ESLint configured with Next.js and TypeScript rules
+- Indentation: 2 spaces (implicit from code)
+- Max line length: Not enforced but typically wraps around 100-120 characters
+- Semicolons: Used at end of statements
 
 **Linting:**
-- Tool: ESLint with Next.js config (`eslint-config-next`)
+- Tool: ESLint 9 with `eslint-config-next` and `eslint-config-next/typescript`
 - Config file: `eslint.config.mjs`
-- Custom rule: `react-hooks/set-state-in-effect` turned OFF
+- Key rules disabled: `react-hooks/set-state-in-effect: off` (allows setState inside useEffect for specific cases)
 - Ignores: `.next/`, `out/`, `build/`, `next-env.d.ts`
-
-**TypeScript:**
-- Strict mode enabled in `tsconfig.json`
-- Explicit return types required for API routes
-- Avoid `any` - use `unknown` or proper types
-- Use explicit type imports: `import { type NextResponse } from "next/server"`
-
-```typescript
-// Correct - explicit return type
-export async function GET(): Promise<NextResponse> {
-  const products = await prisma.products.findMany();
-  return NextResponse.json(products);
-}
-
-// Avoid - implicit any return type
-export async function GET() {
-  const products = await prisma.products.findMany();
-  return NextResponse.json(products);
-}
-```
 
 ## Import Organization
 
-**Order (per AGENTS.md):**
-1. External libraries - `import { useState } from "react"`
-2. Internal lib - `import { prisma } from "@/lib/prisma"`
-3. Components - `import { Button } from "@/components/ui/button"`
-4. Types - `import { type Task } from "@/types"`
+**Order:**
+1. React and Next.js imports (e.g., `import { useState } from "react"`)
+2. Next.js specific imports (e.g., `import { useRouter } from "next/navigation"`)
+3. Third-party library imports (e.g., `import { useQuery } from "@tanstack/react-query"`)
+4. Internal absolute imports using `@/` alias (e.g., `import { useAuth } from "@/contexts/auth-context"`)
+5. UI/Component imports (e.g., `import { Button } from "@/components/ui/button"`)
+6. Utility imports (e.g., `import { cn } from "@/lib/utils"`)
 
 **Path Aliases:**
-- `@/*` maps to `./src/*`
-- Example: `@/lib/utils` resolves to `src/lib/utils.ts`
-
-**Explicit Type Imports:**
-```typescript
-import { NextResponse, type NextRequest } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { getCurrentUser, authResponse } from "@/lib/auth-helper";
-```
+- `@/*` maps to `./src/*` (defined in `tsconfig.json`)
+- All internal imports use absolute path with `@/` prefix, never relative imports
+- Examples: `@/lib/auth-helper`, `@/contexts/auth-context`, `@/components/ui/button`
 
 ## Error Handling
 
-**API Routes:**
-- Always wrap in try-catch
-- Return appropriate HTTP status codes:
-  - `200` for success
-  - `400` for bad request (validation errors)
-  - `401` for unauthorized
-  - `403` for forbidden
-  - `404` for not found
-  - `500` for server errors
-
-```typescript
-export async function GET(request: Request) {
-  try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return authResponse("Unauthorized"); // Returns 401
-    }
-    // ... logic
-    return NextResponse.json(data);
-  } catch (error) {
-    console.error("Error fetching tasks:", error);
-    return NextResponse.json({ error: "Failed to fetch tasks" }, { status: 500 });
-  }
-}
-```
-
-**Error Response Helper:**
-- Use `authResponse()` from `@/lib/auth-helper` for auth errors
-- Custom error messages: `NextResponse.json({ error: "Message" }, { status: 400 })`
-
-## Logging
-
-**Framework:** console logging (no structured logger)
-
 **Patterns:**
-- API routes: `console.error("Error message:", error)` for errors
-- Minimal logging otherwise
-- No info/debug logging observed in codebase
+- Try-catch blocks in async functions, especially in API routes and context providers
+- Error messages passed to users are user-friendly strings
+- Detailed errors logged to console with `console.error()` for debugging
+- API routes return NextResponse with appropriate HTTP status codes (400, 401, 403, 404, 500)
+- Client-side mutations use `.onError()` handler to display errors via notification system
+- Auth-related errors: Custom `AuthError` interface with `type` and `message` fields in `src/lib/auth-helper.ts`
 
-## Comments
-
-**When to Comment:**
-- Complex business logic
-- Non-obvious workarounds (with explanation)
-- TODO items for future work
-
-**JSDoc/TSDoc:**
-- Minimal usage in codebase
-- Not enforced by linting
-
-## Function Design
-
-**Size:** Keep functions focused and small
-
-**Parameters:**
-- Use interfaces for related parameters
-- Optional parameters with defaults
-
+**Example pattern:**
 ```typescript
-interface TaskFormProps {
-  open: boolean;
-  onClose: () => void;
-  task?: Task | null;
-  defaultAssigneeId?: string;
-  canChangeAssignee?: boolean;
+// In API routes
+try {
+  const user = await getCurrentUser();
+  if (!user) return authResponse("Unauthorized");
+  // ... logic ...
+  return NextResponse.json(result);
+} catch (error) {
+  console.error('[Context] Error message:', error);
+  return NextResponse.json({ error: 'User-friendly message' }, { status: 500 });
 }
-```
 
-**Return Values:**
-- Always explicit return types for API routes
-- Use `Promise<T>` for async functions
-
-## Component Patterns
-
-**Functional Components:**
-- Use functional components with explicit props
-- Server components by default
-- Add `'use client'` only when needed (hooks, browser APIs, event handlers)
-
-**ClassName Merging:**
-- Use `cn()` utility from `@/lib/utils`
-```typescript
-import { cn } from "@/lib/utils";
-
-className={cn(
-  "base-class",
-  condition && "conditional-class",
-  variant === "primary" && "bg-primary"
-)}
-```
-
-**Data Fetching:**
-- Use TanStack React Query for server state
-- Avoid useEffect for data fetching
-
-```typescript
-const { data: employees = [] } = useQuery<Employee[]>({
-  queryKey: ["employees"],
-  queryFn: async () => {
-    const res = await fetch("/api/employees");
-    const json = await res.json();
-    return json.data || [];
+// In React components with mutations
+const mutation = useMutation({
+  mutationFn: async (data) => { /* ... */ },
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["..."] });
+    addNotification({ type: "success", message: "Action succeeded" });
+  },
+  onError: (err: Error) => {
+    addNotification({ type: "error", message: err.message });
   },
 });
 ```
 
-## State Management
+## Logging
 
-**Server State:** TanStack React Query
-**Client State:** Zustand stores in `@/lib/stores`
-**UI State:** Local state (keep minimal)
+**Framework:** Console object (no dedicated logging library)
 
-Example from `src/lib/stores/ui.ts`:
+**Patterns:**
+- `console.log()` for informational messages, especially in auth context with `[Auth]` prefix
+- `console.error()` for errors with descriptive prefixes (e.g., `console.error('[Auth] Login error:')`)
+- Prefix style: `[ComponentOrFeature] Message` (e.g., `[Auth]`, `[API/employees/GET]`)
+- Used primarily in: Auth context (`src/contexts/auth-context.tsx`), API routes, middleware
+- Example: `console.log("[Auth] Fetching employee for userId:", userId);`
+
+## Comments
+
+**When to Comment:**
+- JSDoc/TSDoc for public functions, especially API route handlers and exported utilities
+- Comment blocks before significant functions explaining purpose
+- Inline comments for complex logic or non-obvious code
+- Avoid obvious comments (e.g., "// Set loading to true")
+
+**JSDoc/TSDoc:**
+- Used in API route files (e.g., `src/app/api/auth/role/route.ts`)
+- Multi-line block comments describing endpoint, method, auth requirements, and request/response format
+- Example:
 ```typescript
-import { create } from "zustand";
-
-interface UIStore {
-  sidebarOpen: boolean;
-  setSidebarOpen: (open: boolean) => void;
-  notifications: Notification[];
-  addNotification: (notification: Omit<Notification, "id" | "timestamp">) => void;
-}
-
-export const useUIStore = create<UIStore>((set) => ({
-  sidebarOpen: true,
-  setSidebarOpen: (open) => set({ sidebarOpen: open }),
-  // ...
-}));
+/**
+ * GET /api/auth/role
+ * Returns all employees with their role information.
+ * Requires admin authorization.
+ */
 ```
 
-## Database (Prisma)
+**Comments in code:**
+- Used to explain complex permission checks, database validation, role hierarchy logic
+- Example: `// Validate required fields`, `// Handle redirect from requireAdmin`, `// Use database override if exists`
 
-**Client Pattern:** Single instance via `@/lib/prisma`
-```typescript
-// src/lib/prisma.ts
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
-```
+## Function Design
 
-**Usage:**
-- Always use transactions for multi-step operations
-- Include related records with `include`
-- Use proper relation names (singular for to-one, plural for to-many)
+**Size:**
+- Prefer smaller, focused functions (typically 20-50 lines max for utility functions)
+- Larger functions acceptable in React components for state management, but extracted into custom hooks when reused
+- API route handlers: 30-80 lines typical
+
+**Parameters:**
+- Use destructuring for objects (e.g., `{ email, password }` from request body)
+- Limit parameters to 3-4; use object param for more
+- TypeScript types always specified
+
+**Return Values:**
+- Consistent return types: API routes return `NextResponse`
+- Utility functions return appropriate types (e.g., `Promise<AuthUser | null>`)
+- Mutations return `Promise<Result>` with error handling delegated to `.onError()`
+- Example: `async function getCurrentUser(): Promise<AuthUser | null>`
 
 ## Module Design
 
 **Exports:**
-- Named exports preferred
-- Re-export from barrel files in `index.ts`
+- Named exports for utility functions and types (e.g., `export function getCurrentUser()`, `export type AuthUser`)
+- Default exports for Page components and Layout components (Next.js pattern)
+- Barrel exports in index files (e.g., `src/lib/stores/index.ts` exports all stores)
 
 **Barrel Files:**
-- Used in stores: `src/lib/stores/index.ts`
-- Not heavily used in components
+- Used in `src/lib/stores/` to re-export all store functions
+- Used in `src/lib/` for utility exports (not fully populated)
+- Pattern: `export * from './auth-helper'` or direct function exports
+
+**Module Structure:**
+- API routes self-contained with all logic
+- Library utilities in `src/lib/` separated by concern (auth, stores, utils, supabase, prisma)
+- Components grouped by feature in `src/components/`
+- Contexts in `src/contexts/` for global state
+- No separate services layer; logic lives in API routes, contexts, or lib utilities
 
 ---
 

@@ -86,5 +86,10 @@
   "statusLine": {
     "type": "command",
     "command": "node .claude/hooks/gsd-statusline.js"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(node \"C:/Users/User/Desktop/claude2/.claude/get-shit-done/bin/gsd-tools.cjs\" commit \"docs: map existing codebase\" --files .planning/codebase/*.md)"
+    ]
   }
 }

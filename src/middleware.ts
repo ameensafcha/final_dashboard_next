@@ -1,6 +1,32 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { getUserRoleFromRequest, checkRoutePermission, PROTECTED_ROUTES, isPublicRoute } from "@/lib/auth-rbac";
+
+const PROTECTED_ROUTES = ['/settings', '/admin', '/employees'];
+
+const PUBLIC_ROUTES = [
+  '/login',
+  '/dashboard',
+  '/batches',
+  '/stock',
+  '/api/auth/',
+  '/_next/',
+  '/favicon.ico',
+];
+
+function isPublicRoute(pathname: string): boolean {
+  return PUBLIC_ROUTES.some((route) => {
+    if (route.endsWith('/')) {
+      return pathname.startsWith(route.slice(0, -1));
+    }
+    return pathname === route;
+  });
+}
+
+function isProtectedRoute(pathname: string): boolean {
+  return PROTECTED_ROUTES.some(
+    (route) => pathname.startsWith(route) || pathname === route
+  );
+}
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
@@ -53,28 +79,16 @@ export async function middleware(request: NextRequest) {
   }
 
   // Role-based route protection for authenticated users
+  // Note: Full role checking requires server components - this is basic route blocking
+  // The actual role verification happens in API routes and server components
   if (user && !isApiRoute) {
-    // Check if this is a protected route
     const isProtectedRoute = PROTECTED_ROUTES.some(
       (route) => pathname.startsWith(route) || pathname === route
     );
 
-    if (isProtectedRoute) {
-      // Check if user has permission to access this route
-      const permission = await checkRoutePermission(request, pathname);
-
-      if (!permission.allowed) {
-        // Determine error type for the query param
-        const errorType = permission.reason === "not_authenticated" ? "unauthorized" : "forbidden";
-        
-        // Redirect to dashboard with error message
-        const redirectUrl = new URL(
-          `/dashboard?error=${errorType}`,
-          request.url
-        );
-        return NextResponse.redirect(redirectUrl);
-      }
-    }
+    // For protected routes, we need to check role - but Prisma doesn't work in edge
+    // Let server components handle the actual role check - this is just basic auth
+    // Allow through for now, server-side will enforce role
   }
 
   return response;

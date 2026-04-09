@@ -11,7 +11,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { PriorityBadge } from "@/components/ui/priority-badge";
 import { Avatar } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { Plus, Search, Trash2, Edit } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 
 interface Task {
   id: string;
@@ -75,7 +75,6 @@ export function TasksTable({
     return () => clearInterval(interval);
   }, []);
 
-  // Initial fetch for filtered view
   useEffect(() => {
     if (filterAssigneeId && initialData.length === 0) {
       setIsLoading(true);
@@ -89,7 +88,6 @@ export function TasksTable({
     }
   }, [filterAssigneeId]);
 
-  // Real-time subscription
   useEffect(() => {
     const channel = supabase
       .channel("tasks-realtime")
@@ -154,8 +152,8 @@ export function TasksTable({
   if (isLoading) {
     return (
       <div className="text-center py-12 text-gray-400">
-        <div className="inline-block w-6 h-6 border-2 border-gray-300 border-t-amber-500 rounded-full animate-spin mb-3" />
-        <p>Loading tasks...</p>
+        <div className="inline-block w-6 h-6 border-2 border-gray-300 border-t-[#E8C547] rounded-full animate-spin mb-3" />
+        <p className="font-medium text-sm">Loading tasks...</p>
       </div>
     );
   }
@@ -163,8 +161,16 @@ export function TasksTable({
   if (tasks.length === 0 && !search && !statusFilter && !priorityFilter && !areaFilter) {
     return (
       <>
-        <div className="text-center py-12 text-gray-500">
-          No tasks found
+        <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-gray-200">
+          <p className="text-gray-500 font-medium">No tasks found</p>
+          {!filterAssigneeId && (
+            <button
+              onClick={() => setShowForm(true)}
+              className="mt-4 px-6 py-2.5 bg-[#E8C547] hover:bg-[#D6B53D] text-[#1A1A1A] font-bold rounded-full transition-colors text-sm shadow-sm"
+            >
+              Create your first task
+            </button>
+          )}
         </div>
         <TaskForm
           open={showForm}
@@ -182,24 +188,25 @@ export function TasksTable({
   }
 
   return (
-    <>
-      <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
-        <div className="flex gap-3 items-center flex-1 min-w-[200px]">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+    <div className="w-full">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 bg-white p-4 rounded-[24px] shadow-sm border border-gray-100">
+        <div className="flex flex-wrap gap-3 items-center flex-1 w-full md:w-auto">
+          
+          <div className="relative flex-1 min-w-[200px] max-w-xs">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search tasks..."
-              className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm"
+              className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 focus:border-[#E8C547] focus:bg-white rounded-full text-sm font-medium transition-all outline-none focus:ring-1 focus:ring-[#E8C547]"
             />
           </div>
 
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 border rounded-lg text-sm"
+            className="px-4 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-full text-sm font-bold text-gray-700 cursor-pointer outline-none transition-all focus:border-[#E8C547] focus:ring-1 focus:ring-[#E8C547]"
           >
             <option value="">All Status</option>
             <option value="not_started">Not Started</option>
@@ -211,7 +218,7 @@ export function TasksTable({
           <select
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
-            className="px-3 py-2 border rounded-lg text-sm"
+            className="px-4 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-full text-sm font-bold text-gray-700 cursor-pointer outline-none transition-all focus:border-[#E8C547] focus:ring-1 focus:ring-[#E8C547]"
           >
             <option value="">All Priority</option>
             <option value="low">Low</option>
@@ -223,7 +230,7 @@ export function TasksTable({
           <select
             value={areaFilter}
             onChange={(e) => setAreaFilter(e.target.value)}
-            className="px-3 py-2 border rounded-lg text-sm"
+            className="px-4 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-full text-sm font-bold text-gray-700 cursor-pointer outline-none transition-all focus:border-[#E8C547] focus:ring-1 focus:ring-[#E8C547]"
           >
             <option value="">All Areas</option>
             <option value="Production">Production</option>
@@ -238,100 +245,83 @@ export function TasksTable({
         </div>
 
         {!filterAssigneeId && (
-          <Button
+          <button
             onClick={() => setShowForm(true)}
-            style={{ backgroundColor: "#E8C547", color: "#1A1A1A" }}
+            className="w-full md:w-auto px-6 py-2 bg-[#1A1A1A] hover:bg-black text-white font-bold rounded-full transition-colors flex items-center justify-center gap-2 text-sm shadow-sm"
           >
-            <Plus className="w-4 h-4 mr-2" />
+            <Plus className="w-4 h-4" />
             Add Task
-          </Button>
+          </button>
         )}
       </div>
 
-      <div className="bg-white rounded-lg border overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-amber-50">
-            <tr>
-              <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Task</th>
-              <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Area</th>
-              <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Status</th>
-              <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Priority</th>
+      <div className="bg-white rounded-[24px] border border-gray-100 shadow-sm overflow-hidden overflow-x-auto">
+        <table className="w-full min-w-[1000px] border-collapse">
+          <thead>
+            <tr className="bg-gray-50/50 border-b border-gray-100">
+              <th className="text-left py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider">Task</th>
+              <th className="text-left py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider">Area</th>
+              <th className="text-left py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
+              <th className="text-left py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider">Priority</th>
               {!filterAssigneeId && (
-                <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Assignee</th>
+                <th className="text-left py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider">Assignee</th>
               )}
-              <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Creator</th>
-              <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Created</th>
-              <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Start</th>
-              <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Due</th>
-              <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Days Left</th>
-              <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Completed</th>
-              <th className="text-left p-4 font-medium" style={{ color: "#1A1A1A" }}>Actions</th>
+              <th className="text-left py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider">Due</th>
+              <th className="text-left py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider">Time Left</th>
+              <th className="text-right py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-gray-50">
             {filteredTasks.map((task) => {
               const daysLeft = task.due_date 
                 ? Math.ceil((new Date(task.due_date).getTime() - now) / (1000 * 60 * 60 * 24))
                 : null;
               
               return (
-                <tr key={task.id} className="border-t hover:bg-gray-50">
-                  <td className="p-4">
+                <tr key={task.id} className="hover:bg-gray-50/80 transition-colors group">
+                  <td className="py-4 px-6">
                     <div>
-                      <p className="font-medium text-sm" style={{ color: "#1A1A1A" }}>{task.title}</p>
+                      <p className="font-bold text-sm text-gray-900 group-hover:text-[#E8C547] transition-colors">{task.title}</p>
                       {task.description && (
-                        <p className="text-xs text-gray-500 mt-1 line-clamp-1">{task.description}</p>
+                        <p className="text-xs text-gray-500 mt-1 line-clamp-1 max-w-[200px]">{task.description}</p>
                       )}
                     </div>
                   </td>
-                  <td className="p-4">
+                  <td className="py-4 px-6">
                     {task.area ? (
-                      <span className="text-xs px-2 py-1 bg-gray-100 rounded">{task.area}</span>
+                      <span className="text-xs font-bold px-3 py-1 bg-gray-100 text-gray-600 rounded-full">{task.area}</span>
                     ) : (
                       <span className="text-sm text-gray-400">-</span>
                     )}
                   </td>
-                  <td className="p-4">
+                  <td className="py-4 px-6">
                     <StatusBadge status={task.status} />
                   </td>
-                  <td className="p-4">
+                  <td className="py-4 px-6">
                     <PriorityBadge priority={task.priority} />
                   </td>
                   {!filterAssigneeId && (
-                    <td className="p-4">
+                    <td className="py-4 px-6">
                       {task.assignee ? (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2.5">
                           <Avatar name={task.assignee.name} size="sm" />
-                          <span className="text-sm text-gray-600">{task.assignee.name}</span>
+                          <span className="text-sm font-semibold text-gray-700">{task.assignee.name}</span>
                         </div>
                       ) : (
-                        <span className="text-sm text-gray-400">-</span>
+                        <span className="text-sm font-medium italic text-gray-400">Unassigned</span>
                       )}
                     </td>
                   )}
-                  <td className="p-4">
-                    {task.creator ? (
-                      <span className="text-sm text-gray-600">{task.creator.name}</span>
-                    ) : (
-                      <span className="text-sm text-gray-400">-</span>
-                    )}
+                  <td className="py-4 px-6 text-sm font-semibold text-gray-600">
+                    {task.due_date ? new Date(task.due_date).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "-"}
                   </td>
-                  <td className="p-4 text-sm text-gray-600">
-                    {task.created_at ? new Date(task.created_at).toLocaleDateString() : "-"}
-                  </td>
-                  <td className="p-4 text-sm text-gray-600">
-                    {task.start_date ? new Date(task.start_date).toLocaleDateString() : "-"}
-                  </td>
-                  <td className="p-4 text-sm text-gray-600">
-                    {task.due_date ? new Date(task.due_date).toLocaleDateString() : "-"}
-                  </td>
-                  <td className="p-4">
+                  <td className="py-4 px-6">
                     {daysLeft !== null ? (
-                      <span className={`text-xs px-2 py-1 rounded ${
-                        daysLeft < 0 ? "bg-red-100 text-red-700" :
-                        daysLeft <= 2 ? "bg-orange-100 text-orange-700" :
-                        daysLeft <= 7 ? "bg-yellow-100 text-yellow-700" :
-                        "bg-green-100 text-green-700"
+                      <span className={`text-xs font-bold px-3 py-1 rounded-full ${
+                        daysLeft < 0 ? "bg-red-50 text-red-700 border border-red-100" :
+                        daysLeft <= 2 ? "bg-orange-50 text-orange-700" :
+                        daysLeft <= 7 ? "bg-amber-50 text-amber-700" :
+                        "bg-green-50 text-green-700"
                       }`}>
                         {daysLeft < 0 ? `${Math.abs(daysLeft)}d overdue` : `${daysLeft}d`}
                       </span>
@@ -339,25 +329,30 @@ export function TasksTable({
                       <span className="text-sm text-gray-400">-</span>
                     )}
                   </td>
-                  <td className="p-4 text-sm text-gray-600">
-                    {task.completed_at ? new Date(task.completed_at).toLocaleDateString() : "-"}
-                  </td>
-                  <td className="p-4">
-                    <div className="flex gap-2">
+                  
+                  {/* --- ACTIONS COLUMN (SOFT TINTED BUTTONS) --- */}
+                  <td className="py-4 px-6">
+                    <div className="flex items-center justify-end gap-2">
+                      
+                      {/* View Button - Soft Blue */}
                       <button
                         onClick={() => setSelectedTask(task)}
-                        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                        className="px-4 py-2 text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg cursor-pointer transition-colors"
                       >
                         View
                       </button>
+
+                      {/* Edit Button - Soft Amber */}
                       {(currentUserRole === "admin" || task.creator?.id === currentUserId) && (
                         <button
                           onClick={() => { setEditingTask(task); setShowForm(true); }}
-                          className="text-gray-600 hover:text-gray-800 text-sm"
+                          className="px-4 py-2 text-xs font-bold bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-lg cursor-pointer transition-colors"
                         >
-                          <Edit className="w-4 h-4" />
+                          Edit
                         </button>
                       )}
+
+                      {/* Delete Button - Soft Red */}
                       {(currentUserRole === "admin" || task.creator?.id === currentUserId) && (
                         <button
                           onClick={() => {
@@ -365,11 +360,12 @@ export function TasksTable({
                               deleteMutation.mutate(task.id);
                             }
                           }}
-                          className="text-red-600 hover:text-red-800 text-sm"
+                          className="px-4 py-2 text-xs font-bold bg-red-50 text-red-600 hover:bg-red-100 rounded-lg cursor-pointer transition-colors"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          Delete
                         </button>
                       )}
+
                     </div>
                   </td>
                 </tr>
@@ -377,16 +373,16 @@ export function TasksTable({
             })}
             {filteredTasks.length === 0 && (
               <tr>
-                <td colSpan={12} className="p-8 text-center text-gray-500">
-                  No tasks found
+                <td colSpan={8} className="py-12 text-center text-gray-500">
+                  <p className="font-medium text-sm">No tasks match your filters</p>
                 </td>
               </tr>
             )}
           </tbody>
-          </table>
-        </div>
+        </table>
+      </div>
 
-        <TaskForm
+      <TaskForm
         open={showForm}
         onClose={() => { setShowForm(false); setEditingTask(null); }}
         task={editingTask}
@@ -398,6 +394,6 @@ export function TasksTable({
         open={!!selectedTask}
         onClose={() => setSelectedTask(null)}
       />
-    </>
+    </div>
   );
 }

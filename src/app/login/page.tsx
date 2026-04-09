@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, login, isLoading } = useAuth();
@@ -110,4 +110,29 @@ export default function LoginPage() {
       </div>
     </div>
   );
+}
+
+function LoginFormWithSuspense() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#F5F4EE" }}>
+        <div className="w-full max-w-md p-8 rounded-xl shadow-lg" style={{ backgroundColor: "#FFFFFF" }}>
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-bold" style={{ color: "#1A1A1A" }}>
+              Welcome Back
+            </h1>
+            <p className="text-sm mt-2" style={{ color: "#6B7280" }}>
+              Loading...
+            </p>
+          </div>
+        </div>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+export default function LoginPage() {
+  return <LoginFormWithSuspense />;
 }

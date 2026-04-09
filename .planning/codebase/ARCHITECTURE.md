@@ -4,199 +4,199 @@
 
 ## Pattern Overview
 
-**Overall:** Next.js App Router with REST API and Prisma ORM
-
-This is an inventory management system built on Next.js 16 App Router, using PostgreSQL as the primary database and Supabase for authentication. The architecture follows a layered pattern where API routes serve as the bridge between client components and the database.
+**Overall:** Next.js App Router with Server Components and Client Components
 
 **Key Characteristics:**
-- Server Components by default (Server-Side Rendering for pages)
-- Client Components only when interactivity is needed (`'use client'` directives)
-- RESTful API routes using Next.js Route Handlers in `src/app/api/*/route.ts`
-- Prisma ORM for database operations with PostgreSQL
-- Supabase for authentication and session management
-- Zustand for client-side UI state
-- TanStack React Query available for server state (declared but not actively used)
+- Server-first architecture using Next.js 16 with React 19
+- Role-Based Access Control (RBAC) at multiple levels: middleware, API routes, and server components
+- Hybrid authentication approach using Supabase for auth and Prisma for user metadata
+- Separation of concerns: auth logic in dedicated lib files, UI in components, data access through API routes
+- Client-side state management with Zustand and React Context (auth state)
+- Server-side database queries with Prisma ORM via PostgreSQL
+- Type-safe API routes with NextResponse handling
 
 ## Layers
 
-### 1. Presentation Layer (Pages & Components)
-- **Location:** `src/app/*/page.tsx`, `src/components/*.tsx`
-- Contains: React Server Components (pages) and Client Components
-- Depends on: API Layer (via fetch/Server Actions)
-- Used by: Next.js routing system
+**Authentication & Authorization Layer:**
+- Purpose: Manage user identity and access control
+- Location: `src/lib/auth-helper.ts`, `src/lib/auth-rbac.ts`, `src/lib/permissions.ts`
+- Contains: Auth utilities, role checking, permission definitions, RBAC logic
+- Depends on: Supabase client, Prisma, Next.js server utilities
+- Used by: Middleware, API routes, server components, client context
 
-**Pages (Server Components):**
-- `src/app/dashboard/page.tsx` - Dashboard with tasks KPIs
-- `src/app/tasks/page.tsx`, `src/app/tasks/board/page.tsx` - Task management
-- `src/app/production/page.tsx` - Production tracking
-- `src/app/stocks/page.tsx` - Stock management
-- `src/app/finance/page.tsx`, `src/app/finance/transactions/page.tsx` - Finance
-- `src/app/admin/page.tsx`, `src/app/admin/employees/page.tsx` - Admin
-- `src/app/login/page.tsx` - Authentication
+**Data Access Layer:**
+- Purpose: Manage all database interactions
+- Location: `src/app/api/` (route handlers)
+- Contains: RESTful API endpoints, data queries, mutations
+- Depends on: Prisma ORM, auth-helper for authorization checks
+- Used by: Client pages and components via fetch, server components via direct Prisma calls
 
-**Components (Client Components):**
-- `src/components/task-board.tsx` - Kanban board
-- `src/components/task-detail.tsx` - Task detail view
-- `src/components/task-form.tsx` - Task creation/editing
-- `src/components/app-sidebar.tsx` - Navigation sidebar
+**Presentation Layer:**
+- Purpose: Render UI and handle user interactions
+- Location: `src/app/` (page components), `src/components/` (reusable components)
+- Contains: Server pages, client components, UI components (shadcn/ui)
+- Depends on: API routes (client components), auth context, React Query
+- Used by: Next.js router as entry points
 
-### 2. API Layer (Route Handlers)
-- **Location:** `src/app/api/*/route.ts`, `src/app/api/[resource]/[id]/*/route.ts`
-- Contains: Next.js Route Handlers (GET, POST, PUT, DELETE)
-- Depends on: Database Layer
-- Used by: Presentation Layer (fetch calls)
+**Middleware Layer:**
+- Purpose: Handle HTTP-level routing and basic auth checks
+- Location: `src/middleware.ts`
+- Contains: Route protection, session validation, cookie management
+- Depends on: Supabase SSR client
+- Used by: Next.js request pipeline for all routes
 
-**Examples:**
-- `src/app/api/tasks/route.ts` - Tasks CRUD with filtering and search
-- `src/app/api/products/route.ts` - Products CRUD
-- `src/app/api/transactions/route.ts` - Financial transactions
-- `src/app/api/batches/route.ts` - Production batches
-
-### 3. Authentication Layer
-- **Location:** `src/lib/auth-helper.ts`, `src/middleware.ts`
-- Contains: Auth utilities, route protection, Supabase integration
-- Depends on: Supabase service
-- Used by: API Layer, Middleware
-
-**Files:**
-- `src/lib/auth-helper.ts` - Core auth utilities: `getCurrentUser()`, `requireAuth()`, `requireAdmin()`, `authResponse()`
-- `src/middleware.ts` - Route protection via middleware
-- `src/contexts/auth-context.tsx` - Auth context provider
-
-### 4. Database Layer
-- **Location:** `src/lib/prisma.ts`, `prisma/schema.prisma`
-- Contains: Prisma client, database schema
-- Depends on: PostgreSQL database
-- Used by: API Layer
-
-**Schema includes:**
-- `employees`, `roles` - User management
-- `products`, `product_variants`, `product_flavors` - Product catalog
-- `raw_materials`, `receiving_materials` - Raw materials inventory
-- `batches`, `finished_products`, `packing_logs` - Production tracking
-- `transactions` - Financial records
-- `tasks`, `subtasks`, `task_comments`, `task_time_logs` - Task management
-- `variant_inventory`, `product_stock` - Stock tracking
-
-### 5. State Management Layer
-- **Location:** `src/lib/stores/ui.ts`
-- Contains: Zustand stores for UI state
-- Depends on: None
-- Used by: Client Components
-
-**Stores:**
-- `useUIStore` - Sidebar state, modal state, theme, notifications
+**State Management Layer:**
+- Purpose: Manage client-side state
+- Location: `src/contexts/auth-context.tsx`, `src/lib/stores/` (Zustand)
+- Contains: Auth state, UI state (sidebar toggle)
+- Depends on: Supabase client, API routes, React hooks
+- Used by: Client components via context hooks
 
 ## Data Flow
 
-**API Request Flow:**
+**Authentication Flow:**
 
-1. Client Component calls API via `fetch('/api/resources')`
-2. API Route Handler (`src/app/api/resources/route.ts`) receives request
-3. Auth check via `getCurrentUser()` in `src/lib/auth-helper.ts`
-4. Prisma query executed via `prisma.model.method()` in `src/lib/prisma.ts`
-5. Database returns data (PostgreSQL)
-6. API transforms response and returns JSON
-7. Client receives and displays data
+1. User submits login form (`src/app/login/page.tsx` - client component)
+2. Login function calls Supabase auth (`src/contexts/auth-context.tsx`)
+3. Supabase validates credentials and returns session token
+4. Session token stored in cookies by Supabase SDK
+5. Client fetches employee data from `/api/auth/employee` to get role
+6. Auth context updates with user role and employee data
+7. Middleware validates session on subsequent requests
+8. Protected routes check role before rendering
 
-**Page Render Flow:**
+**Authorization Flow (API Route Example):**
 
-1. Next.js routes to page component (`src/app/path/page.tsx`)
-2. Page is Server Component - fetches data via Prisma directly
-3. Calls `getCurrentUser()` for auth check
-4. Prisma queries database
-5. Passes data to Client Component (hydration)
-6. Client Component renders UI
+1. Client component/page calls API endpoint
+2. API route handler executes (e.g., `src/app/api/tasks/route.ts`)
+3. `getCurrentUser()` validates session and fetches employee + role from database
+4. Role hierarchy checked: viewer < employee < admin
+5. If `requireRole()` or `requirePermission()` called, returns 401/403 if unauthorized
+6. Query filtered by role (e.g., non-admins see only assigned/created tasks)
+7. Response serialized and returned to client
+
+**Server Component Flow:**
+
+1. Server page component (e.g., `src/app/dashboard/page.tsx`) calls `getCurrentUser()`
+2. User validation redirects to login if not authenticated
+3. Direct Prisma queries execute on server (no API call overhead)
+4. Data serialized for client component consumption
+5. Server component renders with data, passes to client component
+6. Client component handles interactivity and UI state
+
+**State Management:**
+
+- **Auth State:** Managed by React Context (`src/contexts/auth-context.tsx`). Synced from Supabase auth state on mount, fetches employee/role from database.
+- **UI State:** Managed by Zustand store (`src/lib/stores/ui.ts`). Sidebar toggle, notifications.
+- **Server State:** Managed through API endpoints, React Query for caching (TanStack Query v5).
+- **Database State:** Single source of truth is PostgreSQL via Prisma. Employees table links to roles table.
 
 ## Key Abstractions
 
-### Auth Abstraction
-- **Purpose:** Unified authentication and authorization
-- **Examples:** `src/lib/auth-helper.ts`
-- **Pattern:** Supabase auth + Prisma employee lookup
+**AuthUser:**
+- Purpose: Represents authenticated user with role information
+- Examples: `src/lib/auth-helper.ts` (interface definition)
+- Pattern: Returned by `getCurrentUser()`, used across API routes and server components
+- Properties: `id`, `email`, `role`, `isAdmin`
 
-```typescript
-// Pattern: Check auth, get user
-const user = await getCurrentUser();
-if (!user) return authResponse("Unauthorized");
-```
+**Role Hierarchy:**
+- Purpose: Define access levels across the application
+- Examples: `src/lib/permissions.ts`, `src/lib/auth-helper.ts` (ROLE_HIERARCHY constant)
+- Pattern: `['viewer', 'employee', 'admin']` - lower index = fewer permissions
+- Usage: Index-based comparison for permission checks
 
-### Database Abstraction
-- **Purpose:** Single Prisma client instance
-- **Examples:** `src/lib/prisma.ts`
-- **Pattern:** Global singleton with connection pooling
+**Permission Mapping:**
+- Purpose: Define what each role can do
+- Examples: `src/lib/permissions.ts` (RolePermissions constant)
+- Pattern: `Record<roleName, Permission[]>` - each role lists allowed actions
+- Permissions: `view:dashboard`, `edit:admin`, `view:settings`, etc.
 
-### Notification Abstraction
-- **Purpose:** Toast notifications for user feedback
-- **Examples:** `src/lib/stores/ui.ts`
-- **Pattern:** Zustand store with notification queue
+**Route Protection:**
+- Purpose: Enforce role requirements at route level
+- Examples: `src/lib/auth-rbac.ts` (DEFAULT_ROUTE_PERMISSIONS, checkRoutePermission)
+- Pattern: Hybrid storage - code defaults can be overridden by database
+- Protected routes: `/settings`, `/admin`, `/employees` require admin role
 
-### Supabase Client Abstraction
-- **Purpose:** Unified Supabase client creation
-- **Examples:** `src/lib/supabase.ts`
-- **Pattern:** Browser/Server/Admin client factory
+**SupabaseServerClient:**
+- Purpose: Create secure Supabase client in server context
+- Examples: `src/lib/auth-helper.ts` (createSupabaseServerClient)
+- Pattern: Uses Next.js cookies() API to manage session tokens
+- Encapsulates cookie management details
+
+**Prisma Client:**
+- Purpose: Type-safe database access
+- Examples: `src/lib/prisma.ts` (singleton export)
+- Pattern: Singleton instance shared across application
+- Usage: Direct queries in server components, API routes, and auth helpers
 
 ## Entry Points
 
-### Root Entry
-- **Location:** `src/app/layout.tsx`
-- **Responsibilities:** Root layout, sidebar, providers, toast container
-- **Triggers:** Any page request
+**Authentication Page:**
+- Location: `src/app/login/page.tsx`
+- Triggers: User visits `/login` when unauthenticated, or manually navigates
+- Responsibilities: Render login form, call auth context login function, redirect to dashboard on success
 
-### Auth Entry
-- **Location:** `src/middleware.ts`
-- **Responsibilities:** Protected route enforcement, session refresh
-- **Triggers:** Every HTTP request
+**Dashboard Page:**
+- Location: `src/app/dashboard/page.tsx`
+- Triggers: Middleware routes authenticated users here by default
+- Responsibilities: Fetch tasks, calculate KPIs, filter by role, pass data to client component
 
-### API Entry
-- **Location:** `src/app/api/*/route.ts`
-- **Responsibilities:** REST API endpoints
-- **Triggers:** fetch() calls from components
+**Admin Pages:**
+- Location: `src/app/admin/page.tsx`, `src/app/admin/employees/page.tsx`, etc.
+- Triggers: Admin users navigate or middleware routes here
+- Responsibilities: Render admin UI, enforce admin-only access via client-side role check
 
-### Auth Login Entry
-- **Location:** `src/app/login/page.tsx`
-- **Responsibilities:** User authentication
-- **Triggers:** Browser navigation to /login
+**API Auth Endpoint:**
+- Location: `src/app/api/auth/employee/route.ts`
+- Triggers: Auth context fetches on mount or after login
+- Responsibilities: Return current user employee data with role
+
+**Generic API Routes:**
+- Location: `src/app/api/[resource]/route.ts` (tasks, employees, batches, etc.)
+- Triggers: Client components and pages fetch data
+- Responsibilities: Authorize request, filter data by role, execute queries, return JSON
+
+**Middleware:**
+- Location: `src/middleware.ts`
+- Triggers: On every HTTP request
+- Responsibilities: Check session validity, redirect unauthenticated users to login, block protected routes without session
 
 ## Error Handling
 
-**Strategy:** Try-catch with appropriate HTTP status codes
+**Strategy:** Multi-level error handling with fallbacks
 
 **Patterns:**
-- 400: Bad request (validation errors)
-- 401: Unauthorized (auth check failures)
-- 403: Forbidden (permission denied)
-- 404: Not found
-- 500: Server errors
 
-```typescript
-// API route pattern
-export async function GET() {
-  try {
-    const user = await getCurrentUser();
-    if (!user) return authResponse("Unauthorized");
-    // ... logic
-    return NextResponse.json(data);
-  } catch (error) {
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
-  }
-}
-```
+- **Middleware:** If session check fails, redirect to login with `?error=unauthorized` query param
+- **API Routes:** Return `NextResponse.json({ error: string }, { status: 401|403|404|500 })`
+- **Server Components:** Call `redirect("/login")` from `require*` helpers if auth fails
+- **Client Components:** Wrap in try-catch, set error state, display to user via toast or error message
+- **Auth Context:** Catch promise rejections, set `authError` state, log to console
+- **Prisma:** Wrapped in try-catch in auth-rbac.ts - falls back to code defaults if DB fails
 
 ## Cross-Cutting Concerns
 
-**Authentication:** Supabase Auth with Prisma employee sync via `src/lib/auth-helper.ts`
+**Logging:**
+- Approach: `console.log()` and `console.error()` with prefixes like `[Auth]`, `[API /route]`, `[Dashboard]`
+- Used in: Auth context, API routes, server components
+- Purpose: Debug auth flow, track errors, identify performance issues
 
-**Authorization:** Role-based (admin vs employee) with middleware protection and API-level checks. Admin-only routes: `/admin/*`
+**Validation:**
+- Approach: Prisma schema enforces database constraints; auth helpers validate user state
+- Used in: `getCurrentUser()` checks `is_active` flag; API routes verify user exists
+- Pattern: Validate early in function, return error response if validation fails
 
-**Logging:** Console logging for errors in API routes only
+**Authentication:**
+- Approach: Multi-step - Supabase JWT in cookies, Prisma lookup for role and is_active status
+- Used in: Middleware (basic), API routes (with role check), server components (with redirect)
+- Pattern: `getCurrentUser()` combines both sources into single AuthUser object
 
-**Validation:** Basic field validation in API routes (presence checks), no schema validation library
+**Authorization (RBAC):**
+- Approach: Role hierarchy checked via index comparison; permissions mapped to roles
+- Used in: API routes (requireRole, requirePermission), server components (requireAdmin)
+- Pattern: Check against ROLE_HIERARCHY array or RolePermissions record
 
-**State:** 
-- Server state: Prisma queries in Server Components
-- Client state: Zustand `useUIStore` for UI state (sidebar, modals, theme, notifications)
-
----
-
-*Architecture analysis: 2026-04-09*
+**Session Management:**
+- Approach: Supabase SSR manages session via cookies; token automatically refreshed
+- Used in: Middleware, auth context, API routes
+- Pattern: Call `supabase.auth.getUser()` to get current session; returns null if expired

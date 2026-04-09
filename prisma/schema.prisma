@@ -329,3 +329,16 @@ model task_time_logs {
   @@index([task_id])
   @@index([employee_id])
 }
+
+model route_permissions {
+  id           String   @id @default(uuid())
+  route_path   String   // Route pattern (e.g., "/settings", "/admin/*")
+  required_role String // Required role to access (admin, employee, viewer)
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([route_path])
+  @@index([required_role])
+  @@unique([route_path])
+}

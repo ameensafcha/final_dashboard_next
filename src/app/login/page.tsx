@@ -1,13 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, login, isLoading } = useAuth();
   const [loading, setLoading] = useState(false);
+
+  const authError = searchParams.get("error");
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -50,6 +53,12 @@ export default function LoginPage() {
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
             {error}
+          </div>
+        )}
+
+        {authError === "unauthorized" && (
+          <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 text-sm">
+            You were redirected because your session expired. Please log in again.
           </div>
         )}
 

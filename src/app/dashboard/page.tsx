@@ -5,9 +5,12 @@ import { DashboardClient } from "./dashboard-client";
 
 export const dynamic = 'force-dynamic';
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+
+  const resolvedSearchParams = await searchParams;
+  const authError = resolvedSearchParams.error;
 
   let tasks: any[] = [];
   let error: string | null = null;
@@ -67,7 +70,7 @@ export default async function DashboardPage() {
   // Naya Crextio theme background wrapper
   return (
     <main className="min-h-screen bg-[#F5F4EE] w-full">
-      <DashboardClient kpis={kpis} tasks={serializedTasks} error={error} />
+      <DashboardClient kpis={kpis} tasks={serializedTasks} error={error} authError={authError} />
     </main>
   );
 }

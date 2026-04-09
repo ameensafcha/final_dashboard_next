@@ -55,7 +55,7 @@ interface TaskListTask {
   creator?: { id: string; name: string; email?: string } | null;
 }
 
-export function DashboardClient({ kpis, tasks, error }: { kpis: KPIData; tasks: SerializedTask[]; error?: string | null }) {
+export function DashboardClient({ kpis, tasks, error, authError }: { kpis: KPIData; tasks: SerializedTask[]; error?: string | null; authError?: string }) {
   const [selectedTask, setSelectedTask] = useState<TaskDetailTask | null>(null);
 
   const handleTaskClick = (task: TaskListTask) => {
@@ -89,6 +89,20 @@ export function DashboardClient({ kpis, tasks, error }: { kpis: KPIData; tasks: 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
           {error}
+        </div>
+      )}
+
+      {authError === "unauthorized" && (
+        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded flex items-center gap-2">
+          <span className="text-lg">🔒</span>
+          <span>You must be logged in to access that page.</span>
+        </div>
+      )}
+
+      {authError === "forbidden" && (
+        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded flex items-center gap-2">
+          <span className="text-lg">🚫</span>
+          <span>You do not have permission to access that page.</span>
         </div>
       )}
 

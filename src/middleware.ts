@@ -43,7 +43,7 @@ export async function middleware(request: NextRequest) {
 
   // Redirect unauthenticated users to login (except for public routes and auth page)
   if (!user && !isAuthPage && !isApiRoute && !isPublic) {
-    const redirectUrl = new URL("/login", request.url);
+    const redirectUrl = new URL("/login?error=unauthorized", request.url);
     return NextResponse.redirect(redirectUrl);
   }
 
@@ -64,9 +64,12 @@ export async function middleware(request: NextRequest) {
       const permission = await checkRoutePermission(request, pathname);
 
       if (!permission.allowed) {
+        // Determine error type for the query param
+        const errorType = permission.reason === "not_authenticated" ? "unauthorized" : "forbidden";
+        
         // Redirect to dashboard with error message
         const redirectUrl = new URL(
-          `/dashboard?unauthorized=true&reason=${permission.reason || 'access_denied'}`,
+          `/dashboard?error=${errorType}`,
           request.url
         );
         return NextResponse.redirect(redirectUrl);

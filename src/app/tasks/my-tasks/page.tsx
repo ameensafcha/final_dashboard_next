@@ -11,6 +11,10 @@ export default function MyTasksPage() {
   const [showForm, setShowForm] = useState(false);
   const { user, role } = useAuth();
 
+  if (!user) {
+    return <div className="p-6">Please log in to view your tasks.</div>;
+  }
+
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
@@ -27,18 +31,16 @@ export default function MyTasksPage() {
         </Button>
       </div>
 
-      {user && (
-        <TasksTable 
-          filterAssigneeId={user.id}
-          currentUserId={user.id}
-          currentUserRole={role ?? undefined}
-        />
-      )}
+      <TasksTable
+        filterAssigneeId={user.id}
+        currentUserId={user.id}
+        currentUserRole={role ?? undefined}
+      />
 
-      <TaskForm 
-        open={showForm} 
-        onClose={() => setShowForm(false)} 
-        defaultAssigneeId={user?.id}
+      <TaskForm
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        defaultAssigneeId={user.id}
         canChangeAssignee={false}
       />
     </div>

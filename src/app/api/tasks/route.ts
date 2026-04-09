@@ -174,6 +174,10 @@ export async function PUT(request: Request) {
     // Field-level permissions
     const isAdminOrCreator = user.isAdmin || isCreator;
 
+    // Auto-set completed_at when status changes to completed
+    const isCompleting = status === "completed" && existingTask.status !== "completed";
+    const completionTime = isCompleting ? new Date() : null;
+
     // Fields allowed for Admin + Creator
     const fullUpdate = {
       ...(title !== undefined && { title }),
@@ -184,7 +188,7 @@ export async function PUT(request: Request) {
       ...(assignee_id !== undefined && { assignee_id: assignee_id || null }),
       ...(due_date !== undefined && { due_date: due_date ? new Date(due_date) : null }),
       ...(start_date !== undefined && { start_date: start_date ? new Date(start_date) : null }),
-      ...(completed_at !== undefined && { completed_at: completed_at ? new Date(completed_at) : null }),
+      ...(completed_at !== undefined && { completed_at: completed_at ? new Date(completed_at) : completionTime }),
     };
 
     // Fields allowed for Assignee-only
@@ -192,7 +196,7 @@ export async function PUT(request: Request) {
       ...(status !== undefined && { status }),
       ...(due_date !== undefined && { due_date: due_date ? new Date(due_date) : null }),
       ...(start_date !== undefined && { start_date: start_date ? new Date(start_date) : null }),
-      ...(completed_at !== undefined && { completed_at: completed_at ? new Date(completed_at) : null }),
+      ...(completed_at !== undefined || isCompleting ? { completed_at: isCompleting ? completionTime : (completed_at ? new Date(completed_at) : null) } : {}),
     };
 
     const updateData = isAdminOrCreator ? fullUpdate : restrictedUpdate;

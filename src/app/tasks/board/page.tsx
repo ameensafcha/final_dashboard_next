@@ -1,38 +1,47 @@
-"use client";
+import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth-helper";
+import { redirect } from "next/navigation";
+import { KanbanClient } from "./kanban-client";
 
-import { useState } from "react";
-import { TaskBoard } from "@/components/task-board";
-import { TaskForm } from "@/components/task-form";
-import { Button } from "@/components/ui/button";
-import { useAuth } from "@/contexts/auth-context";
-import { Plus } from "lucide-react";
+export default async function KanbanPage() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
 
-export default function KanbanPage() {
-  const [showForm, setShowForm] = useState(false);
-  const { role } = useAuth();
-  const isAdmin = role === "admin";
+  const tasks = await prisma.tasks.findMany({
+    include: {
+      assignee: true,
+      creator: true,
+      subtasks: true,
+    },
+    orderBy: { created_at: "desc" },
+  });
+
+  const serializedTasks = tasks.map((task) => ({
+    id: task.id,
+    title: task.title,
+    description: task.description,
+    area: task.area,
+    status: task.status,
+    priority: task.priority,
+    assignee_id: task.assignee_id,
+    due_date: task.due_date?.toISOString() || null,
+    start_date: task.start_date?.toISOString() || null,
+    completed_at: task.completed_at?.toISOString() || null,
+    created_at: task.created_at.toISOString(),
+    assignee: task.assignee
+      ? { id: task.assignee.id, name: task.assignee.name, email: task.assignee.email }
+      : null,
+    creator: task.creator
+      ? { id: task.creator.id, name: task.creator.name, email: task.creator.email }
+      : null,
+    subtasks: task.subtasks.map((st) => ({ id: st.id, title: st.title, is_completed: st.is_completed })),
+  }));
 
   return (
-    <div className="p-6 h-full flex flex-col">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: "#1A1A1A" }}>Kanban Board</h1>
-          <p className="text-gray-600">Drag tasks between columns to update status</p>
-        </div>
-        <Button
-          onClick={() => setShowForm(true)}
-          style={{ backgroundColor: "#E8C547", color: "#1A1A1A" }}
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Task
-        </Button>
-      </div>
-
-      <div className="flex-1 overflow-hidden">
-        <TaskBoard />
-      </div>
-
-      <TaskForm open={showForm} onClose={() => setShowForm(false)} canChangeAssignee={isAdmin} />
-    </div>
+    <KanbanClient
+      userId={user.id}
+      userRole={user.role ?? undefined}
+      initialData={serializedTasks}
+    />
   );
 }

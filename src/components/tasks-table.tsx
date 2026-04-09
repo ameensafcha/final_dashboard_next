@@ -61,10 +61,13 @@ export function TasksTable({
   const [priorityFilter, setPriorityFilter] = useState("");
   const [areaFilter, setAreaFilter] = useState("");
   const [now, setNow] = useState(() => Date.now());
-  const [tasks, setTasks] = useState<Task[]>(() => 
-    filterAssigneeId 
+  const [tasks, setTasks] = useState<Task[]>(() =>
+    filterAssigneeId
       ? initialData.filter(t => t.assignee?.id === filterAssigneeId)
       : initialData
+  );
+  const [isLoading, setIsLoading] = useState(() =>
+    !!(filterAssigneeId && initialData.length === 0)
   );
 
   useEffect(() => {
@@ -75,12 +78,14 @@ export function TasksTable({
   // Initial fetch for filtered view
   useEffect(() => {
     if (filterAssigneeId && initialData.length === 0) {
+      setIsLoading(true);
       fetch(`/api/tasks?assignee_id=${filterAssigneeId}`)
         .then(res => res.json())
         .then(json => {
           if (json.data) setTasks(json.data);
         })
-        .catch(err => console.error('Failed to fetch initial tasks:', err));
+        .catch(console.error)
+        .finally(() => setIsLoading(false));
     }
   }, [filterAssigneeId]);
 
@@ -95,19 +100,14 @@ export function TasksTable({
           schema: "public",
           table: "tasks",
         },
-        (payload) => {
-          console.log("Real-time update:", payload);
-          
-          // Fetch fresh data after any change to get full relations
+        () => {
           const url = filterAssigneeId ? `/api/tasks?assignee_id=${filterAssigneeId}` : '/api/tasks';
           fetch(url)
             .then(res => res.json())
             .then(json => {
-              if (json.data) {
-                setTasks(json.data);
-              }
+              if (json.data) setTasks(json.data);
             })
-            .catch(err => console.error('Failed to fetch fresh data:', err));
+            .catch(console.error);
         }
       )
       .subscribe();
@@ -115,7 +115,7 @@ export function TasksTable({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [queryClient, filterAssigneeId]);
+  }, [filterAssigneeId]);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -139,11 +139,26 @@ export function TasksTable({
     if (search && !task.title.toLowerCase().includes(search.toLowerCase())) {
       return false;
     }
+    if (statusFilter && task.status !== statusFilter) {
+      return false;
+    }
+    if (priorityFilter && task.priority !== priorityFilter) {
+      return false;
+    }
     if (areaFilter && task.area !== areaFilter) {
       return false;
     }
     return true;
   });
+
+  if (isLoading) {
+    return (
+      <div className="text-center py-12 text-gray-400">
+        <div className="inline-block w-6 h-6 border-2 border-gray-300 border-t-amber-500 rounded-full animate-spin mb-3" />
+        <p>Loading tasks...</p>
+      </div>
+    );
+  }
 
   if (tasks.length === 0 && !search && !statusFilter && !priorityFilter && !areaFilter) {
     return (
@@ -155,6 +170,7 @@ export function TasksTable({
           open={showForm}
           onClose={() => { setShowForm(false); setEditingTask(null); }}
           task={editingTask}
+          canChangeAssignee={currentUserRole === "admin"}
         />
         <TaskDetail
           task={selectedTask}

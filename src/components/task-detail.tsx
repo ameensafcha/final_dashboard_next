@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUIStore } from "@/lib/stores";
-import { Check, Clock, MessageSquare, Plus, Trash2 } from "lucide-react";
+import { Check, Clock, MessageSquare, Plus, Trash2, User, Calendar, Flag, Activity, FileText, UserCheck } from "lucide-react";
 
 interface Task {
   id: string;
@@ -71,6 +71,13 @@ const priorityColors = {
   urgent: "bg-red-100 text-red-800",
 };
 
+const statusColors = {
+  not_started: "border-gray-300 text-gray-700 bg-white",
+  in_progress: "border-blue-400 text-blue-700 bg-blue-50",
+  review: "border-amber-400 text-amber-700 bg-amber-50",
+  completed: "border-green-400 text-green-700 bg-green-50",
+};
+
 const statusOptions = [
   { value: "not_started", label: "Not Started" },
   { value: "in_progress", label: "In Progress" },
@@ -86,43 +93,55 @@ export function TaskDetail({ task, open, onClose }: TaskDetailProps) {
   const [newComment, setNewComment] = useState("");
   const [newTimeHours, setNewTimeHours] = useState("");
   const [newTimeNotes, setNewTimeNotes] = useState("");
+  const [localTask, setLocalTask] = useState<Task | null>(null);
+
+  useEffect(() => {
+    if (open && task) {
+      setLocalTask(task);
+    }
+    if (!open) {
+      setLocalTask(null);
+    }
+  }, [task, open]);
+
+  const currentTask = localTask || task;
 
   const { data: subtasks = [] } = useQuery<Subtask[]>({
-    queryKey: ["subtasks", task?.id],
+    queryKey: ["subtasks", currentTask?.id],
     queryFn: async () => {
-      if (!task) return [];
-      const res = await fetch(`/api/tasks/${task.id}/subtasks`);
+      if (!currentTask) return [];
+      const res = await fetch(`/api/tasks/${currentTask.id}/subtasks`);
       const json = await res.json();
       return json.data || [];
     },
-    enabled: !!task && activeTab === "subtasks",
+    enabled: !!currentTask && activeTab === "subtasks",
   });
 
   const { data: comments = [] } = useQuery<Comment[]>({
-    queryKey: ["comments", task?.id],
+    queryKey: ["comments", currentTask?.id],
     queryFn: async () => {
-      if (!task) return [];
-      const res = await fetch(`/api/tasks/${task.id}/comments`);
+      if (!currentTask) return [];
+      const res = await fetch(`/api/tasks/${currentTask.id}/comments`);
       const json = await res.json();
       return json.data || [];
     },
-    enabled: !!task && activeTab === "comments",
+    enabled: !!currentTask && activeTab === "comments",
   });
 
   const { data: timeLogs = [] } = useQuery<TimeLog[]>({
-    queryKey: ["time-logs", task?.id],
+    queryKey: ["time-logs", currentTask?.id],
     queryFn: async () => {
-      if (!task) return [];
-      const res = await fetch(`/api/tasks/${task.id}/time-logs`);
+      if (!currentTask) return [];
+      const res = await fetch(`/api/tasks/${currentTask.id}/time-logs`);
       const json = await res.json();
       return json.data || [];
     },
-    enabled: !!task && activeTab === "time",
+    enabled: !!currentTask && activeTab === "time",
   });
 
   const createSubtaskMutation = useMutation({
     mutationFn: async (title: string) => {
-      const res = await fetch(`/api/tasks/${task!.id}/subtasks`, {
+      const res = await fetch(`/api/tasks/${currentTask!.id}/subtasks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title }),
@@ -131,7 +150,7 @@ export function TaskDetail({ task, open, onClose }: TaskDetailProps) {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["subtasks", task?.id] });
+      queryClient.invalidateQueries({ queryKey: ["subtasks", currentTask?.id] });
       setNewSubtask("");
     },
     onError: () => addNotification({ type: "error", message: "Failed to add subtask" }),
@@ -139,7 +158,7 @@ export function TaskDetail({ task, open, onClose }: TaskDetailProps) {
 
   const toggleSubtaskMutation = useMutation({
     mutationFn: async ({ id, is_completed }: { id: string; is_completed: boolean }) => {
-      const res = await fetch(`/api/tasks/${task!.id}/subtasks`, {
+      const res = await fetch(`/api/tasks/${currentTask!.id}/subtasks`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, is_completed }),
@@ -147,23 +166,23 @@ export function TaskDetail({ task, open, onClose }: TaskDetailProps) {
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["subtasks", task?.id] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["subtasks", currentTask?.id] }),
     onError: () => addNotification({ type: "error", message: "Failed to update subtask" }),
   });
 
   const deleteSubtaskMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/tasks/${task!.id}/subtasks?id=${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/tasks/${currentTask!.id}/subtasks?id=${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["subtasks", task?.id] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["subtasks", currentTask?.id] }),
     onError: () => addNotification({ type: "error", message: "Failed to delete subtask" }),
   });
 
   const createCommentMutation = useMutation({
     mutationFn: async (content: string) => {
-      const res = await fetch(`/api/tasks/${task!.id}/comments`, {
+      const res = await fetch(`/api/tasks/${currentTask!.id}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content }),
@@ -172,7 +191,7 @@ export function TaskDetail({ task, open, onClose }: TaskDetailProps) {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["comments", task?.id] });
+      queryClient.invalidateQueries({ queryKey: ["comments", currentTask?.id] });
       setNewComment("");
     },
     onError: () => addNotification({ type: "error", message: "Failed to add comment" }),
@@ -180,7 +199,7 @@ export function TaskDetail({ task, open, onClose }: TaskDetailProps) {
 
   const createTimeLogMutation = useMutation({
     mutationFn: async (data: { hours: number; notes?: string }) => {
-      const res = await fetch(`/api/tasks/${task!.id}/time-logs`, {
+      const res = await fetch(`/api/tasks/${currentTask!.id}/time-logs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -189,7 +208,7 @@ export function TaskDetail({ task, open, onClose }: TaskDetailProps) {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["time-logs", task?.id] });
+      queryClient.invalidateQueries({ queryKey: ["time-logs", currentTask?.id] });
       setNewTimeHours("");
       setNewTimeNotes("");
       addNotification({ type: "success", message: "Time logged" });
@@ -202,13 +221,14 @@ export function TaskDetail({ task, open, onClose }: TaskDetailProps) {
       const res = await fetch("/api/tasks", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: task!.id, ...data }),
+        body: JSON.stringify({ id: currentTask!.id, ...data }),
       });
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      setLocalTask(prev => prev ? { ...prev, ...variables } : null);
       addNotification({ type: "success", message: "Task updated" });
     },
     onError: () => addNotification({ type: "error", message: "Failed to update task" }),
@@ -218,13 +238,13 @@ export function TaskDetail({ task, open, onClose }: TaskDetailProps) {
   const progress = subtasks.length > 0 ? (completedSubtasks / subtasks.length) * 100 : 0;
   const totalHours = timeLogs.reduce((sum, log) => sum + log.hours, 0);
 
-  if (!task) return null;
+  if (!currentTask) return null;
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
       <SheetContent className="w-full md:w-1/2 md:max-w-[50%] bg-yellow-100 overflow-y-auto">
         <SheetHeader>
-          <SheetTitle className="text-lg font-bold">{task.title}</SheetTitle>
+          <SheetTitle className="text-lg font-bold">{currentTask.title}</SheetTitle>
         </SheetHeader>
 
         <div className="mt-4">
@@ -248,83 +268,131 @@ export function TaskDetail({ task, open, onClose }: TaskDetailProps) {
           </div>
 
           {activeTab === "overview" && (
-            <div className="space-y-4">
-              {task.description && (
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Description</label>
-                  <p className="text-sm text-gray-700 mt-1">{task.description}</p>
-                </div>
-              )}
+            <div className="space-y-3">
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Status</label>
-                  <select
-                    value={task.status}
-                    onChange={(e) => updateTaskMutation.mutate({ status: e.target.value })}
-                    className="w-full mt-1 px-3 py-2 border rounded-lg text-sm"
-                  >
-                    {statusOptions.map((opt) => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
+              {/* Status */}
+              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <Activity className="w-4 h-4 text-gray-400" />
+                  <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Status</span>
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Priority</label>
-                  <span className={`inline-block mt-1 px-2 py-1 rounded text-xs font-medium ${priorityColors[task.priority as keyof typeof priorityColors]}`}>
-                    {task.priority}
+                <select
+                  value={currentTask.status}
+                  onChange={(e) => updateTaskMutation.mutate({ status: e.target.value })}
+                  className={`w-full px-3 py-2 border-2 rounded-lg text-sm font-medium cursor-pointer focus:outline-none ${statusColors[currentTask.status as keyof typeof statusColors] || statusColors.not_started}`}
+                >
+                  {statusOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Priority + Assignee */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Flag className="w-4 h-4 text-gray-400" />
+                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Priority</span>
+                  </div>
+                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${priorityColors[currentTask.priority as keyof typeof priorityColors]}`}>
+                    {currentTask.priority.charAt(0).toUpperCase() + currentTask.priority.slice(1)}
                   </span>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Assignee</label>
-                  <p className="text-sm text-gray-700 mt-1">
-                    {task.assignee?.name || "Unassigned"}
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                  <div className="flex items-center gap-2 mb-2">
+                    <User className="w-4 h-4 text-gray-400" />
+                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Assignee</span>
+                  </div>
+                  <p className="text-sm font-medium text-gray-800">
+                    {currentTask.assignee?.name || <span className="text-gray-400 font-normal">Unassigned</span>}
                   </p>
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Created by</label>
-                  <p className="text-sm text-gray-700 mt-1">{task.creator?.name}</p>
+              </div>
+
+              {/* Created By */}
+              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <UserCheck className="w-4 h-4 text-gray-400" />
+                  <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Created By</span>
                 </div>
+                <p className="text-sm font-medium text-gray-800">{currentTask.creator?.name || "-"}</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                {task.due_date && (
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Due Date</label>
-                    <p className="text-sm text-gray-700 mt-1">
-                      {new Date(task.due_date).toLocaleDateString()}
-                    </p>
-                  </div>
-                )}
-                {task.completed_at && (
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Completed</label>
-                    <p className="text-sm text-gray-700 mt-1">
-                      {new Date(task.completed_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {subtasks.length > 0 && (
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Progress</label>
-                  <div className="mt-2">
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-green-500 h-2 rounded-full transition-all"
-                        style={{ width: `${progress}%` }}
-                      />
+              {/* Dates */}
+              {(currentTask.start_date || currentTask.due_date) && (
+                <div className="grid grid-cols-2 gap-3">
+                  {currentTask.start_date && (
+                    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Calendar className="w-4 h-4 text-gray-400" />
+                        <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Start Date</span>
+                      </div>
+                      <p className="text-sm font-medium text-gray-800">
+                        {new Date(currentTask.start_date).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}
+                      </p>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {completedSubtasks} of {subtasks.length} subtasks completed
-                    </p>
-                  </div>
+                  )}
+                  {currentTask.due_date && (
+                    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Calendar className="w-4 h-4 text-gray-400" />
+                        <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Due Date</span>
+                      </div>
+                      <p className="text-sm font-medium text-gray-800">
+                        {new Date(currentTask.due_date).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
+
+              {/* Completed */}
+              {currentTask.completed_at && (
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-green-100">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Check className="w-4 h-4 text-green-500" />
+                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Completed On</span>
+                  </div>
+                  <p className="text-sm font-medium text-green-700">
+                    {new Date(currentTask.completed_at).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}
+                  </p>
+                </div>
+              )}
+
+              {/* Progress */}
+              {subtasks.length > 0 && (
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-gray-400" />
+                      <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Progress</span>
+                    </div>
+                    <span className="text-xs font-semibold text-gray-500">{completedSubtasks}/{subtasks.length}</span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-2.5">
+                    <div
+                      className="bg-green-500 h-2.5 rounded-full transition-all duration-300"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1.5">
+                    {Math.round(progress)}% complete
+                  </p>
+                </div>
+              )}
+
+              {/* Description — always at bottom */}
+              {currentTask.description && (
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FileText className="w-4 h-4 text-gray-400" />
+                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Description</span>
+                  </div>
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{currentTask.description}</p>
+                </div>
+              )}
+
             </div>
           )}
 

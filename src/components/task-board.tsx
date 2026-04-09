@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   DndContext,
   DragOverlay,
-  closestCorners,
+  rectIntersection,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
+  useDroppable,
   DragStartEvent,
   DragEndEvent,
   DragOverEvent,
@@ -20,9 +21,9 @@ import {
 } from "@dnd-kit/sortable";
 import { TaskCard } from "./task-card";
 import { TaskDetail } from "./task-detail";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/contexts/auth-context";
+import { useMutation } from "@tanstack/react-query";
 import { useUIStore } from "@/lib/stores";
+import { supabase } from "@/lib/supabase";
 
 interface Task {
   id: string;
@@ -43,7 +44,7 @@ interface Task {
     id: string;
     name: string;
     email: string;
-  };
+  } | null;
   subtasks?: { id: string; title: string; is_completed: boolean }[];
 }
 
@@ -54,34 +55,112 @@ const COLUMNS = [
   { id: "completed", title: "Completed", color: "bg-green-50" },
 ];
 
-export function TaskBoard() {
-  const queryClient = useQueryClient();
-  const { user } = useAuth();
+const COLUMN_IDS = new Set(COLUMNS.map((c) => c.id));
+
+interface TaskBoardProps {
+  initialData?: Task[];
+  currentUserId?: string;
+  currentUserRole?: string;
+}
+
+function KanbanColumn({
+  column,
+  tasks,
+  isOver,
+  onTaskClick,
+}: {
+  column: (typeof COLUMNS)[number];
+  tasks: Task[];
+  isOver: boolean;
+  onTaskClick: (task: Task) => void;
+}) {
+  const { setNodeRef } = useDroppable({ id: column.id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`rounded-lg p-3 ${column.color} min-h-[300px] flex flex-col transition-all ${
+        isOver ? "ring-2 ring-amber-400 ring-inset brightness-95" : ""
+      }`}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-semibold text-gray-700 text-sm">{column.title}</h3>
+        <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded-full">
+          {tasks.length}
+        </span>
+      </div>
+
+      <SortableContext
+        items={tasks.map((t) => t.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        <div className="space-y-2 flex-1">
+          {tasks.map((task) => (
+            <TaskCard key={task.id} task={task} onClick={() => onTaskClick(task)} />
+          ))}
+          {tasks.length === 0 && (
+            <div className="flex items-center justify-center h-20 text-gray-400 text-sm border-2 border-dashed border-gray-200 rounded-lg">
+              Drop here
+            </div>
+          )}
+        </div>
+      </SortableContext>
+    </div>
+  );
+}
+
+export function TaskBoard({ initialData = [], currentUserId, currentUserRole }: TaskBoardProps) {
   const { addNotification } = useUIStore();
-  
+
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [overColumnId, setOverColumnId] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [localTasks, setLocalTasks] = useState<Task[]>(initialData);
+
+  useEffect(() => {
+    if (initialData.length > 0) {
+      setLocalTasks(initialData);
+    }
+  }, [initialData]);
+
+  // Real-time subscription
+  useEffect(() => {
+    const channel = supabase
+      .channel("kanban-tasks-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tasks" },
+        () => {
+          fetch("/api/tasks")
+            .then((res) => res.json())
+            .then((json) => {
+              if (json.data) setLocalTasks(json.data);
+            })
+            .catch(console.error);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const visibleTasks =
+    currentUserRole === "admin" || !currentUserId
+      ? localTasks
+      : localTasks.filter(
+          (t) => t.creator?.id === currentUserId || t.assignee?.id === currentUserId
+        );
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
+      activationConstraint: { distance: 8 },
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
-
-  const { data: tasks = [], isLoading } = useQuery<Task[]>({
-    queryKey: ["tasks"],
-    queryFn: async () => {
-      const res = await fetch("/api/tasks");
-      const json = await res.json();
-      if (json.error) throw new Error(json.error);
-      return json.data || [];
-    },
-  });
 
   const updateTaskMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
@@ -97,7 +176,6 @@ export function TaskBoard() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
       addNotification({ type: "success", message: "Task status updated" });
     },
     onError: (err: Error) => {
@@ -105,93 +183,78 @@ export function TaskBoard() {
     },
   });
 
+  const resolveColumnId = (overId: string): string | null => {
+    if (COLUMN_IDS.has(overId)) return overId;
+    const overTask = visibleTasks.find((t) => t.id === overId);
+    return overTask?.status ?? null;
+  };
+
   const handleDragStart = (event: DragStartEvent) => {
-    const task = tasks.find((t) => t.id === event.active.id);
+    const task = visibleTasks.find((t) => t.id === event.active.id);
     if (task) setActiveTask(task);
   };
 
+  const handleDragOver = (event: DragOverEvent) => {
+    const { over } = event;
+    if (!over) {
+      setOverColumnId(null);
+      return;
+    }
+    setOverColumnId(resolveColumnId(over.id as string));
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
+    const { active } = event;
     setActiveTask(null);
 
-    if (!over) return;
+    const targetColumn = overColumnId;
+    setOverColumnId(null);
+
+    if (!targetColumn) return;
 
     const taskId = active.id as string;
-    const newStatus = over.id as string;
-
-    if (COLUMNS.find((col) => col.id === newStatus)) {
-      const task = tasks.find((t) => t.id === taskId);
-      if (task && task.status !== newStatus) {
-        updateTaskMutation.mutate({ id: taskId, status: newStatus });
-      }
+    const task = visibleTasks.find((t) => t.id === taskId);
+    if (task && task.status !== targetColumn) {
+      setLocalTasks((prev) =>
+        prev.map((t) => (t.id === taskId ? { ...t, status: targetColumn } : t))
+      );
+      updateTaskMutation.mutate({ id: taskId, status: targetColumn });
     }
   };
 
-  const getTasksByStatus = (status: string) => {
-    return tasks.filter((task) => task.status === status);
+  const handleDragCancel = () => {
+    setActiveTask(null);
+    setOverColumnId(null);
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin w-8 h-8 border-2 border-t-transparent rounded-full" style={{ borderColor: "#E8C547", borderTopColor: "transparent" }}></div>
-      </div>
-    );
-  }
+  const getTasksByStatus = (status: string) =>
+    visibleTasks.filter((task) => task.status === status);
 
   return (
     <>
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={rectIntersection}
         onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
       >
         <div className="grid grid-cols-4 gap-4 h-full">
-          {COLUMNS.map((column) => {
-            const columnTasks = getTasksByStatus(column.id);
-            return (
-              <div
-                key={column.id}
-                className={`rounded-lg p-3 ${column.color} min-h-[200px]`}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold text-gray-700 text-sm">
-                    {column.title}
-                  </h3>
-                  <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded-full">
-                    {columnTasks.length}
-                  </span>
-                </div>
-                
-                <SortableContext
-                  items={columnTasks.map((t) => t.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="space-y-2">
-                    {columnTasks.map((task) => (
-                      <TaskCard
-                        key={task.id}
-                        task={task}
-                        onClick={() => setSelectedTask(task)}
-                      />
-                    ))}
-                  </div>
-                </SortableContext>
-
-                {columnTasks.length === 0 && (
-                  <div className="text-center text-gray-400 text-sm py-4">
-                    No tasks
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          {COLUMNS.map((column) => (
+            <KanbanColumn
+              key={column.id}
+              column={column}
+              tasks={getTasksByStatus(column.id)}
+              isOver={overColumnId === column.id}
+              onTaskClick={setSelectedTask}
+            />
+          ))}
         </div>
 
         <DragOverlay>
           {activeTask ? (
-            <div className="opacity-90">
+            <div className="opacity-90 rotate-1 scale-105">
               <TaskCard task={activeTask} onClick={() => {}} isDragging />
             </div>
           ) : null}

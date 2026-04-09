@@ -42,52 +42,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchEmployee = async (userId: string) => {
     console.log("[Auth] Fetching employee for userId:", userId);
     
-    const { data, error } = await supabase
-      .from("employees")
-      .select(`
-        id,
-        name,
-        email,
-        role_id,
-        is_active,
-        role:roles(name)
-      `)
-      .eq("id", userId)
-      .single();
-
-    console.log("[Auth] Employee fetch result:", { data, error });
-
-    if (error) {
-      console.error("[Auth] Error fetching employee:", error.message, "code:", (error as any).code);
+    // Use Prisma API route (single source of truth for role)
+    const response = await fetch('/api/auth/employee');
+    
+    if (!response.ok) {
+      if (response.status === 401) {
+        console.error("[Auth] Unauthorized, clearing session");
+        setEmployee(null);
+        setAuthError("Session expired or unauthorized");
+        await supabase.auth.signOut();
+        return;
+      }
+      console.error("[Auth] Error fetching employee:", response.status);
       setEmployee(null);
       setAuthError("Failed to load user profile");
       return;
     }
 
-    if (!data) {
+    const data = await response.json();
+    console.log("[Auth] Employee fetch result:", data);
+
+    // Server-side is_active validation - getCurrentUser already checks this
+    // But we verify the response is valid
+    if (!data || !data.id) {
       console.error("[Auth] No employee data found for userId:", userId);
       setEmployee(null);
       setAuthError("User profile not found");
       return;
     }
 
-    // Validate is_active before setting
-    if (!data.is_active) {
-      console.error("[Auth] Employee is inactive, clearing session");
-      setEmployee(null);
-      setAuthError("Your account has been deactivated");
-      await supabase.auth.signOut();
-      return;
-    }
-
-    const emp = {
-      ...data,
-      role: Array.isArray(data.role) ? data.role[0] : data.role,
-    } as Employee & { role: { name: string } | null };
-    console.log("[Auth] Employee loaded:", emp.role?.name);
-    employeeRef.current = emp;
-    setEmployee(emp);
-    setAuthError(null); // Clear any previous auth errors
+    console.log("[Auth] Employee loaded:", data.role?.name);
+    employeeRef.current = data;
+    setEmployee(data);
+    setAuthError(null);
   };
 
   useEffect(() => {
@@ -165,43 +152,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     console.log("[Auth] Login successful, session exists");
 
-    // Fetch employee and validate in one go
-    const { data: emp, error: empError } = await supabase
-      .from("employees")
-      .select(`
-        id,
-        name,
-        email,
-        role_id,
-        is_active,
-        role:roles(name)
-      `)
-      .eq("id", data.user.id)
-      .single();
-
-    console.log("[Auth] Employee query result:", { emp, empError });
-
-    if (empError || !emp) {
-      console.error("[Auth] Employee not found or error:", empError);
-      await supabase.auth.signOut();
-      throw new Error("Access denied. Contact admin.");
-    }
-
-    if (!emp.is_active) {
-      console.error("[Auth] Employee is inactive");
-      await supabase.auth.signOut();
-      throw new Error("Your account is deactivated.");
-    }
-
-    // Set employee state
-    const employee = {
-      ...emp,
-      role: Array.isArray(emp.role) ? emp.role[0] : emp.role,
-    } as Employee & { role: { name: string } | null };
+    // Fetch employee from Prisma API route (single source of truth for role)
+    const response = await fetch('/api/auth/employee');
     
-    console.log("[Auth] Employee set:", employee);
-    setEmployee(employee);
+    if (!response.ok) {
+      await supabase.auth.signOut();
+      if (response.status === 401) {
+        throw new Error("Access denied. Contact admin.");
+      }
+      throw new Error("Failed to load user profile");
+    }
 
+    const employee = await response.json();
+    console.log("[Auth] Employee loaded via API:", employee.role?.name);
+
+    // Set employee state - is_active validation is server-side only
+    setEmployee(employee);
     queryClient.invalidateQueries();
   };
 

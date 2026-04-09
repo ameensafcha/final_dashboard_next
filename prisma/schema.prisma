@@ -14,24 +14,26 @@ model roles {
   created_at  DateTime @default(now())
 
   employees employees[]
- 
+
   @@index([name])
   @@index([is_active])
 }
 
 model employees {
-  id             String           @id
-  name           String
-  email          String           @unique
-  is_active      Boolean          @default(true)
-  created_at     DateTime         @default(now())
-  updated_at     DateTime         @updatedAt
-  role_id        String?
-  role           roles?           @relation(fields: [role_id], references: [id])
-  comments       task_comments[]
-  time_logs      task_time_logs[]
-  assigned_tasks tasks[]          @relation("task_assignee")
-  created_tasks  tasks[]          @relation("task_creator")
+  id                     String           @id
+  name                   String
+  email                  String           @unique
+  is_active              Boolean          @default(true)
+  created_at             DateTime         @default(now())
+  updated_at             DateTime         @updatedAt
+  role_id                String?
+  role                   roles?           @relation(fields: [role_id], references: [id])
+  comments               task_comments[]
+  time_logs              task_time_logs[]
+  assigned_tasks         tasks[]          @relation("task_assignee")
+  created_tasks          tasks[]          @relation("task_creator")
+  notifications_received notifications[]  @relation("notification_recipient")
+  notifications_sent     notifications[]  @relation("notification_actor")
 
   @@index([email])
   @@index([role_id])
@@ -213,18 +215,18 @@ model raw_material_stock {
 }
 
 model product_stock {
-  variant_id   String   @id
-  quantity     Int      @default(0)
-  updated_at   DateTime @default(now())
-  variant      product_variants @relation(fields: [variant_id], references: [id], onDelete: Cascade)
+  variant_id String           @id
+  quantity   Int              @default(0)
+  updated_at DateTime         @default(now())
+  variant    product_variants @relation(fields: [variant_id], references: [id], onDelete: Cascade)
 }
 
 model powder_stock {
   id                 Int      @id @default(autoincrement())
-  received           Float    @default(0)  // From batches/finished products
-  sent               Float    @default(0)  // Sent to packing
-  total_from_batches Float    @default(0)  // Legacy field for backward compatibility
-  total_sent         Float    @default(0)  // Legacy field for backward compatibility
+  received           Float    @default(0) // From batches/finished products
+  sent               Float    @default(0) // Sent to packing
+  total_from_batches Float    @default(0) // Legacy field for backward compatibility
+  total_sent         Float    @default(0) // Legacy field for backward compatibility
   available          Float    @default(0)
   updated_at         DateTime @default(now())
 }
@@ -259,24 +261,25 @@ model variant_inventory {
 }
 
 model tasks {
-  id           String           @id @default(uuid())
-  title        String
-  description  String?
-  area         String?          // Department/Area (e.g., Production, Quality, HR, Admin)
-  assignee_id  String?
-  created_by   String
-  status       String           @default("not_started")
-  priority     String           @default("medium")
-  due_date     DateTime?
-  start_date   DateTime?
-  completed_at DateTime?
-  created_at   DateTime         @default(now())
-  updated_at   DateTime         @updatedAt
-  subtasks     subtasks[]
-  comments     task_comments[]
-  time_logs    task_time_logs[]
-  assignee     employees?       @relation("task_assignee", fields: [assignee_id], references: [id])
-  creator      employees        @relation("task_creator", fields: [created_by], references: [id])
+  id            String           @id @default(uuid())
+  title         String
+  description   String?
+  area          String? // Department/Area (e.g., Production, Quality, HR, Admin)
+  assignee_id   String?
+  created_by    String
+  status        String           @default("not_started")
+  priority      String           @default("medium")
+  due_date      DateTime?
+  start_date    DateTime?
+  completed_at  DateTime?
+  created_at    DateTime         @default(now())
+  updated_at    DateTime         @updatedAt
+  subtasks      subtasks[]
+  comments      task_comments[]
+  time_logs     task_time_logs[]
+  assignee      employees?       @relation("task_assignee", fields: [assignee_id], references: [id])
+  creator       employees        @relation("task_creator", fields: [created_by], references: [id])
+  notifications notifications[]
 
   @@index([status])
   @@index([assignee_id])
@@ -310,6 +313,23 @@ model task_comments {
   @@index([employee_id])
 }
 
+model notifications {
+  id           String    @id @default(uuid())
+  recipient_id String
+  actor_id     String
+  action_type  String
+  task_id      String
+  task_title   String
+  created_at   DateTime  @default(now())
+  read_at      DateTime?
+  recipient    employees @relation("notification_recipient", fields: [recipient_id], references: [id])
+  actor        employees @relation("notification_actor", fields: [actor_id], references: [id])
+  task         tasks     @relation(fields: [task_id], references: [id], onDelete: Cascade)
+
+  @@index([recipient_id, created_at(sort: Desc)])
+  @@index([task_id])
+}
+
 model app_settings {
   key        String   @id
   value      String
@@ -331,14 +351,14 @@ model task_time_logs {
 }
 
 model route_permissions {
-  id           String   @id @default(uuid())
-  route_path   String   // Route pattern (e.g., "/settings", "/admin/*")
+  id            String   @id @default(uuid())
+  route_path    String // Route pattern (e.g., "/settings", "/admin/*")
   required_role String // Required role to access (admin, employee, viewer)
-  is_active   Boolean  @default(true)
-  created_at  DateTime @default(now())
-  updated_at DateTime @updatedAt
+  is_active     Boolean  @default(true)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
 
+  @@unique([route_path])
   @@index([route_path])
   @@index([required_role])
-  @@unique([route_path])
 }

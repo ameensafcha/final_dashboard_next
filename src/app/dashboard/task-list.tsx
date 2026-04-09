@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle, Circle, Calendar } from "lucide-react";
+import { CheckCircle2, Circle, Calendar, ListTodo } from "lucide-react";
 
 interface Task {
   id: string;
@@ -21,18 +21,12 @@ interface TaskListProps {
   onTaskClick?: (task: Task) => void;
 }
 
-const priorityBgColors: Record<string, string> = {
-  urgent: "bg-red-50",
-  high: "bg-red-50",
-  medium: "bg-amber-50",
-  low: "bg-gray-50",
-};
-
-const priorityBorderColors: Record<string, string> = {
-  urgent: "border-l-red-500",
-  high: "border-l-red-500",
-  medium: "border-l-amber-400",
-  low: "border-l-gray-400",
+// Priority ke liye ab left indicator line use karenge, poora background nahi
+const priorityIndicatorColors: Record<string, string> = {
+  urgent: "bg-red-500",
+  high: "bg-orange-500",
+  medium: "bg-amber-400",
+  low: "bg-gray-300",
 };
 
 function formatDueDate(dateStr: string | null): string {
@@ -88,65 +82,90 @@ export function TaskList({ tasks: initialTasks, onTaskClick }: TaskListProps) {
   });
 
   return (
-    <>
-      <div className="bg-white rounded-xl border shadow-sm">
-        <div className="p-4 border-b flex items-center justify-between">
-          <h2 className="text-lg font-semibold" style={{ color: "#1A1A1A" }}>
-            My Tasks
-          </h2>
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="px-3 py-1.5 border rounded-lg text-sm"
-          >
-            <option value="today">Today</option>
-            <option value="week">This Week</option>
-            <option value="all">All Tasks</option>
-            <option value="overdue">Overdue</option>
-          </select>
-        </div>
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      {/* Header Section */}
+      <div className="p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+          <ListTodo className="w-5 h-5 text-amber-500" />
+          My Tasks
+        </h2>
         
-        <div className="divide-y">
-          {filteredTasks.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">
-              No tasks found
-            </div>
-          ) : (
-            filteredTasks.map((task) => {
-              const bgColor = priorityBgColors[task.priority] || priorityBgColors.low;
-              const borderColor = priorityBorderColors[task.priority] || priorityBorderColors.low;
-              const isCompleted = task.status === "completed";
-              
-              return (
-                <div
-                  key={task.id}
-                  onClick={() => onTaskClick?.(task)}
-                  className={`p-4 flex items-center gap-4 ${bgColor} border-l-4 ${borderColor} cursor-pointer hover:opacity-90 transition-opacity`}
-                >
-                  <div className="flex-shrink-0">
-                    {isCompleted ? (
-                      <CheckCircle className="w-5 h-5 text-green-500" />
-                    ) : (
-                      <Circle className="w-5 h-5 text-gray-300" />
-                    )}
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium ${isCompleted ? "line-through text-gray-400" : "text-gray-900"}`}>
-                      {task.title}
-                    </p>
-                  </div>
-                  
-                  <div className="flex-shrink-0 flex items-center gap-1 text-sm text-gray-500">
-                    <Calendar className="w-4 h-4" />
-                    {formatDueDate(task.due_date)}
-                  </div>
-                </div>
-              );
-            })
-          )}
+        {/* Modern Pill Filters instead of Native Select */}
+        <div className="flex gap-1 p-1 bg-gray-100/80 rounded-xl overflow-x-auto hide-scrollbar">
+          {[
+            { id: "today", label: "Today" },
+            { id: "week", label: "This Week" },
+            { id: "overdue", label: "Overdue" },
+            { id: "all", label: "All Tasks" }
+          ].map((f) => (
+            <button
+              key={f.id}
+              onClick={() => setFilter(f.id)}
+              className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${
+                filter === f.id
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-200/50"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
         </div>
       </div>
-    </>
+      
+      {/* Task List Section */}
+      <div className="divide-y divide-gray-50">
+        {filteredTasks.length === 0 ? (
+          <div className="p-12 text-center flex flex-col items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-3">
+              <CheckCircle2 className="w-6 h-6 text-gray-300" />
+            </div>
+            <p className="text-sm font-bold text-gray-900 mb-1">You're all caught up!</p>
+            <p className="text-xs text-gray-500">No tasks found for this filter.</p>
+          </div>
+        ) : (
+          filteredTasks.map((task) => {
+            const indicatorColor = priorityIndicatorColors[task.priority] || priorityIndicatorColors.low;
+            const isCompleted = task.status === "completed";
+            const isOverdue = task.due_date && new Date(task.due_date) < new Date() && !isCompleted;
+            
+            return (
+              <div
+                key={task.id}
+                onClick={() => onTaskClick?.(task)}
+                className="group relative flex items-center gap-4 p-5 bg-white hover:bg-gray-50 transition-colors cursor-pointer"
+              >
+                {/* Left Priority Indicator Line */}
+                <div className={`absolute left-0 top-0 bottom-0 w-1 ${indicatorColor}`} />
+                
+                {/* Checkbox Icon */}
+                <div className="flex-shrink-0">
+                  {isCompleted ? (
+                    <CheckCircle2 className="w-6 h-6 text-green-500" />
+                  ) : (
+                    <Circle className="w-6 h-6 text-gray-300 group-hover:text-amber-400 transition-colors" />
+                  )}
+                </div>
+                
+                {/* Task Details */}
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-bold truncate transition-colors ${isCompleted ? "line-through text-gray-400" : "text-gray-900 group-hover:text-amber-600"}`}>
+                    {task.title}
+                  </p>
+                </div>
+                
+                {/* Date Badge */}
+                <div className={`flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold ${
+                  isOverdue ? "bg-red-50 text-red-600" : "bg-gray-100 text-gray-500"
+                }`}>
+                  <Calendar className="w-3.5 h-3.5" />
+                  {formatDueDate(task.due_date)}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
   );
 }

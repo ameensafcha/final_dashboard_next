@@ -30,13 +30,13 @@ export default async function DashboardPage() {
 
   const userTasks = user.isAdmin
     ? tasks
-    : tasks.filter(t => t.created_by === user.id || t.assignee_id === user.id);
+    : tasks.filter((t) => t.created_by === user.id || t.assignee_id === user.id);
 
   const totalTasks = userTasks.length;
-  const completedTasks = userTasks.filter(t => t.status === "completed").length;
-  const pendingTasks = userTasks.filter(t => t.status !== "completed").length;
-  const overdueTasks = userTasks.filter(t => 
-    t.due_date && new Date(t.due_date) < today && t.status !== "completed"
+  const completedTasks = userTasks.filter((t) => t.status === "completed").length;
+  const pendingTasks = userTasks.filter((t) => t.status !== "completed").length;
+  const overdueTasks = userTasks.filter(
+    (t) => t.due_date && new Date(t.due_date) < today && t.status !== "completed"
   ).length;
 
   const serializedTasks = userTasks.slice(0, 10).map((task) => ({
@@ -64,5 +64,10 @@ export default async function DashboardPage() {
     overdue: overdueTasks,
   };
 
-  return <DashboardClient kpis={kpis} tasks={serializedTasks} error={error} />;
+  // Naya Crextio theme background wrapper
+  return (
+    <main className="min-h-screen bg-[#F5F4EE] w-full">
+      <DashboardClient kpis={kpis} tasks={serializedTasks} error={error} />
+    </main>
+  );
 }

@@ -316,6 +316,12 @@ model task_comments {
   @@index([employee_id])
 }
 
+model app_settings {
+  key        String   @id
+  value      String
+  updated_at DateTime @default(now()) @updatedAt
+}
+
 model task_time_logs {
   id          String    @id @default(uuid())
   task_id     String

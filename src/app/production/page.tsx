@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Edit, Trash2, Factory, Package, CheckCircle, XCircle } from "lucide-react";
+import { Plus, Edit, Trash2, Factory, Package, CheckCircle, BookOpen, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -85,6 +85,7 @@ export default function ProductionPage() {
   
   const [open, setOpen] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showSOP, setShowSOP] = useState(false);
   const [lastCreatedBatch, setLastCreatedBatch] = useState<Batch | null>(null);
   const [viewBatch, setViewBatch] = useState<Batch | null>(null);
   const [editBatch, setEditBatch] = useState<Batch | null>(null);
@@ -129,6 +130,18 @@ export default function ProductionPage() {
     queryFn: fetchFinishedProducts,
     refetchInterval: 5000,
   });
+
+  const { data: defaultRmSetting } = useQuery({
+    queryKey: ["settings", "default_raw_material_id"],
+    queryFn: async () => {
+      const res = await fetch("/api/settings?key=default_raw_material_id");
+      const json = await res.json();
+      return json.data;
+    },
+  });
+
+  const defaultRawMaterialId = defaultRmSetting?.value || "";
+  const defaultRawMaterial = rawMaterials?.find((rm: RawMaterial) => rm.id === defaultRawMaterialId);
 
   const selectedFlavor = flavors?.find((f: Flavor) => f.id === formData.flavor_id);
 
@@ -254,7 +267,7 @@ export default function ProductionPage() {
     setFormData({
       date: new Date().toISOString().split("T")[0],
       logged_by: "Jeffrey",
-      raw_material_id: "",
+      raw_material_id: defaultRawMaterialId,
       flavor_id: "",
       leaves_in: "",
       powder_out: "",
@@ -329,14 +342,24 @@ export default function ProductionPage() {
           <h1 className="text-2xl font-bold" style={{ color: "#1A1A1A" }}>Production Batches</h1>
           <p className="text-sm mt-1" style={{ color: "#C9A83A" }}>Manage production batches</p>
         </div>
-        <button 
-          onClick={() => { resetForm(); setOpen(true); }}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 hover:opacity-90 cursor-pointer"
-          style={{ backgroundColor: "#F97316", color: "white" }}
-        >
-          <Plus className="w-4 h-4" />
-          Add Batch
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowSOP(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-200 hover:bg-amber-50 cursor-pointer"
+            style={{ borderColor: "#E8C547", color: "#E8C547" }}
+          >
+            <BookOpen className="w-4 h-4" />
+            SOP
+          </button>
+          <button
+            onClick={() => { resetForm(); setOpen(true); }}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 hover:opacity-90 cursor-pointer"
+            style={{ backgroundColor: "#F97316", color: "white" }}
+          >
+            <Plus className="w-4 h-4" />
+            Add Batch
+          </button>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -537,28 +560,23 @@ export default function ProductionPage() {
               </div>
             </div>
 
-            {/* Flavor Selection */}
+            {/* Raw Material — auto from admin settings */}
               <div>
-                <label className="block text-base font-semibold mb-2" style={{ color: "#1A1A1A" }}>Raw Material *</label>
-                <select
-                  value={formData.raw_material_id}
-                  onChange={(e) => setFormData({ 
-                    ...formData, 
-                    raw_material_id: e.target.value,
-                  })}
-                  className="w-full px-4 py-3 rounded-lg border text-base"
-                  style={{ borderColor: "#E8C547", borderWidth: "2px" }}
-                  required
-                >
-                  <option value="">Select Raw Material</option>
-                  {rawMaterials?.map((rm: RawMaterial) => (
-                    <option key={rm.id} value={rm.id}>{rm.name} ({rm.quantity} {rm.unit})</option>
-                  ))}
-                </select>
-                {formData.raw_material_id && (
-                  <p className="text-xs mt-1" style={{ color: "#16A34A" }}>
-                    Available: {rawMaterials?.find((rm: RawMaterial) => rm.id === formData.raw_material_id)?.quantity || 0} kg
-                  </p>
+                <label className="block text-base font-semibold mb-2" style={{ color: "#1A1A1A" }}>Raw Material</label>
+                {defaultRawMaterial ? (
+                  <div className="flex items-center justify-between px-4 py-3 rounded-lg border" style={{ borderColor: "#E8C547", borderWidth: "2px", backgroundColor: "#F5F4EE" }}>
+                    <div>
+                      <p className="text-base font-semibold" style={{ color: "#1A1A1A" }}>{defaultRawMaterial.name}</p>
+                      <p className="text-sm mt-0.5" style={{ color: "#16A34A" }}>
+                        Available: {defaultRawMaterial.quantity.toFixed(2)} {defaultRawMaterial.unit}
+                      </p>
+                    </div>
+                    <span className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: "#E8C54720", color: "#C9A83A" }}>Auto</span>
+                  </div>
+                ) : (
+                  <div className="px-4 py-3 rounded-lg border text-sm" style={{ borderColor: "#FCA5A5", backgroundColor: "#FEF2F2", color: "#DC2626" }}>
+                    No default raw material set. Go to Admin → Settings to configure.
+                  </div>
                 )}
               </div>
 
@@ -879,6 +897,97 @@ export default function ProductionPage() {
             >
               {deleteMutation.isPending ? "Deleting..." : "Delete"}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* SOP Dialog */}
+      <Dialog open={showSOP} onOpenChange={setShowSOP}>
+        <DialogContent style={{ backgroundColor: "#FFFFFF", maxWidth: "640px", maxHeight: "90vh", overflow: "auto" }}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2" style={{ color: "#1A1A1A" }}>
+              <BookOpen className="w-5 h-5" style={{ color: "#E8C547" }} />
+              Standard Operating Procedure
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 text-sm">
+            {[
+              {
+                step: "1",
+                title: "Raw Material Receiving",
+                color: "#3B82F6",
+                bg: "#EFF6FF",
+                points: [
+                  "Supplier se raw material aata hai",
+                  "Receiving page par quantity, rate aur supplier enter karo",
+                  "System automatically raw material stock update karta hai",
+                ],
+              },
+              {
+                step: "2",
+                title: "Batch Production",
+                color: "#F97316",
+                bg: "#FFF7ED",
+                points: [
+                  "Production page par Add Batch karo",
+                  "Default raw material auto-select hota hai (Admin → Settings se set karo)",
+                  "Leaves In (raw material used) aur Powder Out enter karo",
+                  "Status Draft → Running → Complete rakhein jab tak process chal raha ho",
+                  "Jab powder factory mein bhej do toh status Sent in Factory karo",
+                ],
+              },
+              {
+                step: "3",
+                title: "Powder Stock",
+                color: "#8B5CF6",
+                bg: "#F5F3FF",
+                points: [
+                  "Batch ka status Sent in Factory hote hi powder stock automatically update hota hai",
+                  "Finished Products section mein powder ki quantity track hoti hai",
+                  "Stocks page par total available powder dekhein",
+                ],
+              },
+              {
+                step: "4",
+                title: "3rd Party Dispatch (Packing Logs)",
+                color: "#16A34A",
+                bg: "#F0FDF4",
+                points: [
+                  "Packing Logs page par jaao",
+                  "3rd party ka naam, bag size (5 ya 10 kg) aur bag count enter karo",
+                  "System available powder check karta hai — agar kum ho toh error deta hai",
+                  "Dispatch hone par powder stock automatically deduct hota hai",
+                  "Galat entry ho toh delete kar sakte ho — stock wapas restore ho jaata hai",
+                ],
+              },
+              {
+                step: "5",
+                title: "Stock Overview",
+                color: "#E8C547",
+                bg: "#FEFCE8",
+                points: [
+                  "Stocks page par raw material, powder aur product inventory dekhein",
+                  "Koi bhi quantity negative nahi hogi — system block karta hai",
+                ],
+              },
+            ].map((item) => (
+              <div key={item.step} className="rounded-xl border p-4" style={{ borderColor: item.color + "30", backgroundColor: item.bg }}>
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold text-white" style={{ backgroundColor: item.color }}>
+                    {item.step}
+                  </span>
+                  <h3 className="font-semibold" style={{ color: item.color }}>{item.title}</h3>
+                </div>
+                <ul className="space-y-1.5 pl-10">
+                  {item.points.map((point, i) => (
+                    <li key={i} className="flex items-start gap-2" style={{ color: "#374151" }}>
+                      <ArrowRight className="w-3.5 h-3.5 mt-0.5 shrink-0" style={{ color: item.color }} />
+                      {point}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
         </DialogContent>
       </Dialog>

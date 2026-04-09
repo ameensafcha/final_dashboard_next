@@ -33,7 +33,7 @@ export default async function KanbanPage() {
       : null,
     creator: task.creator
       ? { id: task.creator.id, name: task.creator.name, email: task.creator.email }
-      : null,
+      : undefined,
     subtasks: task.subtasks.map((st) => ({ id: st.id, title: st.title, is_completed: st.is_completed })),
   }));
 

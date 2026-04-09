@@ -44,7 +44,7 @@ interface Task {
     id: string;
     name: string;
     email: string;
-  } | null;
+  };
   subtasks?: { id: string; title: string; is_completed: boolean }[];
 }
 

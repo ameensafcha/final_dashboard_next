@@ -9,10 +9,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && authError) {
+    if (!isLoading && (authError || !user)) {
       router.push("/login");
     }
-  }, [isLoading, authError, router]);
+  }, [isLoading, authError, user, router]);
 
   useEffect(() => {
     if (!isLoading && user && employee && role !== "admin") {
@@ -43,15 +43,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   if (!employee) {
+    // Still loading employee data — show spinner, not error
     return (
-      <div className="flex flex-col items-center justify-center h-screen gap-4">
-        <p className="text-gray-600">Unable to load user data</p>
-        <button
-          onClick={retryAuth}
-          className="px-4 py-2 bg-yellow-500 text-black rounded-lg hover:bg-yellow-400"
-        >
-          Retry
-        </button>
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin w-8 h-8 border-2 border-t-transparent rounded-full" style={{ borderColor: "#E8C547", borderTopColor: "transparent" }}></div>
       </div>
     );
   }

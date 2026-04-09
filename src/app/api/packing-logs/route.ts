@@ -84,3 +84,33 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to create packing log" }, { status: 500 });
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return authResponse("Unauthorized");
+
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+    if (!id) return NextResponse.json({ error: "ID is required" }, { status: 400 });
+
+    const existing = await prisma.packing_logs.findUnique({ where: { id } });
+    if (!existing) return NextResponse.json({ error: "Packing log not found" }, { status: 404 });
+
+    await prisma.$transaction(async (tx) => {
+      // Restore powder stock
+      await tx.powder_stock.updateMany({
+        data: {
+          total_sent: { decrement: existing.total_kg },
+          available: { increment: existing.total_kg },
+          updated_at: new Date(),
+        },
+      });
+      await tx.packing_logs.delete({ where: { id } });
+    });
+
+    return NextResponse.json({ success: true });
+  } catch {
+    return NextResponse.json({ error: "Failed to delete packing log" }, { status: 500 });
+  }
+}

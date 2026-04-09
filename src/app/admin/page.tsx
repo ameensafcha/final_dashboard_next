@@ -47,10 +47,13 @@ export default function AdminPage() {
           <p className="text-gray-500 text-sm mt-1">Coming soon</p>
         </div>
 
-        <div className="p-6 bg-gray-50 border-2 border-gray-300 rounded-lg opacity-60">
-          <h2 className="text-lg font-semibold text-gray-800">Settings</h2>
-          <p className="text-gray-500 text-sm mt-1">Coming soon</p>
-        </div>
+        <a
+          href="/admin/settings"
+          className="p-6 bg-amber-50 border-2 border-amber-400 rounded-lg hover:bg-amber-100 transition-colors cursor-pointer"
+        >
+          <h2 className="text-lg font-semibold text-amber-800">Settings</h2>
+          <p className="text-amber-600 text-sm mt-1">Default raw material & system config</p>
+        </a>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
@@ -37,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const queryClient = useQueryClient();
+  const employeeRef = useRef<Employee | null>(null);
 
   const fetchEmployee = async (userId: string) => {
     console.log("[Auth] Fetching employee for userId:", userId);
@@ -75,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       role: Array.isArray(data.role) ? data.role[0] : data.role,
     } as Employee & { role: { name: string } | null };
     console.log("[Auth] Employee loaded:", emp.role?.name);
+    employeeRef.current = emp;
     setEmployee(emp);
   };
 
@@ -111,12 +113,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
 
-        // Only fetch employee on SIGNED_IN if initAuth hasn't already fetched it
-        if (event === "SIGNED_IN" && session?.user && !initialSessionHandled) {
+        // Fetch employee on SIGNED_IN if not already loaded (handles token refresh cycles)
+        if (event === "SIGNED_IN" && session?.user && !employeeRef.current) {
           await fetchEmployee(session.user.id);
         }
 
         if (event === "SIGNED_OUT") {
+          employeeRef.current = null;
           setEmployee(null);
           setAuthError(null);
         }

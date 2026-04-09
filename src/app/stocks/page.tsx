@@ -1,7 +1,11 @@
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth-helper";
+import { redirect } from "next/navigation";
 import { StocksTable } from "@/components/stocks-table";
 
 export default async function StocksPage() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
   // Read from ORIGINAL table for raw_materials
   const rawMaterials = await prisma.raw_materials.findMany({
     orderBy: { name: "asc" },

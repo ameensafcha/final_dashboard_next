@@ -1,9 +1,13 @@
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth-helper";
+import { redirect } from "next/navigation";
 import { RawMaterialsTable } from "@/components/raw-materials-table";
 import { AddMaterialDialog } from "@/components/add-material-dialog";
 import Link from "next/link";
 
 export default async function RawMaterialsPage() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
   const materials = await prisma.raw_materials.findMany({
     orderBy: { id: "desc" },
   });

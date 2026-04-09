@@ -15,7 +15,7 @@ interface Task {
   completed_at: string | null;
   created_at: string;
   assignee?: { id: string; name: string; email: string } | null;
-  creator?: { id: string; name: string; email: string } | null;
+  creator?: { id: string; name: string; email: string };
   subtasks?: { id: string; title: string; is_completed: boolean }[];
 }
 

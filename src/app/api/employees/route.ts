@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { cookies } from "next/headers";
+import { requireRole, authResponse } from "@/lib/auth-helper";
 
 async function getSupabaseServerClient() {
   const cookieStore = await cookies();
@@ -31,14 +32,10 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const activeOnly = searchParams.get("active") === "true";
 
-    // If active-only filter, allow any authenticated user (for team dropdown)
+    // If active-only filter, require at least viewer role
     if (activeOnly) {
-      const supabase = await getSupabaseServerClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      
-      if (authError || !user) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
+      const userOrResponse = await requireRole('viewer');
+      if (userOrResponse instanceof NextResponse) return userOrResponse;
 
       // For active-only, just return active employees (no role check needed)
       const employees = await prisma.employees.findMany({
@@ -50,26 +47,12 @@ export async function GET(request: Request) {
       return NextResponse.json({ data: employees });
     }
 
-    // Full employee list requires admin authentication
-    const supabase = await getSupabaseServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Full employee list requires admin role
+    const userOrResponse = await requireRole('admin');
+    if (userOrResponse instanceof NextResponse) return userOrResponse;
     
-    console.log("[API/employees/GET] Auth result:", { user: user?.id, authError });
+    console.log("[API/employees/GET] Auth passed for admin");
     
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Check if user is admin
-    const currentEmployee = await prisma.employees.findUnique({
-      where: { id: user.id },
-      include: { role: true },
-    });
-
-    if (!currentEmployee || currentEmployee.role?.name !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
     // Fetch employees with optional active filter
     const employees = await prisma.employees.findMany({
       where: activeOnly ? { is_active: true } : undefined,
@@ -89,8 +72,16 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const supabase = await getSupabaseServerClient();
-    
+    // Check if this is the first employee (no auth required for initial setup)
+    const employeeCount = await prisma.employees.count();
+    const isFirstEmployee = employeeCount === 0;
+
+    if (!isFirstEmployee) {
+      // Require admin role for creating new employees
+      const userOrResponse = await requireRole('admin');
+      if (userOrResponse instanceof NextResponse) return userOrResponse;
+    }
+
     const { name, email, password, role_id } = await request.json();
 
     // Validate input
@@ -108,28 +99,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check if this is the first employee
-    const employeeCount = await prisma.employees.count();
-    const isFirstEmployee = employeeCount === 0;
-
+    // First employee can be created without auth (initial setup)
+    // All subsequent employees require admin role
     if (!isFirstEmployee) {
-      // Check if current user is admin
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError || !user) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-
-      const currentEmployee = await prisma.employees.findUnique({
-        where: { id: user.id },
-        include: { role: true },
-      });
-
-      if (!currentEmployee || currentEmployee.role?.name !== "admin") {
-        return NextResponse.json(
-          { error: "Only admins can create employees" },
-          { status: 403 }
-        );
-      }
+      // Already checked admin role at the start of this function
     }
 
     // Create Supabase Auth user via admin client
@@ -194,21 +167,9 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const supabase = await getSupabaseServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Check if user is admin
-    const currentEmployee = await prisma.employees.findUnique({
-      where: { id: user.id },
-      include: { role: true },
-    });
-
-    if (!currentEmployee || currentEmployee.role?.name !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    // Require admin role for updating employees
+    const userOrResponse = await requireRole('admin');
+    if (userOrResponse instanceof NextResponse) return userOrResponse;
 
     const { id, name, role_id, is_active } = await request.json();
 
@@ -239,21 +200,9 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const supabase = await getSupabaseServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Check if user is admin
-    const currentEmployee = await prisma.employees.findUnique({
-      where: { id: user.id },
-      include: { role: true },
-    });
-
-    if (!currentEmployee || currentEmployee.role?.name !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    // Require admin role for deleting employees
+    const userOrResponse = await requireRole('admin');
+    if (userOrResponse instanceof NextResponse) return userOrResponse;
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");

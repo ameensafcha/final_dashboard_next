@@ -3,6 +3,7 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import { RolePermissions, type Permission } from "./permissions";
 
 export type AuthErrorType = "UNAUTHORIZED" | "NOT_FOUND" | "INACTIVE" | "UNKNOWN";
 
@@ -17,6 +18,11 @@ export interface AuthUser {
   role: string | null;
   isAdmin: boolean;
 }
+
+/**
+ * Role hierarchy for RBAC - lower index = less privilege
+ */
+export const ROLE_HIERARCHY = ['viewer', 'employee', 'admin'] as const;
 
 async function createSupabaseServerClient() {
   const cookieStore = await cookies();
@@ -81,6 +87,61 @@ export async function requireAdmin() {
     redirect("/dashboard");
   }
   return user;
+}
+
+/**
+ * Check if the current user has the required role or higher.
+ * Returns the user object if authorized, or a NextResponse with 401/403 if not.
+ * 
+ * @param requiredRole - The role required (viewer, employee, admin)
+ * @returns AuthUser if authorized, NextResponse with error if not
+ */
+export async function requireRole(requiredRole: string): Promise<AuthUser | NextResponse> {
+  const user = await getCurrentUser();
+  
+  if (!user) {
+    return authResponse("Unauthorized", 401);
+  }
+  
+  const userRoleIndex = ROLE_HIERARCHY.indexOf(user.role as typeof ROLE_HIERARCHY[number]);
+  const requiredRoleIndex = ROLE_HIERARCHY.indexOf(requiredRole as typeof ROLE_HIERARCHY[number]);
+  
+  if (userRoleIndex === -1 || requiredRoleIndex === -1) {
+    return authResponse(`Forbidden: ${requiredRole} role required`, 403);
+  }
+  
+  if (userRoleIndex >= requiredRoleIndex) {
+    return user;
+  }
+  
+  return authResponse(`Forbidden: ${requiredRole} role required`, 403);
+}
+
+/**
+ * Check if the current user has the required permission.
+ * Returns the user object if authorized, or a NextResponse with 401/403 if not.
+ * 
+ * @param requiredPermission - The permission string required (e.g., 'edit:admin', 'view:settings')
+ * @returns AuthUser if authorized, NextResponse with error if not
+ */
+export async function requirePermission(requiredPermission: Permission): Promise<AuthUser | NextResponse> {
+  const user = await getCurrentUser();
+  
+  if (!user) {
+    return authResponse("Unauthorized", 401);
+  }
+  
+  if (!user.role) {
+    return authResponse(`Forbidden: ${requiredPermission} permission required`, 403);
+  }
+  
+  const userPermissions = RolePermissions[user.role] ?? [];
+  
+  if (userPermissions.includes(requiredPermission)) {
+    return user;
+  }
+  
+  return authResponse(`Forbidden: ${requiredPermission} permission required`, 403);
 }
 
 export function authResponse(error: string, status: number = 401): NextResponse {

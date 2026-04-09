@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser, authResponse } from "@/lib/auth-helper";
+import { requireRole } from "@/lib/auth-helper";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
-    const user = await getCurrentUser();
-    if (!user) return authResponse("Unauthorized");
+    // Require at least viewer role to read settings
+    const userOrResponse = await requireRole('viewer');
+    if (userOrResponse instanceof NextResponse) return userOrResponse;
 
     const { searchParams } = new URL(request.url);
     const key = searchParams.get("key");
@@ -26,9 +27,9 @@ export async function GET(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const user = await getCurrentUser();
-    if (!user) return authResponse("Unauthorized");
-    if (!user.isAdmin) return NextResponse.json({ error: "Forbidden: Admin only" }, { status: 403 });
+    // Require admin role to update settings
+    const userOrResponse = await requireRole('admin');
+    if (userOrResponse instanceof NextResponse) return userOrResponse;
 
     const { key, value } = await request.json();
     if (!key) return NextResponse.json({ error: "Key is required" }, { status: 400 });

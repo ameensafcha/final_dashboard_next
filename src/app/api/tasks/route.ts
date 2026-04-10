@@ -113,40 +113,46 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
     }
 
-    const task = await prisma.tasks.create({
-      data: {
-        title,
-        description,
-        area,
-        priority: priority || "medium",
-        status: "not_started",
-        created_by: user.id,
-        assignee_id: assignee_id || null,
-        due_date: due_date ? new Date(due_date) : null,
-        start_date: start_date ? new Date(start_date) : null,
-      },
-      include: {
-        assignee: {
-          select: { id: true, name: true, email: true },
-        },
-        creator: {
-          select: { id: true, name: true, email: true },
-        },
-      },
-    });
-
-    // Create notification if assignee is set
-    if (assignee_id) {
-      await prisma.notifications.create({
+    // Use transaction to ensure atomicity: task creation and notification succeed or both fail
+    const task = await prisma.$transaction(async (tx) => {
+      // Create task first
+      const newTask = await tx.tasks.create({
         data: {
-          recipient_id: assignee_id,
-          actor_id: user.id,
-          action_type: "task_assigned",
-          task_id: task.id,
-          task_title: task.title,
+          title,
+          description,
+          area,
+          priority: priority || "medium",
+          status: "not_started",
+          created_by: user.id,
+          assignee_id: assignee_id || null,
+          due_date: due_date ? new Date(due_date) : null,
+          start_date: start_date ? new Date(start_date) : null,
+        },
+        include: {
+          assignee: {
+            select: { id: true, name: true, email: true },
+          },
+          creator: {
+            select: { id: true, name: true, email: true },
+          },
         },
       });
-    }
+
+      // Create notification if assignee is set (D-01)
+      if (assignee_id) {
+        await tx.notifications.create({
+          data: {
+            recipient_id: assignee_id,
+            actor_id: user.id,
+            action_type: "task_assigned",
+            task_id: newTask.id,
+            task_title: newTask.title,
+          },
+        });
+      }
+
+      return newTask;
+    });
 
     return NextResponse.json({ data: task }, { status: 201 });
   } catch (error) {

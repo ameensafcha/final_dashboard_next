@@ -7,10 +7,6 @@ import { useRealtimeSubscription } from '@/hooks/use-realtime-subscription';
 import { useRealtimeConnectionStatus } from '@/hooks/use-realtime-connection-status';
 import { useAuth } from '@/contexts/auth-context';
 
-// TODO: Verify Supabase Dashboard has Realtime enabled for 'notifications' table:
-// Database → Table Editor → notifications → Enable Realtime toggle
-// This is required for real-time notifications to work.
-
 export function NotificationCenter() {
   const { user } = useAuth();
   const {

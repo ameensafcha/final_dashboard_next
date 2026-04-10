@@ -42,3 +42,7 @@ CREATE POLICY "users_can_update_own_notification_read_at" ON notifications
   FOR UPDATE TO authenticated
   USING (recipient_id = auth.uid())
   WITH CHECK (recipient_id = auth.uid());
+
+-- Enable Realtime: Set REPLICA IDENTITY FULL to stream all column changes
+-- This is required for Supabase Realtime subscriptions to work
+ALTER TABLE notifications REPLICA IDENTITY FULL;

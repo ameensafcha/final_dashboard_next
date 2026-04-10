@@ -53,18 +53,32 @@ export function NotificationCenter() {
   addNotificationRef.current = addNotification;
 
   const handleNewNotification = useCallback((payload: any) => {
+    const newNotif = payload.new;
+
+    // Client-side filter: Check if this notification is for the current user
+    // Regular users get notifications where recipient_id = their ID
+    // Admins get all notifications (recipient_id can be null or any ID)
+    const isForCurrentUser =
+      newNotif.recipient_id === user?.id || // Direct recipient
+      (newNotif.recipient_id === null && employee?.role?.name === 'admin'); // Broadcast to admins
+
+    if (!isForCurrentUser) {
+      console.log('[NotificationCenter] Notification not for current user, skipping');
+      return;
+    }
+
     addNotificationRef.current({
-      id: payload.new.id,
-      recipient_id: payload.new.recipient_id,
-      actor_id: payload.new.actor_id,
-      actor_name: payload.new.actor_name || 'Unknown',
-      action_type: payload.new.action_type,
-      task_id: payload.new.task_id,
-      task_title: payload.new.task_title,
-      created_at: payload.new.created_at,
-      read_at: payload.new.read_at,
+      id: newNotif.id,
+      recipient_id: newNotif.recipient_id,
+      actor_id: newNotif.actor_id,
+      actor_name: newNotif.actor_name || 'Unknown',
+      action_type: newNotif.action_type,
+      task_id: newNotif.task_id,
+      task_title: newNotif.task_title,
+      created_at: newNotif.created_at,
+      read_at: newNotif.read_at,
     });
-  }, []);
+  }, [user?.id, employee?.role?.name]);
 
   // Debug: Log subscription status
   useEffect(() => {
@@ -72,11 +86,13 @@ export function NotificationCenter() {
   }, [user, isLoading, isConnected]);
 
   // Subscribe to new notifications via Realtime (only INSERT events)
-  // Only enable when we have a valid user ID (not just user object)
+  // Filter is removed - we handle filtering client-side to support both:
+  // - Regular users: recipient_id = their ID
+  // - Admins: all notifications (recipient_id can be null for broadcasts)
   useRealtimeSubscription({
     table: 'notifications',
     event: 'INSERT',
-    filter: user?.id ? `recipient_id=eq.${user.id}` : undefined,
+    filter: undefined, // No server-side filter - handle client-side instead
     onMessage: handleNewNotification,
     enabled: !!(user?.id) && !isLoading && isConnected,
   });

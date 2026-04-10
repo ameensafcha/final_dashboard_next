@@ -26,11 +26,43 @@ Plans:
 **Goal:** [To be planned]
 **Requirements**: TBD
 **Depends on:** Phase 1
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 - [x] 02-01-PLAN.md — Fix Edge Runtime crypto error by using Node.js runtime for middleware
 
+### Phase 3: Fix notification real-time delay
+
+**Goal:** Enable real-time notifications by enabling Supabase Realtime on the notifications table
+**Requirements**: TBD
+**Depends on:** Phase 2
+**Plans:** 1/1 plans complete
+
+Plans:
+- [x] 03-01-PLAN.md — Enable real-time notifications via REPLICA IDENTITY
+
+### Phase 4: Fix dashboard and realtime issues
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 3
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 4 to break down)
+
 ---
 
 ## Phases
+
+### Phase 5: Dashboard Rebuild with Proper Auth
+
+**Goal:** Rebuild dashboard components with correct auth checks and proper data fetching
+**Requirements**: DASH-AUTH, DASH-PROPER-FILTERING, DASH-PERFORMANCE
+**Depends on:** Phase 4
+**Plans:** 3/3 plans complete
+
+Plans:
+- [x] 05-01-PLAN.md — Database-level role-based task filtering
+- [x] 05-02-PLAN.md — Guard realtime subscriptions with auth context loading
+- [x] 05-03-PLAN.md — Comprehensive testing and verification of auth filtering

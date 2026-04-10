@@ -72,12 +72,13 @@ export function NotificationCenter() {
   }, [user, isConnected]);
 
   // Subscribe to new notifications via Realtime (only INSERT events)
+  // Only enable when we have a valid user ID (not just user object)
   useRealtimeSubscription({
     table: 'notifications',
     event: 'INSERT',
-    filter: `recipient_id=eq.${user?.id}`,
+    filter: user?.id ? `recipient_id=eq.${user.id}` : undefined,
     onMessage: handleNewNotification,
-    enabled: !!user && isConnected,
+    enabled: !!(user?.id) && isConnected,
   });
 
   // Handle click outside dropdown to close

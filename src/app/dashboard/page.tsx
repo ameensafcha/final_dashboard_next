@@ -6,6 +6,24 @@ import { OfflineBanner } from "@/components/offline-banner";
 
 export const dynamic = 'force-dynamic';
 
+// Define Task type for proper typing (instead of any[])
+// Uses Date | null from Prisma, serialized to ISO string for client
+interface Task {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  priority: string;
+  due_date: Date | null;
+  start_date: Date | null;
+  completed_at: Date | null;
+  created_at: Date;
+  created_by: string;
+  assignee_id: string | null;
+  assignee: { id: string; name: string } | null;
+  creator: { id: string; name: string } | null;
+}
+
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
@@ -13,7 +31,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const resolvedSearchParams = await searchParams;
   const authError = resolvedSearchParams.error;
 
-  let tasks: any[] = [];
+  let tasks: Task[] = [];
   let error: string | null = null;
 
   try {

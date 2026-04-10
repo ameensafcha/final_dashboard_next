@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { getCurrentUser, authResponse } from "@/lib/auth-helper";
 
 export async function GET(request: Request) {
@@ -16,51 +17,42 @@ export async function GET(request: Request) {
     const created_by = searchParams.get("created_by");
     const search = searchParams.get("search");
 
-    const where: any = {};
+    // Build query conditions dynamically with proper typing
+    const queryConditions: Prisma.tasksWhereInput[] = [];
 
-    // Role-based filtering + search
+    // Role-based filtering
     if (!user.isAdmin) {
-      const roleFilter = { OR: [{ created_by: user.id }, { assignee_id: user.id }] };
-      if (search) {
-        where.AND = [
-          roleFilter,
-          {
-            OR: [
-              { title: { contains: search, mode: "insensitive" } },
-              { description: { contains: search, mode: "insensitive" } },
-            ],
-          },
-        ];
-      } else {
-        where.OR = [roleFilter.OR[0], roleFilter.OR[1]];
-      }
-    } else if (search) {
-      where.OR = [
-        { title: { contains: search, mode: "insensitive" } },
-        { description: { contains: search, mode: "insensitive" } },
-      ];
+      const roleFilter: Prisma.tasksWhereInput = {
+        OR: [{ created_by: user.id }, { assignee_id: user.id }],
+      };
+      queryConditions.push(roleFilter);
     }
 
-    // Apply additional filters
-    const statusFilter = status ? { status } : null;
-    const priorityFilter = priority ? { priority } : null;
-    const assigneeFilter = assignee_id ? { assignee_id } : null;
-    const createdByFilter = created_by ? { created_by } : null;
+    // Search filter
+    if (search) {
+      queryConditions.push({
+        OR: [
+          { title: { contains: search, mode: "insensitive" } },
+          { description: { contains: search, mode: "insensitive" } },
+        ],
+      });
+    }
 
-    const extraFilters = [statusFilter, priorityFilter, assigneeFilter, createdByFilter].filter(Boolean);
+    // Additional filters (status, priority, etc.)
+    const filters: Prisma.tasksWhereInput[] = [];
+    if (status) filters.push({ status });
+    if (priority) filters.push({ priority });
+    if (assignee_id) filters.push({ assignee_id });
+    if (created_by) filters.push({ created_by });
 
-    if (!user.isAdmin) {
-      if (where.AND) {
-        where.AND.push(...extraFilters);
-      } else if (extraFilters.length > 0) {
-        where.AND = [...(where.OR ? [{ OR: where.OR }] : []), ...extraFilters];
-        delete where.OR;
-      }
-    } else {
-      if (status) where.status = status;
-      if (priority) where.priority = priority;
-      if (assignee_id) where.assignee_id = assignee_id;
-      if (created_by) where.created_by = created_by;
+    // Build final where clause
+    let where: Prisma.tasksWhereInput = {};
+    if (queryConditions.length > 0 && filters.length > 0) {
+      where = { AND: [...queryConditions, ...filters] };
+    } else if (queryConditions.length > 0) {
+      where = queryConditions.length === 1 ? queryConditions[0] : { AND: queryConditions };
+    } else if (filters.length > 0) {
+      where = filters.length === 1 ? filters[0] : { AND: filters };
     }
 
     const tasks = await prisma.tasks.findMany({

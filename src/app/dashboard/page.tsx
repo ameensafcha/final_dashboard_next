@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth-helper";
 import { redirect } from "next/navigation";
 import { DashboardClient } from "./dashboard-client";
+import { OfflineBanner } from "@/components/offline-banner";
 
 export const dynamic = 'force-dynamic';
 
@@ -69,8 +70,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   // Naya Crextio theme background wrapper
   return (
-    <main className="min-h-screen bg-[#F5F4EE] w-full">
-      <DashboardClient kpis={kpis} tasks={serializedTasks} error={error} authError={authError} />
-    </main>
+    <>
+      <OfflineBanner />
+      <main className="min-h-screen bg-[#F5F4EE] w-full">
+        <DashboardClient kpis={kpis} tasks={serializedTasks} error={error} authError={authError} />
+      </main>
+    </>
   );
 }

@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUIStore } from "@/lib/stores";
-import { supabase } from "@/lib/supabase";
 import { TaskForm } from "./task-form";
 import { TaskDetail } from "./task-detail";
 import { Button } from "@/components/ui/button";
@@ -12,6 +11,7 @@ import { PriorityBadge } from "@/components/ui/priority-badge";
 import { Avatar } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { Plus, Search } from "lucide-react";
+import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
 
 interface Task {
   id: string;
@@ -88,32 +88,36 @@ export function TasksTable({
     }
   }, [filterAssigneeId]);
 
-  useEffect(() => {
-    const channel = supabase
-      .channel("tasks-realtime")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "tasks",
-        },
-        () => {
-          const url = filterAssigneeId ? `/api/tasks?assignee_id=${filterAssigneeId}` : '/api/tasks';
-          fetch(url)
-            .then(res => res.json())
-            .then(json => {
-              if (json.data) setTasks(json.data);
-            })
-            .catch(console.error);
-        }
+  // Real-time subscription to tasks table for UPDATE events
+  const handleTaskUpdate = useCallback((payload: { new: Task; old: Task }) => {
+    console.log('[TasksTable] Task updated:', payload.new.id);
+    setTasks((currentTasks) =>
+      currentTasks.map((task) =>
+        task.id === payload.new.id ? { ...task, ...payload.new } : task
       )
-      .subscribe();
+    );
+  }, []);
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [filterAssigneeId]);
+  useRealtimeSubscription({
+    table: 'tasks',
+    event: 'UPDATE',
+    onMessage: handleTaskUpdate,
+    enabled: !!currentUserId,
+  });
+
+  // Real-time subscription to task_comments table for INSERT events
+  const handleCommentInsert = useCallback((payload: { new: { task_id: string } }) => {
+    console.log('[TasksTable] Comment added to task:', payload.new.task_id);
+    // When a comment is added to a task, optionally update task metadata
+    // For now, we log the event - UI may show comment count or trigger task list refresh
+  }, []);
+
+  useRealtimeSubscription({
+    table: 'task_comments',
+    event: 'INSERT',
+    onMessage: handleCommentInsert,
+    enabled: !!currentUserId,
+  });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {

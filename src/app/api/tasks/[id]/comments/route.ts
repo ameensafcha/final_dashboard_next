@@ -73,9 +73,10 @@ export async function POST(
       return NextResponse.json({ error: "Content is required" }, { status: 400 });
     }
 
-    // Verify task exists
+    // Verify task exists and get creator/assignee for notifications
     const task = await prisma.tasks.findUnique({
       where: { id: taskId },
+      include: { creator: true, assignee: true },
     });
 
     if (!task) {
@@ -92,17 +93,49 @@ export async function POST(
     }
 
     // Permission: any logged-in user can comment
-    const comment = await prisma.task_comments.create({
-      data: {
-        task_id: taskId,
-        employee_id: user.id,
-        content,
-      },
-      include: {
-        employee: {
-          select: { id: true, name: true, email: true },
+    // Use transaction to ensure atomicity: both comment creation and notification creation succeed or both fail
+    const comment = await prisma.$transaction(async (tx) => {
+      // Create comment
+      const newComment = await tx.task_comments.create({
+        data: {
+          task_id: taskId,
+          employee_id: user.id,
+          content,
         },
-      },
+        include: {
+          employee: {
+            select: { id: true, name: true, email: true },
+          },
+        },
+      });
+
+      // Determine notification recipients (task creator and assignee, excluding commenter)
+      const notificationRecipients = new Set<string>();
+
+      if (task.created_by !== user.id) {
+        notificationRecipients.add(task.created_by);
+      }
+
+      if (task.assignee_id && task.assignee_id !== user.id) {
+        notificationRecipients.add(task.assignee_id);
+      }
+
+      // Create notifications for all recipients
+      await Promise.all(
+        Array.from(notificationRecipients).map((recipientId) =>
+          tx.notifications.create({
+            data: {
+              recipient_id: recipientId,
+              actor_id: user.id,
+              action_type: "comment_posted",
+              task_id: taskId,
+              task_title: task.title,
+            },
+          })
+        )
+      );
+
+      return newComment;
     });
 
     return NextResponse.json({ data: comment }, { status: 201 });

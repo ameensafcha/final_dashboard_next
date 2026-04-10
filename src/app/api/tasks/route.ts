@@ -135,6 +135,19 @@ export async function POST(request: Request) {
       },
     });
 
+    // Create notification if assignee is set
+    if (assignee_id) {
+      await prisma.notifications.create({
+        data: {
+          recipient_id: assignee_id,
+          actor_id: user.id,
+          action_type: "task_assigned",
+          task_id: task.id,
+          task_title: task.title,
+        },
+      });
+    }
+
     return NextResponse.json({ data: task }, { status: 201 });
   } catch (error) {
     console.error("Error creating task:", error);
@@ -157,6 +170,7 @@ export async function PUT(request: Request) {
 
     const existingTask = await prisma.tasks.findUnique({
       where: { id },
+      include: { assignee: true, creator: true },
     });
 
     if (!existingTask) {
@@ -201,18 +215,47 @@ export async function PUT(request: Request) {
 
     const updateData = isAdminOrCreator ? fullUpdate : restrictedUpdate;
 
-    const task = await prisma.tasks.update({
-      where: { id },
-      data: updateData,
-      include: {
-        assignee: {
-          select: { id: true, name: true, email: true },
+    // Use transaction to ensure atomicity: both task update and notification creation succeed or both fail
+    const task = await prisma.$transaction(async (tx) => {
+      // Update task
+      const updatedTask = await tx.tasks.update({
+        where: { id },
+        data: updateData,
+        include: {
+          assignee: {
+            select: { id: true, name: true, email: true },
+          },
+          creator: {
+            select: { id: true, name: true, email: true },
+          },
+          subtasks: true,
         },
-        creator: {
-          select: { id: true, name: true, email: true },
-        },
-        subtasks: true,
-      },
+      });
+
+      // Create notification if assignee changed (and new assignee exists)
+      const newAssigneeId = assignee_id !== undefined ? assignee_id : existingTask.assignee_id;
+      const assigneeChanged = newAssigneeId !== existingTask.assignee_id;
+
+      if (assigneeChanged && newAssigneeId) {
+        // Verify new assignee exists
+        const newAssignee = await tx.employees.findUnique({
+          where: { id: newAssigneeId },
+        });
+
+        if (newAssignee) {
+          await tx.notifications.create({
+            data: {
+              recipient_id: newAssigneeId,
+              actor_id: user.id,
+              action_type: "task_assigned",
+              task_id: id,
+              task_title: updatedTask.title,
+            },
+          });
+        }
+      }
+
+      return updatedTask;
     });
 
     return NextResponse.json({ data: task });

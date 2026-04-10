@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -23,7 +23,7 @@ import { TaskCard } from "./task-card";
 import { TaskDetail } from "./task-detail";
 import { useMutation } from "@tanstack/react-query";
 import { useUIStore } from "@/lib/stores";
-import { supabase } from "@/lib/supabase";
+import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
 
 interface Task {
   id: string;
@@ -123,28 +123,66 @@ export function TaskBoard({ initialData = [], currentUserId, currentUserRole }: 
     }
   }, [initialData]);
 
-  // Real-time subscription
-  useEffect(() => {
-    const channel = supabase
-      .channel("kanban-tasks-realtime")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "tasks" },
-        () => {
-          fetch("/api/tasks")
-            .then((res) => res.json())
-            .then((json) => {
-              if (json.data) setLocalTasks(json.data);
-            })
-            .catch(console.error);
-        }
+  // Real-time subscription to tasks table for UPDATE events (when assignments change)
+  const handleTaskUpdate = useCallback((payload: { new: Task; old: Task }) => {
+    console.log('[TaskBoard] Task updated:', payload.new.id);
+    // Update local task list with the updated task
+    setLocalTasks((currentTasks) =>
+      currentTasks.map((task) =>
+        task.id === payload.new.id ? { ...task, ...payload.new } : task
       )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    );
   }, []);
+
+  useRealtimeSubscription({
+    table: 'tasks',
+    event: 'UPDATE',
+    filter: 'assignee_id=eq.' + currentUserId,
+    onMessage: handleTaskUpdate,
+    enabled: !!currentUserId,
+  });
+
+  // Real-time subscription to tasks table for INSERT events (new tasks created)
+  const handleTaskInsert = useCallback((payload: { new: Task }) => {
+    console.log('[TaskBoard] Task created:', payload.new.id);
+    setLocalTasks((currentTasks) => [payload.new, ...currentTasks]);
+  }, []);
+
+  useRealtimeSubscription({
+    table: 'tasks',
+    event: 'INSERT',
+    filter: 'assignee_id=eq.' + currentUserId,
+    onMessage: handleTaskInsert,
+    enabled: !!currentUserId,
+  });
+
+  // Real-time subscription to tasks table for DELETE events (tasks removed)
+  const handleTaskDelete = useCallback((payload: { old: Task }) => {
+    console.log('[TaskBoard] Task deleted:', payload.old.id);
+    setLocalTasks((currentTasks) => currentTasks.filter((t) => t.id !== payload.old.id));
+  }, []);
+
+  useRealtimeSubscription({
+    table: 'tasks',
+    event: 'DELETE',
+    filter: 'assignee_id=eq.' + currentUserId,
+    onMessage: handleTaskDelete,
+    enabled: !!currentUserId,
+  });
+
+  // Real-time subscription to task_comments table for INSERT events (when comments are added)
+  const handleCommentInsert = useCallback((payload: { new: { task_id: string } }) => {
+    console.log('[TaskBoard] Comment added to task:', payload.new.task_id);
+    // Optionally refresh the task, but for now just log
+    // This could trigger a UI update if task has comment_count
+  }, []);
+
+  useRealtimeSubscription({
+    table: 'task_comments',
+    event: 'INSERT',
+    onMessage: handleCommentInsert,
+    enabled: !!currentUserId,
+  });
 
   const visibleTasks =
     currentUserRole === "admin" || !currentUserId

@@ -51,8 +51,8 @@ export function useRealtimeConnectionStatus(): ConnectionStatus {
     // Check on mount
     checkConnection();
 
-    // Check every 5 seconds
-    const interval = setInterval(checkConnection, 5000);
+    // Check every 30 seconds
+    const interval = setInterval(checkConnection, 30000);
 
     return () => clearInterval(interval);
   }, []);

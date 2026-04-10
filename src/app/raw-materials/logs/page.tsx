@@ -43,19 +43,19 @@ export default function RawMaterialLogsPage() {
   const { data: materials } = useQuery({
     queryKey: ["raw-materials"],
     queryFn: fetchRawMaterials,
-    refetchInterval: 5000,
+    refetchInterval: 30000,
   });
 
   const { data: logs, isLoading } = useQuery({
     queryKey: ["raw-material-logs", selectedMaterial],
     queryFn: () => fetchRawMaterialLogs(selectedMaterial || undefined),
-    refetchInterval: 5000,
+    refetchInterval: 30000,
   });
 
   const { data: allLogs } = useQuery({
     queryKey: ["raw-material-logs-all"],
     queryFn: () => fetchRawMaterialLogs(undefined),
-    refetchInterval: 5000,
+    refetchInterval: 30000,
   });
 
   const materialMap = new Map((materials || []).map((m: RawMaterial) => [m.id, m]));

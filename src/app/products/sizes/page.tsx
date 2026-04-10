@@ -57,7 +57,7 @@ export default function SizesPage() {
   const { data: sizes, isLoading } = useQuery({
     queryKey: ["sizes"],
     queryFn: fetchSizes,
-    refetchInterval: 5000,
+    refetchInterval: 30000,
     placeholderData: (previousData) => previousData,
   });
 

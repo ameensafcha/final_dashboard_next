@@ -98,7 +98,7 @@ export default function ProductEntryPage() {
   const { data: products, isLoading } = useQuery({
     queryKey: ["products"],
     queryFn: fetchProducts,
-    refetchInterval: 5000,
+    refetchInterval: 30000,
   });
 
   const viewProduct = viewProductId ? (products?.find((p: Product) => p.id === viewProductId) ?? null) : null;

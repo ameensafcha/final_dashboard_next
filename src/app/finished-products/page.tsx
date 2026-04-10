@@ -68,13 +68,13 @@ export default function FinishedProductsPage() {
   const { data: finishedProducts, isLoading } = useQuery({
     queryKey: ["finished-products"],
     queryFn: fetchFinishedProducts,
-    refetchInterval: 5000,
+    refetchInterval: 30000,
   });
 
   const { data: powderStock } = useQuery({
     queryKey: ["powder-stock"],
     queryFn: fetchPowderStock,
-    refetchInterval: 5000,
+    refetchInterval: 30000,
   });
 
   const sendMutation = useMutation({

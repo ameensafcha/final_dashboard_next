@@ -67,14 +67,14 @@ export default function ReceivingPage() {
   const { data: receivings, isLoading, isFetching } = useQuery({
     queryKey: ["receiving"],
     queryFn: fetchReceiving,
-    refetchInterval: 5000,
+    refetchInterval: 30000,
     placeholderData: (previousData) => previousData,
   });
 
   const { data: rawMaterials, isFetching: isFetchingMaterials } = useQuery({
     queryKey: ["raw-materials"],
     queryFn: fetchRawMaterials,
-    refetchInterval: 5000,
+    refetchInterval: 30000,
     placeholderData: (previousData) => previousData,
   });
 

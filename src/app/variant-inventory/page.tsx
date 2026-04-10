@@ -27,7 +27,7 @@ export default function VariantInventoryPage() {
   const { data: inventory, isLoading } = useQuery({
     queryKey: ["variant-inventory"],
     queryFn: fetchVariantInventory,
-    refetchInterval: 5000,
+    refetchInterval: 30000,
   });
 
   const inventoryList: InventoryItem[] = inventory || [];

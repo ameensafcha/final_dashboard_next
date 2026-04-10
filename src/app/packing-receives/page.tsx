@@ -66,7 +66,7 @@ export default function PackingReceivesPage() {
   const { data: receives, isLoading } = useQuery({
     queryKey: ["packing-receives"],
     queryFn: fetchPackingReceives,
-    refetchInterval: 5000,
+    refetchInterval: 30000,
   });
 
   const receiveMutation = useMutation({

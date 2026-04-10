@@ -23,7 +23,7 @@ export default function PackingLogsPage() {
   const { data: logs, isLoading } = useQuery({
     queryKey: ["packing-logs"],
     queryFn: fetchPackingLogs,
-    refetchInterval: 5000,
+    refetchInterval: 30000,
   });
 
   const logsList: PackingLog[] = logs || [];

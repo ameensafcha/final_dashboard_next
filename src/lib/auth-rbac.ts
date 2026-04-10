@@ -11,6 +11,19 @@ import { RolePermissions, type Permission } from './permissions';
 import { prisma } from './prisma';
 
 /**
+ * Single source of truth for role definitions.
+ * All role-related constants should be imported from this file.
+ */
+export const ROLES = ['viewer', 'employee', 'admin'] as const;
+export type Role = typeof ROLES[number];
+
+/**
+ * Role hierarchy for RBAC - lower index = less privilege
+ * Used throughout the codebase for role comparisons.
+ */
+export const ROLE_HIERARCHY = ROLES;
+
+/**
  * Default route-to-role mappings (code-based defaults).
  * These can be overridden by entries in the route_permissions table.
  */

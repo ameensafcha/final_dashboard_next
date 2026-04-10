@@ -48,8 +48,12 @@ export function NotificationCenter() {
   }, [user, setNotifications]);
 
   // Memoize onMessage callback to prevent subscription re-runs
+  // Use a ref to always have the latest addNotification without causing re-renders
+  const addNotificationRef = useRef(addNotification);
+  addNotificationRef.current = addNotification;
+
   const handleNewNotification = useCallback((payload: any) => {
-    addNotification({
+    addNotificationRef.current({
       id: payload.new.id,
       recipient_id: payload.new.recipient_id,
       actor_id: payload.new.actor_id,
@@ -60,7 +64,7 @@ export function NotificationCenter() {
       created_at: payload.new.created_at,
       read_at: payload.new.read_at,
     });
-  }, [addNotification]);
+  }, []);
 
   // Debug: Log subscription status
   useEffect(() => {

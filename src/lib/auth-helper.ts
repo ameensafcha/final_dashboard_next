@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { RolePermissions, type Permission } from "./permissions";
+import { ROLES } from "./auth-rbac";
 
 export type AuthErrorType = "UNAUTHORIZED" | "NOT_FOUND" | "INACTIVE" | "UNKNOWN";
 
@@ -21,8 +22,9 @@ export interface AuthUser {
 
 /**
  * Role hierarchy for RBAC - lower index = less privilege
+ * Delegates to ROLES from auth-rbac.ts for single source of truth
  */
-export const ROLE_HIERARCHY = ['viewer', 'employee', 'admin'] as const;
+export const ROLE_HIERARCHY = ROLES;
 
 async function createSupabaseServerClient() {
   const cookieStore = await cookies();
@@ -69,6 +71,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
       isAdmin: employee.role?.name === "admin",
     };
   } catch (error) {
+    console.error("getCurrentUser: Failed to fetch current user:", error);
     return null;
   }
 }

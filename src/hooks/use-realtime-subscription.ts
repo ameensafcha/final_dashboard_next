@@ -23,7 +23,12 @@ export function useRealtimeSubscription({
 }: UseRealtimeSubscriptionOptions) {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const onMessageRef = useRef(onMessage);
-  
+
+  // Create unique instance ID to prevent channel name collisions
+  // When NotificationCenter renders in multiple places or in React Strict Mode,
+  // each instance needs its own channel to avoid one cleanup destroying another's channel
+  const instanceId = useRef(Math.random().toString(36).substring(2, 9)).current;
+
   // Keep onMessage ref updated without causing re-renders
   onMessageRef.current = onMessage;
 
@@ -39,8 +44,10 @@ export function useRealtimeSubscription({
       return;
     }
 
-    // Generate deterministic channel name
-    const channelName = `${schema}:${table}:${event}${filter ? ':' + filter : ''}`;
+    // Generate unique channel name with instance ID to prevent collisions
+    // When multiple components subscribe to same table, each needs its own channel
+    // to prevent one cleanup destroying another's subscription
+    const channelName = `${schema}:${table}:${event}${filter ? ':' + filter : ''}-${instanceId}`;
 
     console.log(`[Realtime] Subscribing to ${channelName}`);
 
@@ -83,5 +90,5 @@ export function useRealtimeSubscription({
         channelRef.current = null;
       }
     };
-  }, [enabled, table, event, filter, schema]); // Removed onMessage from deps
+  }, [enabled, table, event, filter, schema, instanceId]); // Removed onMessage from deps
 }

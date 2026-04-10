@@ -17,6 +17,21 @@ export async function GET(request: Request) {
     const created_by = searchParams.get("created_by");
     const search = searchParams.get("search");
 
+    // Validate status enum
+    const validStatuses = ["not_started", "in_progress", "review", "completed"];
+    if (status && !validStatuses.includes(status)) {
+      return NextResponse.json({ error: "Invalid status value" }, { status: 400 });
+    }
+
+    // Validate priority enum
+    const validPriorities = ["low", "medium", "high", "urgent"];
+    if (priority && !validPriorities.includes(priority)) {
+      return NextResponse.json({ error: "Invalid priority value" }, { status: 400 });
+    }
+
+    // Sanitize search string - only allow alphanumeric, spaces, hyphens
+    const sanitizedSearch = search ? search.replace(/[^\w\s-]/g, "") : "";
+
     // Build query conditions dynamically with proper typing
     const queryConditions: Prisma.tasksWhereInput[] = [];
 
@@ -28,12 +43,12 @@ export async function GET(request: Request) {
       queryConditions.push(roleFilter);
     }
 
-    // Search filter
-    if (search) {
+    // Search filter (using sanitized input)
+    if (sanitizedSearch) {
       queryConditions.push({
         OR: [
-          { title: { contains: search, mode: "insensitive" } },
-          { description: { contains: search, mode: "insensitive" } },
+          { title: { contains: sanitizedSearch, mode: "insensitive" } },
+          { description: { contains: sanitizedSearch, mode: "insensitive" } },
         ],
       });
     }

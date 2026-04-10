@@ -8,7 +8,7 @@ import { useRealtimeConnectionStatus } from '@/hooks/use-realtime-connection-sta
 import { useAuth } from '@/contexts/auth-context';
 
 export function NotificationCenter() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const {
     notifications,
     unreadCount,
@@ -30,7 +30,7 @@ export function NotificationCenter() {
 
   // Load initial notifications on mount
   useEffect(() => {
-    if (!user) return;
+    if (!user || isLoading) return;  // Wait for auth to fully load
 
     const loadNotifications = async () => {
       try {
@@ -45,7 +45,7 @@ export function NotificationCenter() {
     };
 
     loadNotifications();
-  }, [user, setNotifications]);
+  }, [user, isLoading, setNotifications]);
 
   // Memoize onMessage callback to prevent subscription re-runs
   // Use a ref to always have the latest addNotification without causing re-renders
@@ -68,8 +68,8 @@ export function NotificationCenter() {
 
   // Debug: Log subscription status
   useEffect(() => {
-    console.log('[NotificationCenter] Subscription enabled:', !!user && isConnected);
-  }, [user, isConnected]);
+    console.log('[NotificationCenter] Subscription enabled:', !!(user?.id) && !isLoading && isConnected);
+  }, [user, isLoading, isConnected]);
 
   // Subscribe to new notifications via Realtime (only INSERT events)
   // Only enable when we have a valid user ID (not just user object)
@@ -78,7 +78,7 @@ export function NotificationCenter() {
     event: 'INSERT',
     filter: user?.id ? `recipient_id=eq.${user.id}` : undefined,
     onMessage: handleNewNotification,
-    enabled: !!(user?.id) && isConnected,
+    enabled: !!(user?.id) && !isLoading && isConnected,
   });
 
   // Handle click outside dropdown to close

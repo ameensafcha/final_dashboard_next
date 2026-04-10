@@ -10,7 +10,7 @@ interface UseRealtimeSubscriptionOptions {
   event?: '*' | 'INSERT' | 'UPDATE' | 'DELETE';
   filter?: string; // e.g., "recipient_id=eq.uuid-123"
   onMessage: (payload: any) => void;
-  enabled?: boolean;
+  enabled?: boolean; // When false, subscription is cleaned up. Guard with auth loading state: enabled={!!(user?.id) && !isLoading && isConnected}
 }
 
 export function useRealtimeSubscription({
@@ -28,6 +28,7 @@ export function useRealtimeSubscription({
   onMessageRef.current = onMessage;
 
   useEffect(() => {
+    // Guard: if disabled (e.g., auth still loading), clean up any existing subscription
     if (!enabled) {
       // Cleanup when disabled
       if (channelRef.current) {

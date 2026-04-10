@@ -29,7 +29,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 02-01-PLAN.md — Fix Edge Runtime crypto error by using Node.js runtime for middleware
+- [x] 02-01-PLAN.md — Fix Edge Runtime crypto error by using Node.js runtime for middleware
 
 ---
 

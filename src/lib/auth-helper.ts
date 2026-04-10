@@ -71,7 +71,11 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
       isAdmin: employee.role?.name === "admin",
     };
   } catch (error) {
-    console.error("getCurrentUser: Failed to fetch current user:", error);
+    const err = error as Error & { digest?: string };
+    const isExpectedSSGError = err.digest?.includes("DYNAMIC_SERVER_USAGE");
+    if (!isExpectedSSGError) {
+      console.error("[getCurrentUser] Failed to fetch current user:", error);
+    }
     return null;
   }
 }

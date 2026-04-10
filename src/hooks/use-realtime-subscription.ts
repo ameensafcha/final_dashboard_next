@@ -90,5 +90,5 @@ export function useRealtimeSubscription({
         channelRef.current = null;
       }
     };
-  }, [enabled, table, event, filter, schema, instanceId]); // Removed onMessage from deps
+  }, [enabled, table, event, filter, schema]); // instanceId is a constant ref and shouldn't trigger re-subscriptions
 }

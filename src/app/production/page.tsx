@@ -103,7 +103,7 @@ export default function ProductionPage() {
   
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split("T")[0],
-    logged_by: "Jeffrey",
+    logged_by: "",
     raw_material_id: "",
     flavor_id: "",
     leaves_in: "",
@@ -145,7 +145,7 @@ export default function ProductionPage() {
 
   const teamOptions = employees.length > 0 
     ? employees.map((emp: any) => emp.name) 
-    : ["Jeffrey", "Team Member 1", "Team Member 2"];
+    : [];
 
   const { data: defaultRmSetting } = useQuery({
     queryKey: ["settings", "default_raw_material_id"],
@@ -163,8 +163,12 @@ export default function ProductionPage() {
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
+      // Validate numeric values
       const leavesIn = parseFloat(data.leaves_in);
       const powderOut = parseFloat(data.powder_out);
+      if (isNaN(leavesIn) || isNaN(powderOut) || leavesIn <= 0 || powderOut < 0) {
+        throw new Error("Invalid numeric values: leaves and powder must be positive numbers");
+      }
       
       const res = await fetch("/api/batches", {
         method: "POST",
@@ -241,8 +245,12 @@ export default function ProductionPage() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
+      // Validate numeric values
       const leavesIn = parseFloat(data.leaves_in);
       const powderOut = parseFloat(data.powder_out);
+      if (isNaN(leavesIn) || isNaN(powderOut) || leavesIn <= 0 || powderOut < 0) {
+        throw new Error("Invalid numeric values: leaves and powder must be positive numbers");
+      }
       
       const res = await fetch(`/api/batches?id=${id}`, {
         method: "PUT",
@@ -282,7 +290,7 @@ export default function ProductionPage() {
   const resetForm = () => {
     setFormData({
       date: new Date().toISOString().split("T")[0],
-      logged_by: "Jeffrey",
+      logged_by: "",
       raw_material_id: defaultRawMaterialId,
       flavor_id: "",
       leaves_in: "",
@@ -296,8 +304,17 @@ export default function ProductionPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validate required fields
     if (!formData.logged_by || !formData.raw_material_id || !formData.flavor_id || !formData.leaves_in || !formData.powder_out) {
       addNotification({ type: "error", message: "Please fill required fields" });
+      return;
+    }
+    
+    // Validate numeric values
+    const leavesIn = parseFloat(formData.leaves_in);
+    const powderOut = parseFloat(formData.powder_out);
+    if (isNaN(leavesIn) || isNaN(powderOut) || leavesIn <= 0 || powderOut < 0) {
+      addNotification({ type: "error", message: "Invalid numeric values: leaves and powder must be positive numbers" });
       return;
     }
 
@@ -331,9 +348,9 @@ export default function ProductionPage() {
   };
 
   const calculateYield = () => {
-    const leaves = parseFloat(formData.leaves_in) || 0;
-    const powder = parseFloat(formData.powder_out) || 0;
-    if (leaves > 0) {
+    const leaves = parseFloat(formData.leaves_in);
+    const powder = parseFloat(formData.powder_out);
+    if (!isNaN(leaves) && !isNaN(powder) && leaves > 0) {
       return ((powder / leaves) * 100).toFixed(2);
     }
     return "0.00";

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUIStore } from "@/lib/stores";
 import { TaskForm } from "./task-form";
@@ -70,10 +70,34 @@ export function TasksTable({
     !!(filterAssigneeId && initialData.length === 0)
   );
 
-  useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 60000);
-    return () => clearInterval(interval);
-  }, []);
+// Memoized time left display component - only updates when task.due_date or now changes
+const TimeLeftDisplay = React.memo(function TimeLeftDisplay({ 
+  dueDate, 
+  now 
+}: { 
+  dueDate: string | null; 
+  now: number 
+}) {
+  const daysLeft = useMemo(() => {
+    if (!dueDate) return null;
+    return Math.ceil((new Date(dueDate).getTime() - now) / (1000 * 60 * 60 * 24));
+  }, [dueDate, now]);
+
+  if (daysLeft === null) {
+    return <span className="text-sm text-gray-400">-</span>;
+  }
+
+  return (
+    <span className={`text-xs font-bold px-3 py-1 rounded-full ${
+      daysLeft < 0 ? "bg-red-50 text-red-700 border border-red-100" :
+      daysLeft <= 2 ? "bg-orange-50 text-orange-700" :
+      daysLeft <= 7 ? "bg-amber-50 text-amber-700" :
+      "bg-green-50 text-green-700"
+    }`}>
+      {daysLeft < 0 ? `${Math.abs(daysLeft)}d overdue` : `${daysLeft}d`}
+    </span>
+  );
+});
 
   useEffect(() => {
     if (filterAssigneeId && initialData.length === 0) {
@@ -276,105 +300,88 @@ export function TasksTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {filteredTasks.map((task) => {
-              const daysLeft = task.due_date 
-                ? Math.ceil((new Date(task.due_date).getTime() - now) / (1000 * 60 * 60 * 24))
-                : null;
-              
-              return (
-                <tr key={task.id} className="hover:bg-gray-50/80 transition-colors group">
-                  <td className="py-4 px-6">
-                    <div>
-                      <p className="font-bold text-sm text-gray-900 group-hover:text-[#E8C547] transition-colors">{task.title}</p>
-                      {task.description && (
-                        <p className="text-xs text-gray-500 mt-1 line-clamp-1 max-w-[200px]">{task.description}</p>
-                      )}
-                    </div>
-                  </td>
-                  <td className="py-4 px-6">
-                    {task.area ? (
-                      <span className="text-xs font-bold px-3 py-1 bg-gray-100 text-gray-600 rounded-full">{task.area}</span>
-                    ) : (
-                      <span className="text-sm text-gray-400">-</span>
+            {filteredTasks.map((task) => (
+              <tr key={task.id} className="hover:bg-gray-50/80 transition-colors group">
+                <td className="py-4 px-6">
+                  <div>
+                    <p className="font-bold text-sm text-gray-900 group-hover:text-[#E8C547] transition-colors">{task.title}</p>
+                    {task.description && (
+                      <p className="text-xs text-gray-500 mt-1 line-clamp-1 max-w-[200px]">{task.description}</p>
                     )}
-                  </td>
-                  <td className="py-4 px-6">
-                    <StatusBadge status={task.status} />
-                  </td>
-                  <td className="py-4 px-6">
-                    <PriorityBadge priority={task.priority} />
-                  </td>
-                  {!filterAssigneeId && (
-                    <td className="py-4 px-6">
-                      {task.assignee ? (
-                        <div className="flex items-center gap-2.5">
-                          <Avatar name={task.assignee.name} size="sm" />
-                          <span className="text-sm font-semibold text-gray-700">{task.assignee.name}</span>
-                        </div>
-                      ) : (
-                        <span className="text-sm font-medium italic text-gray-400">Unassigned</span>
-                      )}
-                    </td>
+                  </div>
+                </td>
+                <td className="py-4 px-6">
+                  {task.area ? (
+                    <span className="text-xs font-bold px-3 py-1 bg-gray-100 text-gray-600 rounded-full">{task.area}</span>
+                  ) : (
+                    <span className="text-sm text-gray-400">-</span>
                   )}
-                  <td className="py-4 px-6 text-sm font-semibold text-gray-600">
-                    {task.due_date ? new Date(task.due_date).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "-"}
-                  </td>
+                </td>
+                <td className="py-4 px-6">
+                  <StatusBadge status={task.status} />
+                </td>
+                <td className="py-4 px-6">
+                  <PriorityBadge priority={task.priority} />
+                </td>
+                {!filterAssigneeId && (
                   <td className="py-4 px-6">
-                    {daysLeft !== null ? (
-                      <span className={`text-xs font-bold px-3 py-1 rounded-full ${
-                        daysLeft < 0 ? "bg-red-50 text-red-700 border border-red-100" :
-                        daysLeft <= 2 ? "bg-orange-50 text-orange-700" :
-                        daysLeft <= 7 ? "bg-amber-50 text-amber-700" :
-                        "bg-green-50 text-green-700"
-                      }`}>
-                        {daysLeft < 0 ? `${Math.abs(daysLeft)}d overdue` : `${daysLeft}d`}
-                      </span>
+                    {task.assignee ? (
+                      <div className="flex items-center gap-2.5">
+                        <Avatar name={task.assignee.name} size="sm" />
+                        <span className="text-sm font-semibold text-gray-700">{task.assignee.name}</span>
+                      </div>
                     ) : (
-                      <span className="text-sm text-gray-400">-</span>
+                      <span className="text-sm font-medium italic text-gray-400">Unassigned</span>
                     )}
                   </td>
-                  
-                  {/* --- ACTIONS COLUMN (SOFT TINTED BUTTONS) --- */}
-                  <td className="py-4 px-6">
-                    <div className="flex items-center justify-end gap-2">
-                      
-                      {/* View Button - Soft Blue */}
+                )}
+                <td className="py-4 px-6 text-sm font-semibold text-gray-600">
+                  {task.due_date ? new Date(task.due_date).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "-"}
+                </td>
+                <td className="py-4 px-6">
+                  <TimeLeftDisplay dueDate={task.due_date} now={now} />
+                </td>
+                
+                {/* --- ACTIONS COLUMN (SOFT TINTED BUTTONS) --- */}
+                <td className="py-4 px-6">
+                  <div className="flex items-center justify-end gap-2">
+                    
+                    {/* View Button - Soft Blue */}
+                    <button
+                      onClick={() => setSelectedTask(task)}
+                      className="px-4 py-2 text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg cursor-pointer transition-colors"
+                    >
+                      View
+                    </button>
+
+                    {/* Edit Button - Soft Amber */}
+                    {(currentUserRole === "admin" || task.creator?.id === currentUserId) && (
                       <button
-                        onClick={() => setSelectedTask(task)}
-                        className="px-4 py-2 text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg cursor-pointer transition-colors"
+                        onClick={() => { setEditingTask(task); setShowForm(true); }}
+                        className="px-4 py-2 text-xs font-bold bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-lg cursor-pointer transition-colors"
                       >
-                        View
+                        Edit
                       </button>
+                    )}
 
-                      {/* Edit Button - Soft Amber */}
-                      {(currentUserRole === "admin" || task.creator?.id === currentUserId) && (
-                        <button
-                          onClick={() => { setEditingTask(task); setShowForm(true); }}
-                          className="px-4 py-2 text-xs font-bold bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-lg cursor-pointer transition-colors"
-                        >
-                          Edit
-                        </button>
-                      )}
+                    {/* Delete Button - Soft Red */}
+                    {(currentUserRole === "admin" || task.creator?.id === currentUserId) && (
+                      <button
+                        onClick={() => {
+                          if (confirm("Delete this task?")) {
+                            deleteMutation.mutate(task.id);
+                          }
+                        }}
+                        className="px-4 py-2 text-xs font-bold bg-red-50 text-red-600 hover:bg-red-100 rounded-lg cursor-pointer transition-colors"
+                      >
+                        Delete
+                      </button>
+                    )}
 
-                      {/* Delete Button - Soft Red */}
-                      {(currentUserRole === "admin" || task.creator?.id === currentUserId) && (
-                        <button
-                          onClick={() => {
-                            if (confirm("Delete this task?")) {
-                              deleteMutation.mutate(task.id);
-                            }
-                          }}
-                          className="px-4 py-2 text-xs font-bold bg-red-50 text-red-600 hover:bg-red-100 rounded-lg cursor-pointer transition-colors"
-                        >
-                          Delete
-                        </button>
-                      )}
-
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
+                  </div>
+                </td>
+              </tr>
+            ))}
             {filteredTasks.length === 0 && (
               <tr>
                 <td colSpan={8} className="py-12 text-center text-gray-500">

@@ -115,6 +115,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await fetchEmployee(session.user.id);
         }
 
+        // Sync auth state with database on token refresh (handles role changes)
+        if ((event === "TOKEN_REFRESHED" || event === "USER_UPDATED") && session?.user) {
+          await fetchEmployee(session.user.id);
+        }
+
         if (event === "SIGNED_OUT") {
           employeeRef.current = null;
           setEmployee(null);

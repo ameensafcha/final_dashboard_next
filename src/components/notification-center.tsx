@@ -8,7 +8,7 @@ import { useRealtimeConnectionStatus } from '@/hooks/use-realtime-connection-sta
 import { useAuth } from '@/contexts/auth-context';
 
 export function NotificationCenter() {
-  const { user, isLoading } = useAuth();
+  const { user, employee, isLoading } = useAuth();
   const {
     notifications,
     unreadCount,
@@ -30,7 +30,7 @@ export function NotificationCenter() {
 
   // Load initial notifications on mount
   useEffect(() => {
-    if (!user || isLoading) return;  // Wait for auth to fully load
+    if (!user || !employee || isLoading) return;  // Wait for auth and employee data to fully load
 
     const loadNotifications = async () => {
       try {
@@ -45,7 +45,7 @@ export function NotificationCenter() {
     };
 
     loadNotifications();
-  }, [user, isLoading, setNotifications]);
+  }, [user, employee, isLoading, setNotifications]);
 
   // Memoize onMessage callback to prevent subscription re-runs
   // Use a ref to always have the latest addNotification without causing re-renders

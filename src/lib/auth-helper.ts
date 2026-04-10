@@ -79,6 +79,25 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   }
 }
 
+/**
+ * Build Prisma where clause for tasks based on user role.
+ * Per D-02: Admins see all tasks, non-admins see only assigned tasks.
+ *
+ * @param user - Current authenticated user
+ * @returns Prisma where clause object (empty = no filter for admin, or filter for non-admin)
+ */
+export function getTaskFilterByRole(user: AuthUser): any {
+  // Admin sees all tasks - return empty where clause (no filter)
+  if (user.isAdmin) {
+    return {};
+  }
+
+  // Non-admin sees only tasks assigned to them (per D-02)
+  return {
+    assignee_id: user.id,
+  };
+}
+
 export async function requireAuth() {
   const user = await getCurrentUser();
   if (!user) {

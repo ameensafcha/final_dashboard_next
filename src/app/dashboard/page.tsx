@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth-helper";
+import { getCurrentUser, getTaskFilterByRole } from "@/lib/auth-helper";
 import { redirect } from "next/navigation";
 import { DashboardClient } from "./dashboard-client";
 import { OfflineBanner } from "@/components/offline-banner";
@@ -35,7 +35,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   let error: string | null = null;
 
   try {
+    const taskFilter = getTaskFilterByRole(user);
     tasks = await prisma.tasks.findMany({
+      where: taskFilter,
       include: {
         assignee: true,
         creator: true,
@@ -50,18 +52,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const userTasks = user.isAdmin
-    ? tasks
-    : tasks.filter((t) => t.created_by === user.id || t.assignee_id === user.id);
-
-  const totalTasks = userTasks.length;
-  const completedTasks = userTasks.filter((t) => t.status === "completed").length;
-  const pendingTasks = userTasks.filter((t) => t.status !== "completed").length;
-  const overdueTasks = userTasks.filter(
+  const totalTasks = tasks.length;
+  const completedTasks = tasks.filter((t) => t.status === "completed").length;
+  const pendingTasks = tasks.filter((t) => t.status !== "completed").length;
+  const overdueTasks = tasks.filter(
     (t) => t.due_date && new Date(t.due_date) < today && t.status !== "completed"
   ).length;
 
-  const serializedTasks = userTasks.slice(0, 10).map((task) => ({
+  const serializedTasks = tasks.slice(0, 10).map((task) => ({
     id: task.id,
     title: task.title,
     description: task.description,

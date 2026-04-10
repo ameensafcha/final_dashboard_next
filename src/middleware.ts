@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { getUserRoleFromRequest, DEFAULT_ROUTE_PERMISSIONS } from "@/lib/auth-rbac";
 
 const PROTECTED_ROUTES = ['/settings', '/admin', '/employees'];
 
@@ -79,16 +80,26 @@ export async function middleware(request: NextRequest) {
   }
 
   // Role-based route protection for authenticated users
-  // Note: Full role checking requires server components - this is basic route blocking
-  // The actual role verification happens in API routes and server components
   if (user && !isApiRoute) {
-    const isProtectedRoute = PROTECTED_ROUTES.some(
+    const isProtectedPath = PROTECTED_ROUTES.some(
       (route) => pathname.startsWith(route) || pathname === route
     );
 
-    // For protected routes, we need to check role - but Prisma doesn't work in edge
-    // Let server components handle the actual role check - this is just basic auth
-    // Allow through for now, server-side will enforce role
+    if (isProtectedPath) {
+      // Get user's role from the request
+      const userRole = await getUserRoleFromRequest(request);
+      const requiredRole = DEFAULT_ROUTE_PERMISSIONS[pathname] || 'admin';
+      
+      // Check role hierarchy
+      const roleHierarchy = ['viewer', 'employee', 'admin'];
+      const userRoleIndex = roleHierarchy.indexOf(userRole || 'viewer');
+      const requiredRoleIndex = roleHierarchy.indexOf(requiredRole);
+      
+      if (userRoleIndex < requiredRoleIndex) {
+        // Insufficient permissions - redirect to dashboard
+        return NextResponse.redirect(new URL('/dashboard?error=insufficient_role', request.url));
+      }
+    }
   }
 
   return response;

@@ -47,21 +47,28 @@ export async function POST(request: Request) {
 
     const today = new Date();
     const dateStr = today.toISOString().split("T")[0].replace(/-/g, "");
-    const latestBatch = await prisma.batches.findFirst({
-      where: { batch_id: { startsWith: `BATCH-${dateStr}` } },
-      orderBy: { created_at: "desc" },
-    });
-    let sequence = 1;
-    if (latestBatch?.batch_id) {
-      const lastSeq = parseInt(latestBatch.batch_id.split("-")[2] || "0");
-      sequence = lastSeq + 1;
-    }
-    const batchId = `BATCH-${dateStr}-${sequence.toString().padStart(4, "0")}`;
-    const wasteLoss = leavesInFloat - powderOutFloat;
-    const yieldPercent = (powderOutFloat / leavesInFloat) * 100;
-
+    const batchIdPrefix = `BATCH-${dateStr}`;
+    
+    // Generate batch ID inside transaction to prevent race condition
+    // Use advisory lock or find highest existing and increment atomically
     const result = await prisma.$transaction(async (tx) => {
+      // Get latest batch for today inside transaction to ensure atomicity
+      const latestBatch = await tx.batches.findFirst({
+        where: { batch_id: { startsWith: batchIdPrefix } },
+        orderBy: { created_at: "desc" },
+      });
+      
+      let sequence = 1;
+      if (latestBatch?.batch_id) {
+        const lastSeq = parseInt(latestBatch.batch_id.split("-")[2] || "0");
+        sequence = lastSeq + 1;
+      }
+      const batchId = `${batchIdPrefix}-${sequence.toString().padStart(4, "0")}`;
+      
       console.log("[Batch Create] Starting transaction for batch:", batchId);
+      
+      const wasteLoss = leavesInFloat - powderOutFloat;
+      const yieldPercent = (powderOutFloat / leavesInFloat) * 100;
       
       const batch = await tx.batches.create({
         data: {

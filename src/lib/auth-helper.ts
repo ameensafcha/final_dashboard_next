@@ -4,14 +4,14 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { RolePermissions, type Permission } from "./permissions";
-import { ROLES } from "./auth-rbac";
+
+/**
+ * Role hierarchy for RBAC - lower index = less privilege
+ * Mirrors ROLES from auth-rbac.ts to avoid circular dependency
+ */
+const ROLE_HIERARCHY = ['viewer', 'employee', 'admin'] as const;
 
 export type AuthErrorType = "UNAUTHORIZED" | "NOT_FOUND" | "INACTIVE" | "UNKNOWN";
-
-export interface AuthError {
-  type: AuthErrorType;
-  message: string;
-}
 
 export interface AuthUser {
   id: string;
@@ -20,11 +20,10 @@ export interface AuthUser {
   isAdmin: boolean;
 }
 
-/**
- * Role hierarchy for RBAC - lower index = less privilege
- * Delegates to ROLES from auth-rbac.ts for single source of truth
- */
-export const ROLE_HIERARCHY = ROLES;
+export type AuthError = {
+  type: AuthErrorType;
+  message: string;
+};
 
 async function createSupabaseServerClient() {
   const cookieStore = await cookies();

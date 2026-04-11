@@ -34,12 +34,15 @@ export const getCurrentUser = cache(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
 
-    const employee = await prisma.employees.findUnique({
+    const employee = await prisma.employee.findUnique({
       where: { id: user.id },
       include: {
         role: {
           include: {
-            permissions: { where: { is_active: true } }
+            permissions: { 
+              where: { is_active: true },
+              include: { permission: true }
+            }
           }
         }
       }
@@ -57,7 +60,7 @@ export const getCurrentUser = cache(async () => {
       name: employee.name,
       role: employee.role?.name || null,
       isAdmin: isSuperAdmin,
-      permissions: employee.role?.permissions.map(p => p.permission) || []
+      permissions: employee.role?.permissions.map(p => `${p.permission.resource}:${p.permission.action}`) || []
     };
   } catch (error) {
     return null;

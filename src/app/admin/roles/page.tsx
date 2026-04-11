@@ -35,7 +35,8 @@ export default function RolesPage() {
     queryFn: async () => {
       const res = await fetch("/api/roles");
       if (!res.ok) throw new Error("Failed to fetch roles");
-      return res.json();
+      const json = await res.json();
+      return json.data || [];
     },
   });
 
@@ -44,7 +45,8 @@ export default function RolesPage() {
     queryFn: async () => {
       const res = await fetch("/api/roles/permissions");
       if (!res.ok) throw new Error("Failed to fetch permissions");
-      return res.json();
+      const json = await res.json();
+      return json.data || [];
     },
   });
 

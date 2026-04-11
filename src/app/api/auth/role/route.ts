@@ -14,7 +14,7 @@ export async function GET() {
       orderBy: { name: 'asc' },
     });
 
-    return NextResponse.json(employees);
+    return NextResponse.json({ data: employees });
   } catch (error) {
     console.error('Error fetching employees:', error);
     return NextResponse.json({ error: 'Failed to fetch employees' }, { status: 500 });

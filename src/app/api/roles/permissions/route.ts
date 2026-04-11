@@ -16,7 +16,7 @@ export async function GET() {
       orderBy: { permission: 'asc' },
     });
 
-    return NextResponse.json(perms.map(p => p.permission));
+    return NextResponse.json({ data: perms.map(p => p.permission) });
   } catch (err) {
     console.error('Get Permissions Error:', err);
     return NextResponse.json({ error: 'Failed to fetch permissions' }, { status: 500 });

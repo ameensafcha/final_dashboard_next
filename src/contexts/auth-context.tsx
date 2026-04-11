@@ -9,6 +9,7 @@ interface Employee {
   name: string;
   email: string;
   role: string | null;
+  isAdmin?: boolean;
 }
 
 interface AuthContextType {

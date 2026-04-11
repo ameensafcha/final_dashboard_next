@@ -27,9 +27,9 @@ import { useAuth } from "@/contexts/auth-context";
 import { NotificationCenter } from "@/components/notification-center";
 
 const inventoryItems = [
-  { label: "Raw Materials", href: "/raw-materials", icon: Package },
-  { label: "Stocks", href: "/stocks", icon: BarChart3 },
-  { label: "Receiving", href: "/receiving", icon: ArrowDownLeft },
+  { label: "Raw Materials", href: "/inventory/raw-materials", icon: Package },
+  { label: "Stocks", href: "/inventory/stocks", icon: BarChart3 },
+  { label: "Receiving", href: "/inventory/receiving", icon: ArrowDownLeft },
 ];
 
 const productsItems = [
@@ -40,8 +40,8 @@ const productsItems = [
 ];
 
 const productionItems = [
-  { label: "Batches", href: "/production", icon: Factory },
-  { label: "Finished Products", href: "/finished-products", icon: Archive },
+  { label: "Batches", href: "/production/batches", icon: Factory },
+  { label: "Finished Products", href: "/production/finished-products", icon: Archive },
 ];
 
 const financeItems = [
@@ -54,16 +54,32 @@ const taskItems = [
   { label: "Kanban Board", href: "/tasks/board", icon: LayoutGrid },
 ];
 
-const inventoryPaths = ["/raw-materials", "/stocks", "/receiving"];
+const inventoryPaths = ["/inventory/raw-materials", "/inventory/stocks", "/inventory/receiving"];
 const productsPaths = ["/products"];
-const productionPaths = ["/production", "/finished-products"];
+const productionPaths = ["/production"];
 const financePaths = ["/finance"];
 const taskPaths = ["/tasks"];
+
+const PERMISSION_MAP: Record<string, string> = {
+  "/inventory": "inventory:read",
+  "/products": "products:read",
+  "/production": "production:read",
+  "/finance": "finance:read",
+  "/tasks": "tasks:read",
+  "/admin": "admin:access",
+};
+
+function hasPermission(permissions: string[], path: string, isAdmin: boolean): boolean {
+  if (isAdmin) return true;
+  const permission = PERMISSION_MAP[path];
+  if (!permission) return true;
+  return permissions.includes(permission);
+}
 
 export function AppSidebar() {
   const pathname = usePathname() || "";
   const router = useRouter();
-  const { user, employee, role, logout, isLoading } = useAuth();
+  const { user, employee, role, permissions, isAdmin, logout, isLoading } = useAuth();
 
   const [inventoryOpen, setInventoryOpen] = React.useState(() =>
     inventoryPaths.some(p => pathname.startsWith(p))
@@ -122,6 +138,7 @@ export function AppSidebar() {
         </Link>
 
         {/* Inventory */}
+        {hasPermission(permissions, "/inventory", isAdmin || role === "admin") && (
         <div>
           <button
             onClick={() => setInventoryOpen(!inventoryOpen)}
@@ -143,8 +160,10 @@ export function AppSidebar() {
             </div>
           )}
         </div>
+        )}
 
         {/* Products */}
+        {hasPermission(permissions, "/products", isAdmin || role === "admin") && (
         <div>
           <button
             onClick={() => setProductsOpen(!productsOpen)}
@@ -166,8 +185,10 @@ export function AppSidebar() {
             </div>
           )}
         </div>
+        )}
 
         {/* Production */}
+        {hasPermission(permissions, "/production", isAdmin || role === "admin") && (
         <div>
           <button
             onClick={() => setProductionOpen(!productionOpen)}
@@ -189,8 +210,10 @@ export function AppSidebar() {
             </div>
           )}
         </div>
+        )}
 
         {/* Finance */}
+        {hasPermission(permissions, "/finance", isAdmin || role === "admin") && (
         <div>
           <button
             onClick={() => setFinanceOpen(!financeOpen)}
@@ -212,9 +235,10 @@ export function AppSidebar() {
             </div>
           )}
         </div>
+        )}
 
         {/* Tasks */}
-        {isLoggedIn && (
+        {isLoggedIn && hasPermission(permissions, "/tasks", isAdmin || role === "admin") && (
           <div>
             <button onClick={() => setTaskOpen(!taskOpen)} className={cn("w-full flex items-center gap-3 px-3 py-2.5 rounded-lg", taskOpen ? "bg-yellow-200" : "hover:bg-yellow-100")}>
               <ListTodo className="w-5 h-5" style={{ color: "#E8C547" }} />
@@ -235,7 +259,7 @@ export function AppSidebar() {
         )}
 
         {/* Admin Panel */}
-        {isLoggedIn && (
+        {isLoggedIn && hasPermission(permissions, "/admin", isAdmin || role === "admin") && (
           <Link
             href="/admin"
             className={cn("flex items-center gap-3 px-3 py-2.5 rounded-lg", isActive("/admin") ? "bg-yellow-200" : "hover:bg-yellow-100")}

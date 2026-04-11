@@ -30,6 +30,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
+  // Agar user pehle se logged in hai aur /login page open karta hai, toh dashboard par bhejo
+  if (user && isLoginRoute) {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
   // API routes par agar user nahi hai toh redirect ke bajaye 401 JSON bhejo
   if (!user && isApiRoute && !request.nextUrl.pathname.includes('/api/auth')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

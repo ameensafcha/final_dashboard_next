@@ -48,7 +48,7 @@ export default function VariantInventoryPage() {
           <h1 className="text-2xl font-bold" style={{ color: "#1A1A1A" }}>Product Inventory</h1>
           <p className="text-sm mt-1" style={{ color: "#C9A83A" }}>Packed product stock</p>
         </div>
-        <Link href="/finished-products">
+        <Link href="/production/finished-products">
           <button 
             className="flex items-center gap-2 px-4 py-2 rounded-lg border transition-all hover:bg-yellow-50 cursor-pointer"
             style={{ borderColor: "#E8C547", color: "#1A1A1A" }}

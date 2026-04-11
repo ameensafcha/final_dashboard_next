@@ -15,7 +15,7 @@ export async function GET() {
         permissions: { where: { is_active: true } }
       }
     });
-    return NextResponse.json(roles);
+    return NextResponse.json({ data: roles });
   } catch (err) {
     return NextResponse.json({ error: 'Failed to fetch roles' }, { status: 500 });
   }

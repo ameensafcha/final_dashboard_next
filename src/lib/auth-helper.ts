@@ -106,6 +106,24 @@ export async function requireAdminApi() {
 }
 
 /**
+ * 3c. Require Role for API Routes (returns user or NextResponse)
+ */
+export async function requireRole(roleName: string): Promise<AuthUser | NextResponse> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (user.role !== roleName && !user.isAdmin) {
+      return NextResponse.json({ error: `Role '${roleName}' required` }, { status: 403 });
+    }
+    return user;
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+}
+
+/**
  * 4. Require Specific Permission (Server Components)
  */
 export async function requirePermission(permission: string) {

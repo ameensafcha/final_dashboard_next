@@ -133,7 +133,10 @@
 2. Sidebar renders only menu items user has permission to view
 3. User with no module permissions sees only dashboard
 
-**Plans:** TBD
+**Plans:** 1 plan (01)
+
+**Plan list:**
+- [ ] 06-01-PLAN.md — Dynamic sidebar with permission filtering
 
 **UI hint:** yes
 
@@ -218,7 +221,7 @@
 | 3. Role CRUD | 0/4 | Not started | - |
 | 4. Permission Management | 0/2 | Not started | - |
 | 5. Permission Assignment UI | 0/3 | Not started | - |
-| 6. Dynamic Sidebar | 0/3 | Not started | - |
+| 6. Dynamic Sidebar | 0/1 | Not started | - |
 | 7. Employee Role Assignment | 0/3 | Not started | - |
 | 8. Module Access Enforcement | 0/2 | Not started | - |
 | 9. Permission Cache Invalidation | 0/2 | Not started | - |

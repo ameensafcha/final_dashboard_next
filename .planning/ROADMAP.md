@@ -13,17 +13,22 @@
 - [x] **1.5 API Endpoints:** Create CRUD APIs for roles and permissions.
 
 ## Phase 2: Permission Management UI (The Matrix)
-**Plans:** 3 plans
-- [ ] 02-01-PLAN.md — Role Management (RSC + Vanilla CSS)
-- [ ] 02-02-PLAN.md — Permission Matrix Grid
-- [ ] 02-03-PLAN.md — User Assignment & Final Polish
+**Plans:** 3/3 plans executed
+- [x] 02-01-PLAN.md — Role Management (RSC + Vanilla CSS)
+- [x] 02-02-PLAN.md — Permission Matrix Grid
+- [x] 02-03-PLAN.md — User Assignment & Final Polish
 
-- [ ] **2.1 Role Management:** Build a simple UI to list, add, and edit roles using RSC and Vanilla CSS.
-- [ ] **2.2 Permission Matrix:** Implement the core Matrix UI for toggling permissions across roles grouped by resource.
-- [ ] **2.3 Real-time Feedback:** Ensure permission changes trigger cache revalidation and update the UI immediately via optimistic updates.
-- [ ] **2.4 User Role Assignment:** Update user/employee management UI to assign roles from the database using Vanilla CSS.
+- [x] **2.1 Role Management:** Build a simple UI to list, add, and edit roles using RSC and Vanilla CSS.
+- [x] **2.2 Permission Matrix:** Implement the core Matrix UI for toggling permissions across roles grouped by resource.
+- [x] **2.3 Real-time Feedback:** Ensure permission changes trigger cache revalidation and update the UI immediately via optimistic updates.
+- [x] **2.4 User Role Assignment:** Update user/employee management UI to assign roles from the database using Vanilla CSS.
 
 ## Phase 3: Integration & Flow Migration (Transition)
+**Plans:** 3 plans
+- [ ] 03-01-PLAN.md — Client-Side Auth & Guard Migration
+- [ ] 03-02-PLAN.md — Middleware & Route Protection
+- [ ] 03-03-PLAN.md — E2E Verification & Transition Cleanup
+
 - [ ] **3.1 Global Auth Context:** Update `AuthContext` to fetch permissions from the new database-backed API.
 - [ ] **3.2 Dual-Check Implementation:** Temporarily support both old and new permission checks in guards.
 - [ ] **3.3 Middleware Update:** Transition route-based protection to use the new permission system.

@@ -6,20 +6,22 @@ datasource db {
   provider = "postgresql"
 }
 
-model roles {
+model Role {
   id          String   @id @default(uuid())
   name        String   @unique
   description String?
   is_active   Boolean  @default(true)
   created_at  DateTime @default(now())
 
-  employees employees[]
-permissions role_permissions[]
+  employees   Employee[]
+  permissions RolePermission[]
+
   @@index([name])
   @@index([is_active])
+  @@map("roles")
 }
 
-model employees {
+model Employee {
   id                     String           @id
   name                   String
   email                  String           @unique
@@ -30,7 +32,7 @@ model employees {
   
   // 👈 CHANGE 1: Yahan `onDelete: SetNull` add kiya hai. 
   // Iska fayda: Agar admin ne galti se koi Role delete kar diya, toh us role ke employees delete nahi honge, bas unka role 'null' ho jayega.
-  role                   roles?           @relation(fields: [role_id], references: [id], onDelete: SetNull)
+  role                   Role?            @relation(fields: [role_id], references: [id], onDelete: SetNull)
   
   comments               task_comments[]
   time_logs              task_time_logs[]
@@ -48,6 +50,7 @@ model employees {
   @@index([email])
   @@index([role_id])
   @@index([is_active])
+  @@map("employees")
 }
 
 model raw_materials {
@@ -152,7 +155,7 @@ model transactions {
   
   // 👈 'person' field ko employee_id store karne ke liye use karenge
   person_id    String?   
-  employee     employees? @relation(fields: [person_id], references: [id])
+  employee     Employee? @relation(fields: [person_id], references: [id])
   
   note         String?
   created_at   DateTime @default(now())
@@ -169,7 +172,7 @@ model batches {
   
   // 👈 logged_by ko employee se jodne ke liye
   logged_by       String
-  employee        employees @relation(fields: [logged_by], references: [id])
+  employee        Employee @relation(fields: [logged_by], references: [id])
 
   flavor_id       String
   leaves_in       Float
@@ -302,8 +305,8 @@ model tasks {
   subtasks      subtasks[]
   comments      task_comments[]
   time_logs     task_time_logs[]
-  assignee      employees?       @relation("task_assignee", fields: [assignee_id], references: [id])
-  creator       employees        @relation("task_creator", fields: [created_by], references: [id])
+  assignee      Employee?        @relation("task_assignee", fields: [assignee_id], references: [id])
+  creator       Employee         @relation("task_creator", fields: [created_by], references: [id])
   notifications notifications[]
 
   @@index([status])
@@ -331,7 +334,7 @@ model task_comments {
   employee_id String
   content     String
   created_at  DateTime  @default(now())
-  employee    employees @relation(fields: [employee_id], references: [id])
+  employee    Employee  @relation(fields: [employee_id], references: [id])
   task        tasks     @relation(fields: [task_id], references: [id], onDelete: Cascade)
 
   @@index([task_id])
@@ -347,8 +350,8 @@ model notifications {
   task_title   String
   created_at   DateTime  @default(now())
   read_at      DateTime?
-  recipient    employees @relation("notification_recipient", fields: [recipient_id], references: [id])
-  actor        employees @relation("notification_actor", fields: [actor_id], references: [id])
+  recipient    Employee  @relation("notification_recipient", fields: [recipient_id], references: [id])
+  actor        Employee  @relation("notification_actor", fields: [actor_id], references: [id])
   task         tasks     @relation(fields: [task_id], references: [id], onDelete: Cascade)
 
   @@index([recipient_id, created_at(sort: Desc)])
@@ -368,7 +371,7 @@ model task_time_logs {
   hours       Float
   notes       String?
   created_at  DateTime  @default(now())
-  employee    employees @relation(fields: [employee_id], references: [id])
+  employee    Employee  @relation(fields: [employee_id], references: [id])
   task        tasks     @relation(fields: [task_id], references: [id], onDelete: Cascade)
 
   @@index([task_id])
@@ -388,14 +391,32 @@ model route_permissions {
   @@index([required_role])
 }
 
-model role_permissions {
-  id          String   @id @default(uuid())
-  role_id     String   
-  permission  String   
-  is_active   Boolean  @default(true)
-  
-  // 👈 Is line me onDelete: Cascade add karo
-  role        roles    @relation(fields: [role_id], references: [id], onDelete: Cascade)
-  
-  @@unique([role_id, permission])
+model RolePermission {
+  id            String     @id @default(uuid())
+  role_id       String
+  permission_id String
+  is_active     Boolean    @default(true)
+  created_at    DateTime   @default(now())
+
+  role          Role       @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  permission    Permission @relation(fields: [permission_id], references: [id], onDelete: Cascade)
+
+  @@unique([role_id, permission_id])
+  @@map("role_permissions")
+}
+
+model Permission {
+  id          String           @id @default(uuid())
+  action      String           // e.g., "create", "read", "update", "delete", "manage"
+  resource    String           // e.g., "products", "batches", "users"
+  label       String?          // e.g., "Create Product"
+  description String?          // e.g., "Ability to create new product entries"
+  created_at  DateTime         @default(now())
+  updated_at  DateTime         @updatedAt
+  roles       RolePermission[]
+
+  @@unique([action, resource])
+  @@index([action])
+  @@index([resource])
+  @@map("permissions")
 }

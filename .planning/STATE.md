@@ -15,10 +15,10 @@
 
 | Field | Value |
 |-------|-------|
-| Phase | 8 |
+| Phase | 11 |
 | Plan | 01 |
-| Status | Planned |
-| Progress | 0% |
+| Status | Completed |
+| Progress | 100% |
 
 ---
 
@@ -26,8 +26,8 @@
 
 | Metric | Value |
 |--------|-------|
-| Phases completed | 0/10 |
-| Plans completed | 1/24 |
+| Phases completed | 1/11 |
+| Plans completed | 1/1 |
 | Requirements satisfied | 3/20 |
 
 ---
@@ -50,15 +50,22 @@
 
 - None yet
 
+### Roadmap Evolution
+
+| Event | Detail |
+|-------|-------|
+| Phase 11 added | Fix build errors and remove dead code |
+| Phase 11 completed | Fixed admin/layout.tsx import, added requireRole to auth-helper |
+
 ---
 
 ## Session Continuity
 
 | Field | Value |
 |-------|-------|
-| Last phase worked | 09 |
-| Last plan worked | None |
-| Session notes | Phase 9 context gathered — already complete via Phase 7 (EMP-03) |
+| Last phase worked | 11 |
+| Last plan worked | 01 |
+| Session notes | Phase 11 complete — fixed admin/layout.tsx, added requireRole to auth-helper |
 
 ---
 

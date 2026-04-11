@@ -1,31 +1,7 @@
-"use client";
-
-import Link from "next/link"; 
-import { useAuth } from "@/contexts/auth-context";
-import { Users, ShieldCheck, Settings as SettingsIcon, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { Users, ShieldCheck, Settings as SettingsIcon } from "lucide-react";
 
 export default function AdminPage() {
-  const { role, isLoading } = useAuth();
-
-  // White screen se bachne ke liye loader dikhayein
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
-      </div>
-    );
-  }
-
-  // Agar admin nahi hai toh unauthorized par bhej dein bajaye null ke
-  if (role !== "admin") {
-    return (
-      <div className="p-6 text-center">
-        <h1 className="text-xl font-bold text-red-600">Access Denied</h1>
-        <p>Aapke paas is page ko dekhne ki permission nahi hai.</p>
-      </div>
-    );
-  }
-
   const adminCards = [
     {
       title: "Employees",

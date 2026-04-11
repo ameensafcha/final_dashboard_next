@@ -9,7 +9,7 @@ import { Plus } from "lucide-react";
 
 export default function MyTasksPage() {
   const [showForm, setShowForm] = useState(false);
-  const { user, role } = useAuth();
+  const { user } = useAuth();
 
   if (!user) {
     return <div className="p-6">Please log in to view your tasks.</div>;
@@ -34,7 +34,6 @@ export default function MyTasksPage() {
       <TasksTable
         filterAssigneeId={user.id}
         currentUserId={user.id}
-        currentUserRole={role ?? undefined}
       />
 
       <TaskForm

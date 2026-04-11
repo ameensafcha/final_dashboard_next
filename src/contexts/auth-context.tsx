@@ -1,84 +1,83 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
-import { User, Session } from "@supabase/supabase-js";
-import { supabase } from "@/lib/supabase";
-import { useQueryClient } from "@tanstack/react-query";
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { createBrowserClient } from "@supabase/ssr";
+import type { User } from "@supabase/supabase-js";
+
+interface Employee {
+  id: string;
+  name: string;
+  email: string;
+  role: string | null;
+}
 
 interface AuthContextType {
   user: User | null;
-  employee: any | null;
+  employee: Employee | null;
   role: string | null;
+  isAdmin: boolean;
   permissions: string[];
   isLoading: boolean;
-  authError: string | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  employee: null,
+  role: null,
+  isAdmin: false,
+  permissions: [],
+  isLoading: true,
+  login: async () => {},
+  logout: async () => {},
+});
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [employee, setEmployee] = useState<any>(null);
+  const [employee, setEmployee] = useState<Employee | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [authError, setAuthError] = useState<string | null>(null);
-  const queryClient = useQueryClient();
 
-  const fetchEmployee = async () => {
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
+  const fetchEmployeeData = async () => {
     try {
-      const response = await fetch('/api/auth/employee');
-      
-      // Check if response is HTML instead of JSON
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        console.error("Received non-JSON response from server");
-        return;
+      const [empRes, permRes] = await Promise.all([
+        fetch("/api/auth/employee"),
+        fetch("/api/users/permissions"),
+      ]);
+      if (empRes.ok) {
+        const emp = await empRes.json();
+        setEmployee(emp);
       }
-
-      const data = await response.json();
-      if (response.ok) {
-        setEmployee(data);
-        setPermissions(data.permissions || []);
-      } else {
-        if (response.status === 401) await logout();
+      if (permRes.ok) {
+        const { permissions: perms } = await permRes.json();
+        setPermissions(perms || []);
       }
-    } catch (err) {
-      console.error("Fetch Error:", err);
-    }
-  };
-
-  const login = async (email: string, password: string) => {
-    setAuthError(null);
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    await fetchEmployee();
-    queryClient.invalidateQueries();
-  };
-
-  const logout = async () => {
-    await supabase.auth.signOut();
-    setEmployee(null);
-    setPermissions([]);
-    setUser(null);
-    queryClient.clear();
+    } catch {}
   };
 
   useEffect(() => {
-    const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
-      if (session) await fetchEmployee();
-      setIsLoading(false);
-    };
+      if (session?.user) {
+        fetchEmployeeData().finally(() => setIsLoading(false));
+      } else {
+        setIsLoading(false);
+      }
+    });
 
-    init();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
-      if (event === 'SIGNED_IN') fetchEmployee();
-      if (event === 'SIGNED_OUT') {
+      if (session?.user) {
+        fetchEmployeeData();
+      } else {
         setEmployee(null);
         setPermissions([]);
       }
@@ -87,15 +86,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  const login = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw new Error(error.message);
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setEmployee(null);
+    setPermissions([]);
+  };
+
+  const role = employee?.role ?? null;
+  const isAdmin = role === "admin";
+
   return (
-    <AuthContext.Provider value={{ user, employee, role: employee?.role, permissions, isLoading, authError, login, logout }}>
+    <AuthContext.Provider
+      value={{ user, employee, role, isAdmin, permissions, isLoading, login, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );
 }
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within AuthProvider");
-  return context;
-};
+export function useAuth() {
+  return useContext(AuthContext);
+}

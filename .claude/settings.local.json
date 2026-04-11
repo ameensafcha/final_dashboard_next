@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "Bash(find /c/Users/User/Desktop/claude2/src -type f \\\\\\( -name \"*.ts\" -o -name \"*.tsx\" \\\\\\) -exec grep -l \"\\\\/\\\\*.*\\\\*\\\\/\" {} \\\\;)"
     ]
   }
 }

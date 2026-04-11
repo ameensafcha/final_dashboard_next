@@ -8,7 +8,6 @@ export const dynamic = 'force-dynamic';
 export default async function TasksPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (!user.isAdmin) redirect("/dashboard");
 
   const tasks = await prisma.tasks.findMany({
     include: {
@@ -61,10 +60,9 @@ export default async function TasksPage() {
         </div>
       </div>
 
-      <TasksTable 
-        initialData={serializedTasks} 
+      <TasksTable
+        initialData={serializedTasks}
         currentUserId={user.id}
-        currentUserRole={user.role ?? undefined}
       />
     </div>
   );

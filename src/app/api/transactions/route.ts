@@ -68,7 +68,6 @@ export async function POST(request: Request) {
         amount: parseFloat(amount),
         date: date ? new Date(date) : new Date(),
         reference_id: reference_id || null,
-        person: person || null,
         note: note || null,
       },
     });
@@ -103,7 +102,6 @@ export async function PUT(request: Request) {
         ...(amount !== undefined && { amount: parseFloat(amount) }),
         ...(date && { date: new Date(date) }),
         ...(reference_id !== undefined && { reference_id }),
-        ...(person !== undefined && { person }),
         ...(note !== undefined && { note }),
       },
     });

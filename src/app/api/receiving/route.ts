@@ -88,8 +88,7 @@ export async function POST(request: Request) {
             amount: transactionAmount,
             date: date ? new Date(date) : new Date(),
             reference_id: receiving.id,
-            person: supplier,
-            note: `Purchase: ${currentMaterial?.name || "Raw Material"}`,
+            note: `Purchase: ${currentMaterial?.name || "Raw Material"}${supplier ? ` (Supplier: ${supplier})` : ""}`,
           },
         });
       }
@@ -207,8 +206,7 @@ export async function PUT(request: Request) {
             data: {
               amount: transactionAmount,
               date: date ? new Date(date) : new Date(),
-              person: supplier,
-              note: `Purchase: ${newMaterial?.name || "Raw Material"}`,
+              note: `Purchase: ${newMaterial?.name || "Raw Material"}${supplier ? ` (Supplier: ${supplier})` : ""}`,
             },
           });
         } else {
@@ -221,8 +219,7 @@ export async function PUT(request: Request) {
             amount: transactionAmount,
             date: date ? new Date(date) : new Date(),
             reference_id: id,
-            person: supplier,
-            note: `Purchase: ${newMaterial?.name || "Raw Material"}`,
+            note: `Purchase: ${newMaterial?.name || "Raw Material"}${supplier ? ` (Supplier: ${supplier})` : ""}`,
           },
         });
       }

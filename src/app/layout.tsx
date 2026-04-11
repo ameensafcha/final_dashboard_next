@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { SidebarWrapper } from "@/components/sidebar-wrapper";
 import { Providers } from "@/components/providers";
 import { ToastContainer } from "@/components/toast-container";
-import { NotificationCenter } from "@/components/notification-center";
+import { GlobalAuthWrapper } from "@/components/global-auth-wrapper";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -55,13 +55,10 @@ export default function RootLayout({
       <body className="min-h-full flex">
         <Providers>
           <SidebarWrapper />
-          <main className="flex-1 flex flex-col">
-            <header className="bg-white border-b border-gray-200 px-6 py-4 flex justify-end items-center gap-4">
-              <NotificationCenter />
-            </header>
-            <div className="flex-1 overflow-auto">
+          <main className="flex-1 overflow-auto">
+            <GlobalAuthWrapper>
               {children}
-            </div>
+            </GlobalAuthWrapper>
           </main>
           <ToastContainer />
         </Providers>

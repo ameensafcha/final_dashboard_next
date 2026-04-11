@@ -35,14 +35,6 @@ export async function GET(request: Request) {
     // Build query conditions dynamically with proper typing
     const queryConditions: Prisma.tasksWhereInput[] = [];
 
-    // Role-based filtering
-    if (!user.isAdmin) {
-      const roleFilter: Prisma.tasksWhereInput = {
-        OR: [{ created_by: user.id }, { assignee_id: user.id }],
-      };
-      queryConditions.push(roleFilter);
-    }
-
     // Search filter (using sanitized input)
     if (sanitizedSearch) {
       queryConditions.push({
@@ -190,23 +182,11 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    // Permission check: only admin or task creator/assignee can update
-    const isCreator = existingTask.created_by === user.id;
-    const isAssignee = existingTask.assignee_id === user.id;
-
-    if (!user.isAdmin && !isCreator && !isAssignee) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    // Field-level permissions
-    const isAdminOrCreator = user.isAdmin || isCreator;
-
     // Auto-set completed_at when status changes to completed
     const isCompleting = status === "completed" && existingTask.status !== "completed";
     const completionTime = isCompleting ? new Date() : null;
 
-    // Fields allowed for Admin + Creator
-    const fullUpdate = {
+    const updateData = {
       ...(title !== undefined && { title }),
       ...(description !== undefined && { description }),
       ...(area !== undefined && { area }),
@@ -217,16 +197,6 @@ export async function PUT(request: Request) {
       ...(start_date !== undefined && { start_date: start_date ? new Date(start_date) : null }),
       ...(completed_at !== undefined && { completed_at: completed_at ? new Date(completed_at) : completionTime }),
     };
-
-    // Fields allowed for Assignee-only
-    const restrictedUpdate = {
-      ...(status !== undefined && { status }),
-      ...(due_date !== undefined && { due_date: due_date ? new Date(due_date) : null }),
-      ...(start_date !== undefined && { start_date: start_date ? new Date(start_date) : null }),
-      ...(completed_at !== undefined || isCompleting ? { completed_at: isCompleting ? completionTime : (completed_at ? new Date(completed_at) : null) } : {}),
-    };
-
-    const updateData = isAdminOrCreator ? fullUpdate : restrictedUpdate;
 
     // Use transaction to ensure atomicity: both task update and notification creation succeed or both fail
     const task = await prisma.$transaction(async (tx) => {
@@ -298,13 +268,6 @@ export async function DELETE(request: Request) {
 
     if (!existingTask) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
-    }
-
-    // Permission check: only admin or task creator can delete
-    const isCreator = existingTask.created_by === user.id;
-
-    if (!user.isAdmin && !isCreator) {
-      return NextResponse.json({ error: "Forbidden - Only admin or task creator can delete" }, { status: 403 });
     }
 
     await prisma.tasks.delete({

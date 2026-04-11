@@ -42,7 +42,6 @@ export default async function KanbanPage() {
   return (
     <KanbanClient
       userId={user.id}
-      userRole={user.role ?? undefined}
       initialData={serializedTasks}
     />
   );

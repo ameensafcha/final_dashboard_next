@@ -8,13 +8,12 @@ import { useRealtimeConnectionStatus } from '@/hooks/use-realtime-connection-sta
 import { useAuth } from '@/contexts/auth-context';
 
 export function NotificationCenter() {
-  const { user, employee, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   const {
     notifications,
     unreadCount,
     dropdownOpen,
     toggleDropdown,
-    addNotification,
     setNotifications,
     markAsRead,
     markAllAsRead,
@@ -23,197 +22,138 @@ export function NotificationCenter() {
   const { isConnected } = useRealtimeConnectionStatus();
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Update connection status in store
   useEffect(() => {
     setConnected(isConnected);
   }, [isConnected, setConnected]);
 
-  // Load initial notifications on mount
+  const loadNotifications = useCallback(async () => {
+    try {
+      const response = await fetch('/api/notifications');
+      const data = await response.json();
+      if (data.data) setNotifications(data.data);
+    } catch {}
+  }, [setNotifications]);
+
+  // Load on mount once authenticated
   useEffect(() => {
-    if (!user || !employee || isLoading) return;  // Wait for auth and employee data to fully load
-
-    const loadNotifications = async () => {
-      try {
-        const response = await fetch('/api/notifications');
-        const data = await response.json();
-        if (data.data) {
-          setNotifications(data.data);
-        }
-      } catch (error) {
-        console.error('[NotificationCenter] Failed to load notifications:', error);
-      }
-    };
-
+    if (!user || isLoading) return;
     loadNotifications();
-  }, [user, employee, isLoading, setNotifications]);
+  }, [user, isLoading, loadNotifications]);
 
-  // Memoize onMessage callback to prevent subscription re-runs
-  // Use a ref to always have the latest addNotification without causing re-renders
-  const addNotificationRef = useRef(addNotification);
-  addNotificationRef.current = addNotification;
-
-  const handleNewNotification = useCallback((payload: any) => {
-    const newNotif = payload.new;
-
-    // Client-side filter: Check if this notification is for the current user
-    // Regular users get notifications where recipient_id = their ID
-    // Admins get all notifications (recipient_id can be null or any ID)
-    const isForCurrentUser =
-      newNotif.recipient_id === user?.id || // Direct recipient
-      (newNotif.recipient_id === null && employee?.role?.name === 'admin'); // Broadcast to admins
-
-    if (!isForCurrentUser) {
-      console.log('[NotificationCenter] Notification not for current user, skipping');
-      return;
-    }
-
-    addNotificationRef.current({
-      id: newNotif.id,
-      recipient_id: newNotif.recipient_id,
-      actor_id: newNotif.actor_id,
-      actor_name: newNotif.actor_name || 'Unknown',
-      action_type: newNotif.action_type,
-      task_id: newNotif.task_id,
-      task_title: newNotif.task_title,
-      created_at: newNotif.created_at,
-      read_at: newNotif.read_at,
-    });
-  }, [user?.id, employee?.role?.name]);
-
-  // Debug: Log subscription status
-  useEffect(() => {
-    console.log('[NotificationCenter] Subscription enabled:', !!(user?.id) && !isLoading && isConnected);
-  }, [user, isLoading, isConnected]);
-
-  // Subscribe to new notifications via Realtime (only INSERT events)
-  // Filter is removed - we handle filtering client-side to support both:
-  // - Regular users: recipient_id = their ID
-  // - Admins: all notifications (recipient_id can be null for broadcasts)
+  // No server-side filter — postgres_changes filters need RLS to be configured.
+  // We subscribe to all inserts and refetch; the API already filters by recipient_id.
   useRealtimeSubscription({
     table: 'notifications',
     event: 'INSERT',
-    filter: undefined, // No server-side filter - handle client-side instead
-    onMessage: handleNewNotification,
-    enabled: !!(user?.id) && !isLoading && isConnected,
+    onMessage: loadNotifications,
+    enabled: !!(user?.id) && !isLoading,
   });
 
-  // Handle click outside dropdown to close
+  // Close on outside click
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        if (dropdownOpen) {
-          toggleDropdown();
-        }
+    if (!dropdownOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        toggleDropdown();
       }
     };
-
-    if (dropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, [dropdownOpen, toggleDropdown]);
 
-  const handleMarkAsRead = async (notificationId: string) => {
-    // Optimistic update
-    markAsRead(notificationId);
-    // Persist to server (fire and forget, or handle error)
-    fetch(`/api/notifications/${notificationId}/read`, { method: 'PATCH' }).catch((error) => {
-      console.error('[NotificationCenter] Failed to mark as read:', error);
-    });
+  const handleMarkAsRead = (id: string) => {
+    markAsRead(id);
+    fetch(`/api/notifications/${id}/read`, { method: 'PATCH' }).catch(() => {});
   };
 
-  const handleMarkAllAsRead = async () => {
-    // Optimistic update
+  const handleMarkAllAsRead = () => {
     markAllAsRead();
-    // Persist to server
-    fetch('/api/notifications/mark-all-read', { method: 'POST' }).catch((error) => {
-      console.error('[NotificationCenter] Failed to mark all as read:', error);
-    });
+    fetch('/api/notifications/mark-all-read', { method: 'POST' }).catch(() => {});
   };
 
   if (!user) return null;
 
   return (
     <div ref={containerRef} className="relative">
-      {/* Bell Icon with Unread Badge */}
+      {/* Bell */}
       <button
         onClick={toggleDropdown}
         className="relative p-2 hover:bg-gray-100 rounded-full transition-colors"
-        title="Notifications"
         aria-label={`Notifications (${unreadCount} unread)`}
       >
         <Bell className="w-5 h-5 text-gray-700" />
         {unreadCount > 0 && (
-          <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">
+          <span className="absolute top-0 right-0 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white translate-x-1/2 -translate-y-1/2 bg-red-500 rounded-full">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
       </button>
 
-      {/* Dropdown */}
+      {/* Dropdown — fixed so it stays in viewport */}
       {dropdownOpen && (
-        <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 max-h-96 overflow-y-auto z-50">
+        <div className="absolute bottom-full left-full ml-2 mb-1 w-80 bg-white rounded-xl shadow-xl border border-gray-200 max-h-[420px] overflow-hidden flex flex-col z-[100]">
           {/* Header */}
-          <div className="sticky top-0 bg-white p-4 border-b border-gray-200 flex justify-between items-center">
-            <h3 className="font-semibold text-gray-900">Notifications</h3>
+          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
+            <h3 className="font-semibold text-gray-900 text-sm">Notifications</h3>
             {unreadCount > 0 && (
               <button
                 onClick={handleMarkAllAsRead}
                 className="text-xs text-blue-600 hover:text-blue-700 font-medium"
               >
-                Mark all as read
+                Mark all read
               </button>
             )}
           </div>
 
-          {/* Notification List */}
-          {notifications.length === 0 ? (
-            <div className="p-8 text-center text-gray-500 text-sm">
-              No notifications yet
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-100">
-              {notifications.map((notif) => (
-                <div
-                  key={notif.id}
-                  className={`p-4 hover:bg-gray-50 transition-colors cursor-pointer ${
-                    notif.read_at ? 'opacity-60' : 'bg-blue-50'
-                  }`}
-                >
-                  <div className="flex justify-between items-start gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 break-words">
-                        <span className="text-gray-700">{notif.actor_name}</span>
-                        {' '}
-                        <span className="text-gray-600">
-                          {notif.action_type === 'task_assigned' ? 'assigned' : 'commented on'}
-                        </span>
-                        {' '}
-                        <span className="font-semibold text-gray-900">{notif.task_title}</span>
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {new Date(notif.created_at).toLocaleString()}
-                      </p>
+          {/* List */}
+          <div className="overflow-y-auto flex-1">
+            {notifications.length === 0 ? (
+              <div className="py-10 text-center text-gray-400 text-sm">
+                No notifications yet
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {notifications.map((notif) => (
+                  <div
+                    key={notif.id}
+                    className={`px-4 py-3 hover:bg-gray-50 transition-colors ${
+                      notif.read_at ? '' : 'bg-blue-50/60'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-gray-800 leading-snug break-words">
+                          <span className="font-semibold">{notif.actor_name}</span>
+                          {' '}
+                          <span className="text-gray-500">
+                            {notif.action_type === 'task_assigned' ? 'assigned you' : 'commented on'}
+                          </span>
+                          {' '}
+                          <span className="font-semibold">{notif.task_title}</span>
+                        </p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">
+                          {new Date(notif.created_at).toLocaleString()}
+                        </p>
+                      </div>
+                      {!notif.read_at && (
+                        <button
+                          onClick={() => handleMarkAsRead(notif.id)}
+                          className="p-1 hover:bg-gray-200 rounded flex-shrink-0"
+                          title="Mark as read"
+                        >
+                          <Check className="w-3.5 h-3.5 text-gray-400" />
+                        </button>
+                      )}
                     </div>
-                    {!notif.read_at && (
-                      <button
-                        onClick={() => handleMarkAsRead(notif.id)}
-                        className="p-1 hover:bg-gray-200 rounded transition-colors flex-shrink-0"
-                        title="Mark as read"
-                        aria-label="Mark as read"
-                      >
-                        <Check className="w-4 h-4 text-gray-400" />
-                      </button>
-                    )}
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Connection Status (Offline Indicator) */}
+      {/* Offline indicator */}
       {!isConnected && (
         <div className="absolute bottom-full right-0 mb-2 text-xs text-yellow-700 bg-yellow-100 px-2 py-1 rounded whitespace-nowrap border border-yellow-300">
           Offline — reconnecting...

@@ -14,31 +14,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Build query based on role (D-06, D-08, D-09)
-    // D-06: Users receive only notifications where recipient_id matches their user ID
-    // D-08: Task managers receive notifications for tasks they created
-    // D-09: Admins can see all notifications
-    const isAdmin = user.role?.includes('admin');
-
-    let whereClause: any = {};
-
-    if (isAdmin) {
-      // D-09: Admins see all notifications (no filter)
-      whereClause = {};
-    } else {
-      // D-06: Non-admin users see their own notifications OR
-      // D-08: Notifications for tasks they created
-      whereClause = {
-        OR: [
-          { recipient_id: user.id }, // D-06: assigned to me
-          { task: { created_by: user.id } }, // D-08: I created the task
-        ],
-      };
-    }
-
-    // Fetch last 50 notifications for the authenticated user
     const notifications = await prisma.notifications.findMany({
-      where: whereClause,
+      where: { recipient_id: user.id },
       include: {
         actor: { select: { id: true, name: true, email: true } },
         task: { select: { id: true, title: true } },

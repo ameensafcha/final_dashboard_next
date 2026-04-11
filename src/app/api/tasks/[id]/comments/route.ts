@@ -83,16 +83,6 @@ export async function POST(
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    const currentEmployee = await prisma.employees.findUnique({
-      where: { id: user.id },
-      include: { role: true },
-    });
-
-    if (!currentEmployee) {
-      return NextResponse.json({ error: "Employee not found" }, { status: 404 });
-    }
-
-    // Permission: any logged-in user can comment
     // Use transaction to ensure atomicity: both comment creation and notification creation succeed or both fail
     const comment = await prisma.$transaction(async (tx) => {
       // Create comment
@@ -172,23 +162,6 @@ export async function DELETE(
 
     if (!comment || comment.task_id !== taskId) {
       return NextResponse.json({ error: "Comment not found" }, { status: 404 });
-    }
-
-    const currentEmployee = await prisma.employees.findUnique({
-      where: { id: user.id },
-      include: { role: true },
-    });
-
-    if (!currentEmployee) {
-      return NextResponse.json({ error: "Employee not found" }, { status: 404 });
-    }
-
-    // Permission: only comment author or admin can delete
-    const isAdmin = currentEmployee.role?.name === "admin";
-    const isAuthor = comment.employee_id === user.id;
-
-    if (!isAdmin && !isAuthor) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     await prisma.task_comments.delete({

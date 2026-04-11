@@ -82,24 +82,6 @@ export async function POST(
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    const currentEmployee = await prisma.employees.findUnique({
-      where: { id: user.id },
-      include: { role: true },
-    });
-
-    if (!currentEmployee) {
-      return NextResponse.json({ error: "Employee not found" }, { status: 404 });
-    }
-
-    // Permission: admin, task creator, or assignee can log time
-    const isAdmin = currentEmployee.role?.name === "admin";
-    const isCreator = task.created_by === user.id;
-    const isAssignee = task.assignee_id === user.id;
-
-    if (!isAdmin && !isCreator && !isAssignee) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
     const timeLog = await prisma.task_time_logs.create({
       data: {
         task_id: taskId,
@@ -149,23 +131,6 @@ export async function DELETE(
 
     if (!timeLog || timeLog.task_id !== taskId) {
       return NextResponse.json({ error: "Time log not found" }, { status: 404 });
-    }
-
-    const currentEmployee = await prisma.employees.findUnique({
-      where: { id: user.id },
-      include: { role: true },
-    });
-
-    if (!currentEmployee) {
-      return NextResponse.json({ error: "Employee not found" }, { status: 404 });
-    }
-
-    // Permission: only time log author or admin can delete
-    const isAdmin = currentEmployee.role?.name === "admin";
-    const isAuthor = timeLog.employee_id === user.id;
-
-    if (!isAdmin && !isAuthor) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     await prisma.task_time_logs.delete({

@@ -3,11 +3,11 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { 
-  Package, 
-  ChevronDown, 
-  ChevronRight, 
-  LayoutDashboard, 
+import {
+  Package,
+  ChevronDown,
+  ChevronRight,
+  LayoutDashboard,
   ArrowDownLeft,
   ShoppingBag,
   Sparkles,
@@ -24,8 +24,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth-context";
+import { NotificationCenter } from "@/components/notification-center";
 
-// --- CONSTANTS START ---
 const inventoryItems = [
   { label: "Raw Materials", href: "/raw-materials", icon: Package },
   { label: "Stocks", href: "/stocks", icon: BarChart3 },
@@ -59,40 +59,34 @@ const productsPaths = ["/products"];
 const productionPaths = ["/production", "/finished-products"];
 const financePaths = ["/finance"];
 const taskPaths = ["/tasks"];
-// --- CONSTANTS END ---
 
 export function AppSidebar() {
   const pathname = usePathname() || "";
   const router = useRouter();
   const { user, employee, role, logout, isLoading } = useAuth();
 
-  // 🛠️ Safety Check: Role object ko string mein convert karo
-  const roleName = typeof role === 'object' ? (role as any)?.name : role;
-  const isAdmin = roleName === "admin";
-  
-  const [inventoryOpen, setInventoryOpen] = React.useState(() => 
+  const [inventoryOpen, setInventoryOpen] = React.useState(() =>
     inventoryPaths.some(p => pathname.startsWith(p))
   );
-  const [productsOpen, setProductsOpen] = React.useState(() => 
+  const [productsOpen, setProductsOpen] = React.useState(() =>
     productsPaths.some(p => pathname.startsWith(p))
   );
-  const [productionOpen, setProductionOpen] = React.useState(() => 
+  const [productionOpen, setProductionOpen] = React.useState(() =>
     productionPaths.some(p => pathname.startsWith(p))
   );
-  const [financeOpen, setFinanceOpen] = React.useState(() => 
+  const [financeOpen, setFinanceOpen] = React.useState(() =>
     financePaths.some(p => pathname.startsWith(p))
   );
-  const [taskOpen, setTaskOpen] = React.useState(() => 
+  const [taskOpen, setTaskOpen] = React.useState(() =>
     taskPaths.some(p => pathname.startsWith(p))
   );
 
   React.useEffect(() => {
-    const path = pathname || "";
-    if (inventoryPaths.some(p => path.startsWith(p))) setInventoryOpen(true);
-    if (productsPaths.some(p => path.startsWith(p))) setProductsOpen(true);
-    if (productionPaths.some(p => path.startsWith(p))) setProductionOpen(true);
-    if (financePaths.some(p => path.startsWith(p))) setFinanceOpen(true);
-    if (taskPaths.some(p => path.startsWith(p))) setTaskOpen(true);
+    if (inventoryPaths.some(p => pathname.startsWith(p))) setInventoryOpen(true);
+    if (productsPaths.some(p => pathname.startsWith(p))) setProductsOpen(true);
+    if (productionPaths.some(p => pathname.startsWith(p))) setProductionOpen(true);
+    if (financePaths.some(p => pathname.startsWith(p))) setFinanceOpen(true);
+    if (taskPaths.some(p => pathname.startsWith(p))) setTaskOpen(true);
   }, [pathname]);
 
   const isActive = (href: string) => pathname === href;
@@ -105,21 +99,21 @@ export function AppSidebar() {
   const isLoggedIn = !isLoading && user;
 
   return (
-    <aside 
+    <aside
       className="h-screen w-56 flex flex-col border-r"
       style={{ backgroundColor: "#F5F4EE", borderColor: "#E8C54720" }}
     >
       <div className="p-4 border-b" style={{ borderColor: "#E8C54720" }}>
         <h1 className="text-lg font-bold" style={{ color: "#1A1A1A" }}>Dashboard</h1>
       </div>
-      
+
       <nav className="flex-1 p-3 space-y-2 overflow-y-auto">
         {/* Dashboard */}
         <Link
-          href="/"
+          href="/dashboard"
           className={cn(
             "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
-            isActive("/") ? "bg-yellow-200 font-medium" : "hover:bg-yellow-100"
+            isActive("/dashboard") ? "bg-yellow-200 font-medium" : "hover:bg-yellow-100"
           )}
           style={{ color: "#1A1A1A" }}
         >
@@ -173,6 +167,52 @@ export function AppSidebar() {
           )}
         </div>
 
+        {/* Production */}
+        <div>
+          <button
+            onClick={() => setProductionOpen(!productionOpen)}
+            className={cn("w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all", productionOpen ? "bg-yellow-200" : "hover:bg-yellow-100")}
+            style={{ color: "#1A1A1A" }}
+          >
+            <Factory className="w-5 h-5" style={{ color: "#E8C547" }} />
+            <span className="flex-1 text-left font-semibold">Production</span>
+            {productionOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          </button>
+          {productionOpen && (
+            <div className="ml-2 space-y-1 mt-1">
+              {productionItems.map((item) => (
+                <Link key={item.href} href={item.href} className={cn("flex items-center gap-3 px-3 py-2 rounded-lg", isActive(item.href) ? "bg-yellow-200" : "hover:bg-yellow-100")}>
+                  <item.icon className="w-4 h-4" style={{ color: "#C9A83A" }} />
+                  <span className="text-sm">{item.label}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Finance */}
+        <div>
+          <button
+            onClick={() => setFinanceOpen(!financeOpen)}
+            className={cn("w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all", financeOpen ? "bg-yellow-200" : "hover:bg-yellow-100")}
+            style={{ color: "#1A1A1A" }}
+          >
+            <DollarSign className="w-5 h-5" style={{ color: "#E8C547" }} />
+            <span className="flex-1 text-left font-semibold">Finance</span>
+            {financeOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          </button>
+          {financeOpen && (
+            <div className="ml-2 space-y-1 mt-1">
+              {financeItems.map((item) => (
+                <Link key={item.href} href={item.href} className={cn("flex items-center gap-3 px-3 py-2 rounded-lg", isActive(item.href) ? "bg-yellow-200" : "hover:bg-yellow-100")}>
+                  <item.icon className="w-4 h-4" style={{ color: "#C9A83A" }} />
+                  <span className="text-sm">{item.label}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Tasks */}
         {isLoggedIn && (
           <div>
@@ -183,22 +223,19 @@ export function AppSidebar() {
             </button>
             {taskOpen && (
               <div className="ml-2 space-y-1 mt-1">
-                {taskItems.map((item) => {
-                  if (item.label === "All Tasks" && !isAdmin) return null;
-                  return (
-                    <Link key={item.href} href={item.href} className={cn("flex items-center gap-3 px-3 py-2 rounded-lg", isActive(item.href) ? "bg-yellow-200" : "hover:bg-yellow-100")}>
-                      <item.icon className="w-4 h-4" style={{ color: "#C9A83A" }} />
-                      <span className="text-sm">{item.label}</span>
-                    </Link>
-                  );
-                })}
+                {taskItems.map((item) => (
+                  <Link key={item.href} href={item.href} className={cn("flex items-center gap-3 px-3 py-2 rounded-lg", isActive(item.href) ? "bg-yellow-200" : "hover:bg-yellow-100")}>
+                    <item.icon className="w-4 h-4" style={{ color: "#C9A83A" }} />
+                    <span className="text-sm">{item.label}</span>
+                  </Link>
+                ))}
               </div>
             )}
           </div>
         )}
 
         {/* Admin Panel */}
-        {isLoggedIn && isAdmin && (
+        {isLoggedIn && (
           <Link
             href="/admin"
             className={cn("flex items-center gap-3 px-3 py-2.5 rounded-lg", isActive("/admin") ? "bg-yellow-200" : "hover:bg-yellow-100")}
@@ -212,13 +249,17 @@ export function AppSidebar() {
       {/* Footer */}
       {isLoggedIn && (
         <div className="p-3 border-t" style={{ borderColor: "#E8C54720" }}>
-          <div className="mb-2 px-3">
-            <p className="text-sm font-bold truncate" style={{ color: "#1A1A1A" }}>
-              {employee?.name || "User"}
-            </p>
-            <p className="text-xs capitalize opacity-70" style={{ color: "#1A1A1A" }}>
-              {roleName || "guest"}
-            </p>
+          {/* User info row with notification bell */}
+          <div className="flex items-center justify-between mb-2 px-1">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold truncate" style={{ color: "#1A1A1A" }}>
+                {employee?.name || "User"}
+              </p>
+              <p className="text-xs capitalize opacity-70" style={{ color: "#1A1A1A" }}>
+                {role || "guest"}
+              </p>
+            </div>
+            <NotificationCenter />
           </div>
           <button
             onClick={handleLogout}

@@ -10,7 +10,6 @@ interface KPICardsProps {
 }
 
 export function KPICards({ kpis }: KPICardsProps) {
-  // Completed bar ke liye percentage calculate kar rahe hain
   const total = kpis.total > 0 ? kpis.total : 1;
   const completedPct = Math.round((kpis.completed / total) * 100);
 

@@ -1,0 +1,401 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model roles {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+
+  employees employees[]
+permissions role_permissions[]
+  @@index([name])
+  @@index([is_active])
+}
+
+model employees {
+  id                     String           @id
+  name                   String
+  email                  String           @unique
+  is_active              Boolean          @default(true)
+  created_at             DateTime         @default(now())
+  updated_at             DateTime         @updatedAt
+  role_id                String?
+  
+  // 👈 CHANGE 1: Yahan `onDelete: SetNull` add kiya hai. 
+  // Iska fayda: Agar admin ne galti se koi Role delete kar diya, toh us role ke employees delete nahi honge, bas unka role 'null' ho jayega.
+  role                   roles?           @relation(fields: [role_id], references: [id], onDelete: SetNull)
+  
+  comments               task_comments[]
+  time_logs              task_time_logs[]
+  assigned_tasks         tasks[]          @relation("task_assignee")
+  created_tasks          tasks[]          @relation("task_creator")
+  notifications_received notifications[]  @relation("notification_recipient")
+  notifications_sent     notifications[]  @relation("notification_actor")
+
+  // 👈 CHANGE 2 (Optional but Recommended): 
+  // Agar tumne pichle step me `batches` aur `transactions` table me employee ka relation add kiya tha, 
+  // toh unka reverse relation yahan add karna zaroori hai.
+  batches                batches[]
+  transactions           transactions[]
+
+  @@index([email])
+  @@index([role_id])
+  @@index([is_active])
+}
+
+model raw_materials {
+  id           String                @id @default(uuid())
+  name         String
+  quantity     Float
+  price_per_kg Float?
+  unit         String                @default("kg")
+  logs         raw_material_logs[]
+  receivings   receiving_materials[]
+  batches      batches[]
+  
+  @@index([name])
+}
+
+model receiving_materials {
+  id              String        @id @default(uuid())
+  raw_material_id String
+  quantity        Float
+  rate            Float?
+  supplier        String
+  date            DateTime      @default(now())
+  notes           String?
+  unit            String        @default("kg")
+  raw_material    raw_materials @relation(fields: [raw_material_id], references: [id])
+
+  @@index([raw_material_id])
+  @@index([date(sort: Desc)])
+}
+
+model flavors {
+  id                String              @id @default(uuid())
+  name              String
+  short_code        String              @default("XX")
+  is_active         Boolean             @default(true)
+  created_at        DateTime            @default(now())
+  ingredients       String?
+  batches           batches[]
+  finished_products finished_products[]
+  product_flavors   product_flavors[]
+  variants          product_variants[]
+}
+
+model products {
+  id              String             @id @default(uuid())
+  name            String
+  description     String?
+  is_active       Boolean            @default(true)
+  created_at      DateTime           @default(now())
+  product_flavors product_flavors[]
+  variants        product_variants[]
+}
+
+model product_variants {
+  id            String                  @id @default(uuid())
+  product_id    String
+  size_id       String
+  price         Float                   @default(0)
+  sku           String                  @unique
+  is_active     Boolean                 @default(false)
+  created_at    DateTime                @default(now())
+  description   String?
+  flavor_id     String
+  receive_items packing_receive_items[]
+  flavor        flavors                 @relation(fields: [flavor_id], references: [id])
+  product       products                @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  size          sizes                   @relation(fields: [size_id], references: [id])
+  inventory     variant_inventory?
+  stock         product_stock?
+
+  @@unique([product_id, flavor_id, size_id])
+  @@index([product_id])
+  @@index([is_active])
+}
+
+model product_flavors {
+  id         String   @id @default(uuid())
+  product_id String
+  flavor_id  String
+  flavor     flavors  @relation(fields: [flavor_id], references: [id])
+  product    products @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@unique([product_id, flavor_id])
+}
+
+model sizes {
+  id         String             @id @default(uuid())
+  size       String
+  unit       String             @default("kg")
+  pack_type  String
+  is_active  Boolean            @default(true)
+  created_at DateTime           @default(now())
+  variants   product_variants[]
+}
+
+model transactions {
+  id           String   @id @default(uuid())
+  type         String
+  amount       Float
+  date         DateTime @default(now())
+  reference_id String?
+  
+  // 👈 'person' field ko employee_id store karne ke liye use karenge
+  person_id    String?   
+  employee     employees? @relation(fields: [person_id], references: [id])
+  
+  note         String?
+  created_at   DateTime @default(now())
+
+  @@index([type])
+  @@index([date(sort: Desc)])
+  @@index([person_id]) // 👈 Fast searching ke liye index
+}
+
+model batches {
+  id              String   @id @default(uuid())
+  batch_id        String   @unique
+  date            DateTime @default(now())
+  
+  // 👈 logged_by ko employee se jodne ke liye
+  logged_by       String
+  employee        employees @relation(fields: [logged_by], references: [id])
+
+  flavor_id       String
+  leaves_in       Float
+  powder_out      Float
+  waste_loss      Float
+  yield_percent   Float
+  quality_check   Boolean  @default(false)
+  status          String
+  notes           String?
+  created_at      DateTime @default(now())
+  
+  // 👈 raw_material_id ka bhi relation add kar diya safety ke liye
+  raw_material_id String?
+  raw_material    raw_materials? @relation(fields: [raw_material_id], references: [id])
+  
+  flavor          flavors  @relation(fields: [flavor_id], references: [id])
+
+  @@index([status])
+  @@index([created_at(sort: Desc)])
+  @@index([flavor_id])
+  @@index([logged_by]) // 👈 Fast searching
+}
+
+model raw_material_logs {
+  id              String        @id @default(uuid())
+  raw_material_id String
+  quantity        Float
+  type            String
+  reference_id    String?
+  created_at      DateTime      @default(now())
+  raw_material    raw_materials @relation(fields: [raw_material_id], references: [id])
+
+  @@index([raw_material_id])
+  @@index([created_at(sort: Desc)])
+}
+
+model finished_products {
+  id              String   @id @default(uuid())
+  flavor_id       String
+  quantity        Float
+  batch_reference String?
+  created_at      DateTime @default(now())
+  flavor          flavors  @relation(fields: [flavor_id], references: [id])
+
+  @@index([created_at(sort: Desc)])
+  @@index([flavor_id])
+}
+
+model packing_logs {
+  id               String   @id @default(uuid())
+  third_party_name String
+  bag_size         Int
+  bag_count        Int
+  total_kg         Float
+  created_at       DateTime @default(now())
+
+  @@index([created_at(sort: Desc)])
+}
+
+// Consolidated powder stock model (replaces powder_stock and powder_stock_new)
+model raw_material_stock {
+  id           String   @id
+  name         String
+  quantity     Float    @default(0)
+  unit         String   @default("kg")
+  price_per_kg Float?
+  updated_at   DateTime @default(now())
+}
+
+model product_stock {
+  variant_id String           @id
+  quantity   Int              @default(0)
+  updated_at DateTime         @default(now())
+  variant    product_variants @relation(fields: [variant_id], references: [id], onDelete: Cascade)
+}
+
+model powder_stock {
+  id                 Int      @id @default(autoincrement())
+  received           Float    @default(0) // From batches/finished products
+  sent               Float    @default(0) // Sent to packing
+  total_from_batches Float    @default(0) // Legacy field for backward compatibility
+  total_sent         Float    @default(0) // Legacy field for backward compatibility
+  available          Float    @default(0)
+  updated_at         DateTime @default(now())
+}
+
+model packing_receives {
+  id               String                  @id @default(uuid())
+  third_party_name String
+  notes            String?
+  created_at       DateTime                @default(now())
+  items            packing_receive_items[]
+
+  @@index([created_at(sort: Desc)])
+}
+
+model packing_receive_items {
+  id                 String           @id @default(uuid())
+  packing_receive_id String
+  variant_id         String
+  quantity           Int
+  packing_receive    packing_receives @relation(fields: [packing_receive_id], references: [id], onDelete: Cascade)
+  variant            product_variants @relation(fields: [variant_id], references: [id])
+}
+
+model variant_inventory {
+  id         String           @id @default(uuid())
+  variant_id String           @unique
+  quantity   Int              @default(0)
+  updated_at DateTime         @default(now())
+  variant    product_variants @relation(fields: [variant_id], references: [id])
+
+  @@index([quantity(sort: Desc)])
+}
+
+model tasks {
+  id            String           @id @default(uuid())
+  title         String
+  description   String?
+  area          String? // Department/Area (e.g., Production, Quality, HR, Admin)
+  assignee_id   String?
+  created_by    String
+  status        String           @default("not_started")
+  priority      String           @default("medium")
+  due_date      DateTime?
+  start_date    DateTime?
+  completed_at  DateTime?
+  created_at    DateTime         @default(now())
+  updated_at    DateTime         @updatedAt
+  subtasks      subtasks[]
+  comments      task_comments[]
+  time_logs     task_time_logs[]
+  assignee      employees?       @relation("task_assignee", fields: [assignee_id], references: [id])
+  creator       employees        @relation("task_creator", fields: [created_by], references: [id])
+  notifications notifications[]
+
+  @@index([status])
+  @@index([assignee_id])
+  @@index([priority])
+  @@index([due_date])
+  @@index([created_by])
+  @@index([area])
+}
+
+model subtasks {
+  id           String   @id @default(uuid())
+  task_id      String
+  title        String
+  is_completed Boolean  @default(false)
+  created_at   DateTime @default(now())
+  task         tasks    @relation(fields: [task_id], references: [id], onDelete: Cascade)
+
+  @@index([task_id])
+}
+
+model task_comments {
+  id          String    @id @default(uuid())
+  task_id     String
+  employee_id String
+  content     String
+  created_at  DateTime  @default(now())
+  employee    employees @relation(fields: [employee_id], references: [id])
+  task        tasks     @relation(fields: [task_id], references: [id], onDelete: Cascade)
+
+  @@index([task_id])
+  @@index([employee_id])
+}
+
+model notifications {
+  id           String    @id @default(uuid())
+  recipient_id String
+  actor_id     String
+  action_type  String
+  task_id      String
+  task_title   String
+  created_at   DateTime  @default(now())
+  read_at      DateTime?
+  recipient    employees @relation("notification_recipient", fields: [recipient_id], references: [id])
+  actor        employees @relation("notification_actor", fields: [actor_id], references: [id])
+  task         tasks     @relation(fields: [task_id], references: [id], onDelete: Cascade)
+
+  @@index([recipient_id, created_at(sort: Desc)])
+  @@index([task_id])
+}
+
+model app_settings {
+  key        String   @id
+  value      String
+  updated_at DateTime @default(now()) @updatedAt
+}
+
+model task_time_logs {
+  id          String    @id @default(uuid())
+  task_id     String
+  employee_id String
+  hours       Float
+  notes       String?
+  created_at  DateTime  @default(now())
+  employee    employees @relation(fields: [employee_id], references: [id])
+  task        tasks     @relation(fields: [task_id], references: [id], onDelete: Cascade)
+
+  @@index([task_id])
+  @@index([employee_id])
+}
+
+model route_permissions {
+  id            String   @id @default(uuid())
+  route_path    String // Route pattern (e.g., "/settings", "/admin/*")
+  required_role String // Required role to access (admin, employee, viewer)
+  is_active     Boolean  @default(true)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@unique([route_path])
+  @@index([route_path])
+  @@index([required_role])
+}
+
+model role_permissions {
+  id          String   @id @default(uuid())
+  role_id     String   
+  permission  String   
+  is_active   Boolean  @default(true)
+  
+  // 👈 Is line me onDelete: Cascade add karo
+  role        roles    @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  
+  @@unique([role_id, permission])
+}

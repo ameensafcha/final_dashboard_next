@@ -21,7 +21,6 @@ interface TaskListProps {
   onTaskClick?: (task: Task) => void;
 }
 
-// Priority ke liye ab left indicator line use karenge, poora background nahi
 const priorityIndicatorColors: Record<string, string> = {
   urgent: "bg-red-500",
   high: "bg-orange-500",

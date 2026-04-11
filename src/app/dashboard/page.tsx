@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser, getTaskFilterByRole } from "@/lib/auth-helper";
+import { getCurrentUser } from "@/lib/auth-helper";
 import { redirect } from "next/navigation";
 import { DashboardClient } from "./dashboard-client";
 import { OfflineBanner } from "@/components/offline-banner";
@@ -35,15 +35,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   let error: string | null = null;
 
   try {
-    const taskFilter = getTaskFilterByRole(user);
     tasks = await prisma.tasks.findMany({
-      where: taskFilter,
-      include: {
-        assignee: true,
-        creator: true,
-      },
-      orderBy: { created_at: "desc" },
-    });
+  where: {},
+  include: {
+    assignee: true,
+    creator: true,
+  },
+  orderBy: { created_at: "desc" },
+});
   } catch (err) {
     console.error("[Dashboard] Failed to fetch tasks:", err);
     error = "Failed to load tasks";

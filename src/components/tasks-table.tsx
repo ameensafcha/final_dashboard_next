@@ -42,14 +42,12 @@ interface TasksTableProps {
   initialData?: Task[];
   filterAssigneeId?: string;
   currentUserId?: string;
-  currentUserRole?: string;
 }
 
 export function TasksTable({
   initialData = [],
   filterAssigneeId,
   currentUserId,
-  currentUserRole,
 }: TasksTableProps) {
   const queryClient = useQueryClient();
   const { addNotification } = useUIStore();
@@ -112,36 +110,21 @@ const TimeLeftDisplay = React.memo(function TimeLeftDisplay({
     }
   }, [filterAssigneeId]);
 
-  // Real-time subscription to tasks table for UPDATE events
-  const handleTaskUpdate = useCallback((payload: { new: Task; old: Task }) => {
-    console.log('[TasksTable] Task updated:', payload.new.id);
-    setTasks((currentTasks) =>
-      currentTasks.map((task) =>
-        task.id === payload.new.id ? { ...task, ...payload.new } : task
-      )
-    );
+  const handleTaskInsert = useCallback((payload: { new: Task }) => {
+    setTasks((current) => [payload.new, ...current]);
   }, []);
 
-  useRealtimeSubscription({
-    table: 'tasks',
-    event: 'UPDATE',
-    onMessage: handleTaskUpdate,
-    enabled: !!currentUserId,
-  });
-
-  // Real-time subscription to task_comments table for INSERT events
-  const handleCommentInsert = useCallback((payload: { new: { task_id: string } }) => {
-    console.log('[TasksTable] Comment added to task:', payload.new.task_id);
-    // When a comment is added to a task, optionally update task metadata
-    // For now, we log the event - UI may show comment count or trigger task list refresh
+  const handleTaskUpdate = useCallback((payload: { new: Task }) => {
+    setTasks((current) => current.map(t => t.id === payload.new.id ? { ...t, ...payload.new } : t));
   }, []);
 
-  useRealtimeSubscription({
-    table: 'task_comments',
-    event: 'INSERT',
-    onMessage: handleCommentInsert,
-    enabled: !!currentUserId,
-  });
+  const handleTaskDelete = useCallback((payload: { old: { id: string } }) => {
+    setTasks((current) => current.filter(t => t.id !== payload.old.id));
+  }, []);
+
+  useRealtimeSubscription({ table: 'tasks', event: 'INSERT', onMessage: handleTaskInsert, enabled: !!currentUserId });
+  useRealtimeSubscription({ table: 'tasks', event: 'UPDATE', onMessage: handleTaskUpdate, enabled: !!currentUserId });
+  useRealtimeSubscription({ table: 'tasks', event: 'DELETE', onMessage: handleTaskDelete, enabled: !!currentUserId });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -204,7 +187,7 @@ const TimeLeftDisplay = React.memo(function TimeLeftDisplay({
           open={showForm}
           onClose={() => { setShowForm(false); setEditingTask(null); }}
           task={editingTask}
-          canChangeAssignee={currentUserRole === "admin"}
+          canChangeAssignee={true}
         />
         <TaskDetail
           task={selectedTask}
@@ -355,28 +338,24 @@ const TimeLeftDisplay = React.memo(function TimeLeftDisplay({
                     </button>
 
                     {/* Edit Button - Soft Amber */}
-                    {(currentUserRole === "admin" || task.creator?.id === currentUserId) && (
-                      <button
-                        onClick={() => { setEditingTask(task); setShowForm(true); }}
-                        className="px-4 py-2 text-xs font-bold bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-lg cursor-pointer transition-colors"
-                      >
-                        Edit
-                      </button>
-                    )}
+                    <button
+                      onClick={() => { setEditingTask(task); setShowForm(true); }}
+                      className="px-4 py-2 text-xs font-bold bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-lg cursor-pointer transition-colors"
+                    >
+                      Edit
+                    </button>
 
                     {/* Delete Button - Soft Red */}
-                    {(currentUserRole === "admin" || task.creator?.id === currentUserId) && (
-                      <button
-                        onClick={() => {
-                          if (confirm("Delete this task?")) {
-                            deleteMutation.mutate(task.id);
-                          }
-                        }}
-                        className="px-4 py-2 text-xs font-bold bg-red-50 text-red-600 hover:bg-red-100 rounded-lg cursor-pointer transition-colors"
-                      >
-                        Delete
-                      </button>
-                    )}
+                    <button
+                      onClick={() => {
+                        if (confirm("Delete this task?")) {
+                          deleteMutation.mutate(task.id);
+                        }
+                      }}
+                      className="px-4 py-2 text-xs font-bold bg-red-50 text-red-600 hover:bg-red-100 rounded-lg cursor-pointer transition-colors"
+                    >
+                      Delete
+                    </button>
 
                   </div>
                 </td>
@@ -397,7 +376,7 @@ const TimeLeftDisplay = React.memo(function TimeLeftDisplay({
         open={showForm}
         onClose={() => { setShowForm(false); setEditingTask(null); }}
         task={editingTask}
-        canChangeAssignee={currentUserRole === "admin"}
+        canChangeAssignee={true}
       />
 
       <TaskDetail

@@ -262,6 +262,16 @@
 
 **Coverage:** 20/20 requirements mapped ✓
 
+### Phase 11: Fix build errors and remove dead code
+
+**Goal:** Fix TypeScript build errors preventing successful `npm run build`
+**Requirements**: None (technical fix phase)
+**Depends on:** Phase 10
+**Plans:** 1 plan (01)
+
+Plans:
+- [x] 11-01-PLAN.md — Fix build errors in admin layout and settings API
+
 ---
 
 *Roadmap created: 2025-04-11*

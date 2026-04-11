@@ -21,11 +21,10 @@ interface Task {
 
 interface KanbanClientProps {
   userId: string;
-  userRole?: string;
   initialData: Task[];
 }
 
-export function KanbanClient({ userId, userRole, initialData }: KanbanClientProps) {
+export function KanbanClient({ userId, initialData }: KanbanClientProps) {
   return (
     <div className="p-6 h-full flex flex-col">
       <div className="flex items-center justify-between mb-6">
@@ -39,7 +38,6 @@ export function KanbanClient({ userId, userRole, initialData }: KanbanClientProp
         <TaskBoard
           initialData={initialData}
           currentUserId={userId}
-          currentUserRole={userRole}
         />
       </div>
     </div>

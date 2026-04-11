@@ -77,24 +77,6 @@ export async function POST(
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    const currentEmployee = await prisma.employees.findUnique({
-      where: { id: user.id },
-      include: { role: true },
-    });
-
-    if (!currentEmployee) {
-      return NextResponse.json({ error: "Employee not found" }, { status: 404 });
-    }
-
-    // Permission: admin, task creator, or assignee can add subtasks
-    const isAdmin = currentEmployee.role?.name === "admin";
-    const isCreator = task.created_by === user.id;
-    const isAssignee = task.assignee_id === user.id;
-
-    if (!isAdmin && !isCreator && !isAssignee) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
     const subtask = await prisma.subtasks.create({
       data: {
         task_id: taskId,
@@ -137,24 +119,6 @@ export async function PUT(
 
     if (!subtask || subtask.task_id !== taskId) {
       return NextResponse.json({ error: "Subtask not found" }, { status: 404 });
-    }
-
-    const currentEmployee = await prisma.employees.findUnique({
-      where: { id: user.id },
-      include: { role: true },
-    });
-
-    if (!currentEmployee) {
-      return NextResponse.json({ error: "Employee not found" }, { status: 404 });
-    }
-
-    // Permission: admin, task creator, or assignee can update subtasks
-    const isAdmin = currentEmployee.role?.name === "admin";
-    const isCreator = subtask.task.created_by === user.id;
-    const isAssignee = subtask.task.assignee_id === user.id;
-
-    if (!isAdmin && !isCreator && !isAssignee) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const updatedSubtask = await prisma.subtasks.update({
@@ -200,23 +164,6 @@ export async function DELETE(
 
     if (!subtask || subtask.task_id !== taskId) {
       return NextResponse.json({ error: "Subtask not found" }, { status: 404 });
-    }
-
-    const currentEmployee = await prisma.employees.findUnique({
-      where: { id: user.id },
-      include: { role: true },
-    });
-
-    if (!currentEmployee) {
-      return NextResponse.json({ error: "Employee not found" }, { status: 404 });
-    }
-
-    // Permission: admin or task creator can delete subtasks
-    const isAdmin = currentEmployee.role?.name === "admin";
-    const isCreator = subtask.task.created_by === user.id;
-
-    if (!isAdmin && !isCreator) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     await prisma.subtasks.delete({

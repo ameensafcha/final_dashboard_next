@@ -155,7 +155,10 @@
 2. Admin can change employee's role via dropdown selection
 3. Employee's permissions update immediately based on new role assignment
 
-**Plans:** TBD
+**Plans:** 1 plan (01)
+
+**Plan list:**
+- [ ] 07-01-PLAN.md — Role dropdown in employees table with permission cache invalidation
 
 **UI hint:** yes
 
@@ -173,7 +176,10 @@
 1. User can access modules only if their role has required permission
 2. Unauthorized access attempts are blocked at middleware level
 
-**Plans:** TBD
+**Plans:** 1 plan (01)
+
+**Plan list:**
+- [x] 08-01-PLAN.md — requirePermission() helper and protected API routes
 
 ---
 

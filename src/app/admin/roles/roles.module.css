@@ -137,6 +137,10 @@
   box-shadow: 0 0 0 2px rgba(232, 197, 71, 0.2);
 }
 
+.inputError {
+  border-color: var(--destructive);
+}
+
 .textarea {
   min-height: 100px;
   resize: vertical;

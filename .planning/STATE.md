@@ -1,43 +1,65 @@
----
-gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: Codebase Improvements
-status: complete
-last_updated: "2026-04-10T23:25:00.000Z"
-progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 8
-  completed_plans: 8
-  percent: 100
+# State: ERP Authentication Refactoring
+
+**Last Updated:** 2025-04-11
+
 ---
 
-# Project State: Real-time Task Management Dashboard
+## Project Reference
 
-**Last Updated**: 2026-04-10 (23:25 UTC)
+**Project Name:** ERP Authentication Refactoring
+**Core Value:** Users can securely log in with Supabase Auth and access only the modules and features their assigned role permits — permissions are fully database-driven with admin-managed roles and permissions.
+
+---
 
 ## Current Position
 
-Milestone: v2.0 - Codebase Improvements
-Status: All plans complete — Milestone v2.0 finished
-Phase: 5 (Complete)
-Plan: 3 of 3 (Complete)
-
-## Roadmap Evolution
-
-- Phase 1 added: fix all concern in ocdebase
-- Phase 2 added: Fix edge runtime crypto module error
-- Phase 3 added: Fix notification real-time delay
-- Phase 4 added: Fix dashboard and realtime issues
-- Phase 5 completed: Database-level role-based filtering & auth guards verified
-
-## Shipped Milestones
-
-- **v2.0** (2026-04-10): Codebase Improvements - Dashboard with Proper Auth & Realtime Verification
-- **v1.1** (2026-04-10): Real-time Updates & Notifications Fix
-- **v1.0** (2026-04-09): Foundation and Real-time Notifications
+| Field | Value |
+|-------|-------|
+| Phase | 1 |
+| Plan | Not started |
+| Status | Not started |
+| Progress | 0% |
 
 ---
 
-*Project initialized: 2026-04-09*
-*v2.0 started: 2026-04-10*
+## Performance Metrics
+
+| Metric | Value |
+|--------|-------|
+| Phases completed | 0/10 |
+| Plans completed | 0/24 |
+| Requirements satisfied | 0/20 |
+
+---
+
+## Accumulated Context
+
+### Key Decisions
+
+| Decision | Rationale | Date |
+|----------|-----------|------|
+| Supabase Auth as primary | User requirement - auth via Supabase | 2025-04-11 |
+| DB-driven permissions | No hardcoded permissions - admin manages from UI | 2025-04-11 |
+| Delete current auth files | User request to redesign auth from scratch | 2025-04-11 |
+
+### Current Todo
+
+- None yet
+
+### Blockers
+
+- None yet
+
+---
+
+## Session Continuity
+
+| Field | Value |
+|-------|-------|
+| Last phase worked | None |
+| Last plan worked | None |
+| Session notes | Just initialized roadmap |
+
+---
+
+*State updated: 2025-04-11*

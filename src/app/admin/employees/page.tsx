@@ -94,6 +94,42 @@ const { data: employees, isLoading } = useQuery<Employee[]>({
     },
   });
 
+  // Task 1: Add roles query for dropdown
+  const { data: roles } = useQuery<Role[]>({
+    queryKey: ["roles"],
+    queryFn: async () => {
+      const res = await fetch("/api/roles");
+      if (!res.ok) throw new Error("Failed to fetch roles");
+      const json = await res.json();
+      return json.data || [];
+    },
+  });
+
+  // Task 2: Add role update mutation with permission cache invalidation (EMP-03)
+  const updateRoleMutation = useMutation({
+    mutationFn: async ({ employeeId, roleId }: { employeeId: string; roleId: string }) => {
+      const res = await fetch("/api/auth/role", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employeeId, roleId: roleId || null }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to update role");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+      // EMP-03: Invalidate permissions cache so new role takes effect immediately
+      queryClient.invalidateQueries({ queryKey: ["permissions"] });
+      addNotification({ type: "success", message: "Role updated successfully" });
+    },
+    onError: (err: Error) => {
+      addNotification({ type: "error", message: err.message });
+    },
+  });
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
@@ -131,9 +167,17 @@ const { data: employees, isLoading } = useQuery<Employee[]>({
                   <td className="p-4" style={{ color: "#1A1A1A" }}>{emp.name}</td>
                   <td className="p-4" style={{ color: "#6B7280" }}>{emp.email}</td>
                   <td className="p-4">
-                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                      {emp.role?.name || "No Role"}
-                    </span>
+                    <select
+                      value={emp.role_id || ""}
+                      onChange={(e) => updateRoleMutation.mutate({ employeeId: emp.id, roleId: e.target.value })}
+                      disabled={updateRoleMutation.isPending}
+                      className="w-full px-2 py-1 border rounded text-sm bg-white"
+                    >
+                      <option value="">No Role</option>
+                      {roles?.map((role) => (
+                        <option key={role.id} value={role.id}>{role.name}</option>
+                      ))}
+                    </select>
                   </td>
                   <td className="p-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${emp.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>

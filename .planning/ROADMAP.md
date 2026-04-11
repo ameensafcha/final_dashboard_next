@@ -73,7 +73,10 @@
 3. Admin can edit existing role name and description
 4. Admin can delete role (employees with that role get role_id set to null, not deleted)
 
-**Plans:** TBD
+**Plans:** 1 plan (01)
+
+**Plan list:**
+- [x] 03-01-PLAN.md — Full CRUD with API + UI
 
 **UI hint:** yes
 
@@ -108,7 +111,10 @@
 2. Admin can check/uncheck permissions to assign/remove them from role
 3. Permission changes are saved to database immediately
 
-**Plans:** TBD
+**Plans:** 1 plan (01)
+
+**Plan list:**
+- [ ] 05-01-PLAN.md — Database-driven permission assignment UI
 
 **UI hint:** yes
 

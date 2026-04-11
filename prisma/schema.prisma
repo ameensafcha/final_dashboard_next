@@ -14,7 +14,7 @@ model roles {
   created_at  DateTime @default(now())
 
   employees employees[]
-
+permissions role_permissions[]
   @@index([name])
   @@index([is_active])
 }
@@ -27,13 +27,23 @@ model employees {
   created_at             DateTime         @default(now())
   updated_at             DateTime         @updatedAt
   role_id                String?
-  role                   roles?           @relation(fields: [role_id], references: [id])
+  
+  // 👈 CHANGE 1: Yahan `onDelete: SetNull` add kiya hai. 
+  // Iska fayda: Agar admin ne galti se koi Role delete kar diya, toh us role ke employees delete nahi honge, bas unka role 'null' ho jayega.
+  role                   roles?           @relation(fields: [role_id], references: [id], onDelete: SetNull)
+  
   comments               task_comments[]
   time_logs              task_time_logs[]
   assigned_tasks         tasks[]          @relation("task_assignee")
   created_tasks          tasks[]          @relation("task_creator")
   notifications_received notifications[]  @relation("notification_recipient")
   notifications_sent     notifications[]  @relation("notification_actor")
+
+  // 👈 CHANGE 2 (Optional but Recommended): 
+  // Agar tumne pichle step me `batches` aur `transactions` table me employee ka relation add kiya tha, 
+  // toh unka reverse relation yahan add karna zaroori hai.
+  batches                batches[]
+  transactions           transactions[]
 
   @@index([email])
   @@index([role_id])
@@ -48,7 +58,8 @@ model raw_materials {
   unit         String                @default("kg")
   logs         raw_material_logs[]
   receivings   receiving_materials[]
-
+  batches      batches[]
+  
   @@index([name])
 }
 
@@ -138,19 +149,28 @@ model transactions {
   amount       Float
   date         DateTime @default(now())
   reference_id String?
-  person       String?
+  
+  // 👈 'person' field ko employee_id store karne ke liye use karenge
+  person_id    String?   
+  employee     employees? @relation(fields: [person_id], references: [id])
+  
   note         String?
   created_at   DateTime @default(now())
 
   @@index([type])
   @@index([date(sort: Desc)])
+  @@index([person_id]) // 👈 Fast searching ke liye index
 }
 
 model batches {
   id              String   @id @default(uuid())
   batch_id        String   @unique
   date            DateTime @default(now())
+  
+  // 👈 logged_by ko employee se jodne ke liye
   logged_by       String
+  employee        employees @relation(fields: [logged_by], references: [id])
+
   flavor_id       String
   leaves_in       Float
   powder_out      Float
@@ -160,12 +180,17 @@ model batches {
   status          String
   notes           String?
   created_at      DateTime @default(now())
+  
+  // 👈 raw_material_id ka bhi relation add kar diya safety ke liye
   raw_material_id String?
+  raw_material    raw_materials? @relation(fields: [raw_material_id], references: [id])
+  
   flavor          flavors  @relation(fields: [flavor_id], references: [id])
 
   @@index([status])
   @@index([created_at(sort: Desc)])
   @@index([flavor_id])
+  @@index([logged_by]) // 👈 Fast searching
 }
 
 model raw_material_logs {
@@ -361,4 +386,16 @@ model route_permissions {
   @@unique([route_path])
   @@index([route_path])
   @@index([required_role])
+}
+
+model role_permissions {
+  id          String   @id @default(uuid())
+  role_id     String   
+  permission  String   
+  is_active   Boolean  @default(true)
+  
+  // 👈 Is line me onDelete: Cascade add karo
+  role        roles    @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  
+  @@unique([role_id, permission])
 }

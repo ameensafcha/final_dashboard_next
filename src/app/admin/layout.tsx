@@ -1,17 +1,13 @@
-import { requireAdmin } from "@/lib/auth-helper";
 import { redirect } from "next/navigation";
+import { checkRoutePermission } from "@/lib/auth-rbac";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  // Server-side admin verification - this runs before any rendering
-  const adminUser = await requireAdmin().catch(() => null);
+  // ✅ Yahan check karo, kyunki ye Edge nahi, Node.js environment hai
+  const { allowed } = await checkRoutePermission("/admin");
 
-  if (!adminUser) {
-    // If requireAdmin() redirects, we won't reach here
-    // But if it returns null (shouldn't happen with current implementation),
-    // redirect to dashboard
-    redirect("/dashboard");
+  if (!allowed) {
+    redirect("/unauthorized"); // Ya forbidden page
   }
 
-  // Render children - server component so no client-side flash
   return <>{children}</>;
 }

@@ -5,231 +5,97 @@ import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
 
-interface Employee {
-  id: string;
-  name: string;
-  email: string;
-  role_id: string | null;
-  is_active: boolean;
-  role?: {
-    name: string;
-  } | null;
-}
-
 interface AuthContextType {
   user: User | null;
-  session: Session | null;
-  employee: Employee | null;
+  employee: any | null;
   role: string | null;
+  permissions: string[];
   isLoading: boolean;
   authError: string | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  retryAuth: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [employee, setEmployee] = useState<Employee | null>(null);
+  const [employee, setEmployee] = useState<any>(null);
+  const [permissions, setPermissions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const queryClient = useQueryClient();
-  const employeeRef = useRef<Employee | null>(null);
 
-  const fetchEmployee = async (userId: string) => {
-    console.log("[Auth] Fetching employee for userId:", userId);
-    
-    // Use Prisma API route (single source of truth for role)
-    const response = await fetch('/api/auth/employee');
-    
-    if (!response.ok) {
-      if (response.status === 401) {
-        console.error("[Auth] Unauthorized, clearing session");
-        setEmployee(null);
-        setAuthError("Session expired or unauthorized");
-        await supabase.auth.signOut();
+  const fetchEmployee = async () => {
+    try {
+      const response = await fetch('/api/auth/employee');
+      
+      // Check if response is HTML instead of JSON
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        console.error("Received non-JSON response from server");
         return;
       }
-      console.error("[Auth] Error fetching employee:", response.status);
-      setEmployee(null);
-      setAuthError("Failed to load user profile");
-      return;
+
+      const data = await response.json();
+      if (response.ok) {
+        setEmployee(data);
+        setPermissions(data.permissions || []);
+      } else {
+        if (response.status === 401) await logout();
+      }
+    } catch (err) {
+      console.error("Fetch Error:", err);
     }
-
-    const data = await response.json();
-    console.log("[Auth] Employee fetch result:", data);
-
-    // Server-side is_active validation - getCurrentUser already checks this
-    // But we verify the response is valid
-    if (!data || !data.id) {
-      console.error("[Auth] No employee data found for userId:", userId);
-      setEmployee(null);
-      setAuthError("User profile not found");
-      return;
-    }
-
-    console.log("[Auth] Employee loaded:", data.role?.name);
-    employeeRef.current = data;
-    setEmployee(data);
-    setAuthError(null);
   };
 
-  useEffect(() => {
-    let initialSessionHandled = false;
-
-    const initAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          setSession(session);
-          setUser(session.user);
-          await fetchEmployee(session.user.id);
-          initialSessionHandled = true;
-        } else {
-          console.log("[Auth] No session found on init");
-        }
-      } catch (err) {
-        console.error("[Auth] Error initializing auth:", err);
-        setAuthError("Failed to initialize auth");
-      }
-      // Do NOT set isLoading=false here — let onAuthStateChange handle it
-    };
-
-    initAuth();
-
-    const timeoutId = setTimeout(() => {
-      console.log("[Auth] Auth timeout reached - forcing loading to false");
-      setIsLoading(false);
-    }, 10000);
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-
-        // Fetch employee on SIGNED_IN if not already loaded (handles token refresh cycles)
-        if (event === "SIGNED_IN" && session?.user && !employeeRef.current) {
-          await fetchEmployee(session.user.id);
-        }
-
-        // Sync auth state with database on token refresh (handles role changes)
-        if ((event === "TOKEN_REFRESHED" || event === "USER_UPDATED") && session?.user) {
-          await fetchEmployee(session.user.id);
-        }
-
-        if (event === "SIGNED_OUT") {
-          employeeRef.current = null;
-          setEmployee(null);
-          setAuthError(null);
-        }
-
-        setIsLoading(false);
-        clearTimeout(timeoutId);
-      }
-    );
-
-    return () => {
-      subscription.unsubscribe();
-      clearTimeout(timeoutId);
-    };
-  }, []);
-
   const login = async (email: string, password: string) => {
-    console.log("[Auth] Login attempt for:", email);
-    
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      console.error("[Auth] Login error:", error.message);
-      throw error;
-    }
-    
-    if (!data.session) {
-      console.error("[Auth] No session created");
-      throw new Error("No session created");
-    }
-
-    console.log("[Auth] Login successful, session exists");
-
-    // Fetch employee from Prisma API route (single source of truth for role)
-    const response = await fetch('/api/auth/employee');
-    
-    if (!response.ok) {
-      await supabase.auth.signOut();
-      if (response.status === 401) {
-        throw new Error("Access denied. Contact admin.");
-      }
-      throw new Error("Failed to load user profile");
-    }
-
-    const employee = await response.json();
-    console.log("[Auth] Employee loaded via API:", employee.role?.name);
-
-    // Set employee state - is_active validation is server-side only
-    setEmployee(employee);
+    setAuthError(null);
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    await fetchEmployee();
     queryClient.invalidateQueries();
   };
 
   const logout = async () => {
     await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
     setEmployee(null);
-    setAuthError(null);
+    setPermissions([]);
+    setUser(null);
     queryClient.clear();
   };
 
-  const retryAuth = async () => {
-    setAuthError(null);
-    setIsLoading(true);
-    try {
+  useEffect(() => {
+    const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setSession(session);
-        setUser(session.user);
-        await fetchEmployee(session.user.id);
-      } else {
-        setAuthError("Session expired");
-      }
-    } catch (err) {
-      console.error("[Auth] Retry auth error:", err);
-      setAuthError("Failed to restore session");
-    } finally {
+      setUser(session?.user ?? null);
+      if (session) await fetchEmployee();
       setIsLoading(false);
-    }
-  };
+    };
 
-  const role = employee?.role?.name ?? null;
+    init();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      if (event === 'SIGNED_IN') fetchEmployee();
+      if (event === 'SIGNED_OUT') {
+        setEmployee(null);
+        setPermissions([]);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        session,
-        employee,
-        role,
-        isLoading,
-        authError,
-        login,
-        logout,
-        retryAuth,
-      }}
-    >
+    <AuthContext.Provider value={{ user, employee, role: employee?.role, permissions, isLoading, authError, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-export function useAuth() {
+export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
+  if (!context) throw new Error("useAuth must be used within AuthProvider");
   return context;
-}
+};

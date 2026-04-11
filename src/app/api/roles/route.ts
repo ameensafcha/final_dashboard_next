@@ -1,21 +1,54 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { getCurrentUser, authResponse } from "@/lib/auth-helper";
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { verifyApiAuth } from '@/lib/auth-helper';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const user = await getCurrentUser();
-    if (!user) return authResponse("Unauthorized");
-    if (!user.isAdmin) return authResponse("Forbidden: Admin only", 403);
+    // Check if user is logged in
+    const { error } = await verifyApiAuth();
+    if (error) return error;
 
     const roles = await prisma.roles.findMany({
-      where: { is_active: true },
-      orderBy: { name: "asc" },
+      include: {
+        _count: { select: { employees: true } }
+      },
+      orderBy: { name: 'asc' }
     });
 
-    return NextResponse.json({ data: roles });
+    return NextResponse.json(roles);
   } catch (error) {
-    console.error("Error fetching roles:", error);
-    return NextResponse.json({ error: "Failed to fetch roles" }, { status: 500 });
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}
+//
+const roles = await prisma.roles.findMany({
+  include: {
+    permissions: true, // DB se permissions saath mangwayein
+  },
+  orderBy: { name: 'asc' }
+});a
+
+export async function POST(req: Request) {
+  try {
+    // Only admins should create roles
+    const { user, error } = await verifyApiAuth();
+    if (error) return error;
+    
+    if (!user?.isAdmin) {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    }
+
+    const body = await req.json();
+    const { name, description } = body;
+
+    const role = await prisma.roles.create({
+      data: { name, description }
+    });
+
+    return NextResponse.json(role);
+  } catch (error) {
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

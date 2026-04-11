@@ -6,7 +6,7 @@
 
 ## Phases
 
-- [ ] **Phase 1: Supabase Auth Foundation** - User login, logout, session persistence
+- [x] **Phase 1: Supabase Auth Foundation** - User login, logout, session persistence
 - [ ] **Phase 2: Auth Middleware & Protection** - Route protection, redirect for unauthenticated users
 - [ ] **Phase 3: Role CRUD** - Admin can create, read, edit, delete roles
 - [ ] **Phase 4: Permission Management** - Admin can view and manage available permissions in database
@@ -34,7 +34,10 @@
 2. User session persists across browser refresh
 3. User can log out from any page and be redirected to login
 
-**Plans:** TBD
+**Plans:** 1 plan (01)
+
+**Plan list:**
+- [x] 01-01-PLAN.md — Verify login/logout/session flows
 
 **UI hint:** yes
 

@@ -1,27 +1,24 @@
 # Project State: RBAC Rebuild (Database-Driven)
 
 ## Current Status
-- **Phase:** Phase 1: Database & API Core (Foundations)
-- **Active Task:** Plan 01-02 Complete
-- **Overall Progress:** 33% (1/3 phase plans complete)
+- **Phase:** Phase 2: Permission Management UI (The Matrix)
+- **Active Task:** Planning Complete
+- **Overall Progress:** 25% (Phase 2 planned, Phase 1 complete)
 
 ## Completed Tasks
-- [x] Codebase Map created (.planning/codebase/)
-- [x] Project Vision & Goals defined (.planning/PROJECT.md)
-- [x] Workflow configuration set (.planning/config.json)
-- [x] Domain Research completed (.planning/research/)
-- [x] Requirements drafted (.planning/REQUIREMENTS.md)
-- [x] Roadmap established (.planning/ROADMAP.md)
-- [x] Phase 1 Planned (3 plans created)
-- [x] Execute Plan 01-02: Seeding & Core RBAC Utility (.planning/phases/01-foundation/01-02-SUMMARY.md)
+- [x] Phase 1: Database & API Core (Foundations)
+- [x] Phase 2 Planning: 3 plans created
 
 ## Next Steps
-1. Execute Plan 01-03: Foundation API Endpoints.
-2. Investigate/Sync Plan 01-01: Schema Refinement & Migration.
+1. Execute Plan 02-01: Role Management (RSC + Vanilla CSS).
+2. Execute Plan 02-02: Permission Matrix Grid.
+3. Execute Plan 02-03: User Assignment & Final Polish.
 
 ## Decisions
-- Combined user role and permission fetching into a single query in `rbac.ts`.
-- Hierarchical caching (React cache() + Next.js unstable_cache()) for RBAC utility.
+- Re-implementing Management UI using Vanilla CSS and RSC as per project preferences.
+- Matrix UI will group permissions by resource for better UX.
+- Using optimistic UI updates for matrix toggles.
+- RSC will be used for initial data fetching in management pages.
 
 ## Issues & Blockers
 - None currently.

@@ -85,9 +85,97 @@ export async function requireAuth() {
 export async function requireAdmin() {
   const user = await requireAuth();
   if (!user.isAdmin) {
-    redirect("/dashboard");
+    throw new Error("Admin access required");
   }
   return user;
+}
+
+/**
+ * 3b. Require Admin for API Routes (returns NextResponse)
+ */
+export async function requireAdminApi() {
+  try {
+    const user = await getCurrentUser();
+    if (!user || !user.isAdmin) {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    }
+    return user;
+  } catch (error) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+}
+
+/**
+ * 4. Require Specific Permission (Server Components)
+ */
+export async function requirePermission(permission: string) {
+  const user = await requireAuth();
+  if (!user.role) {
+    throw new Error(`Permission denied: ${permission} - no role assigned`);
+  }
+
+  const employee = await prisma.employees.findUnique({
+    where: { id: user.id },
+    include: { role: true },
+  });
+
+  if (!employee?.role_id) {
+    throw new Error(`Permission denied: ${permission} - no role`);
+  }
+
+  const hasPermission = await prisma.role_permissions.findFirst({
+    where: {
+      role_id: employee.role_id,
+      permission: permission,
+      is_active: true,
+    },
+  });
+
+  if (!hasPermission) {
+    throw new Error(`Permission denied: ${permission} required`);
+  }
+
+  return user;
+}
+
+/**
+ * 4b. Require Specific Permission for API Routes (returns NextResponse)
+ */
+export async function requirePermissionApi(permission: string) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!user.role) {
+      return NextResponse.json({ error: "Permission denied" }, { status: 403 });
+    }
+
+    const employee = await prisma.employees.findUnique({
+      where: { id: user.id },
+      include: { role: true },
+    });
+
+    if (!employee?.role_id) {
+      return NextResponse.json({ error: "Permission denied" }, { status: 403 });
+    }
+
+    const hasPermission = await prisma.role_permissions.findFirst({
+      where: {
+        role_id: employee.role_id,
+        permission: permission,
+        is_active: true,
+      },
+    });
+
+    if (!hasPermission) {
+      return NextResponse.json({ error: `Forbidden: ${permission} permission required` }, { status: 403 });
+    }
+
+    return user;
+  } catch (error) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 }
 
 /**

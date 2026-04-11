@@ -61,8 +61,5 @@ export async function checkPermission(permissionKey: string, userId: string): Pr
 
   if (!role) return false;
 
-  // Admin bypass
-  if (role === 'admin') return true;
-
   return permissions.includes(permissionKey);
 }

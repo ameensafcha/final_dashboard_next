@@ -120,15 +120,17 @@ describe('auth-helper', () => {
       expect(error).not.toBeNull();
     });
 
-    it('should allow admin regardless of permissions', async () => {
+    it('should allow super admin regardless of permissions', async () => {
+      process.env.SUPER_ADMIN_EMAIL = 'super@example.com';
       const mockSupabase = {
         auth: {
-          getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-id' } } }),
+          getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-id', email: 'super@example.com' } } }),
         },
       };
       (createServerClient as any).mockReturnValue(mockSupabase);
       (prisma.employee.findUnique as any).mockResolvedValue({
         id: 'user-id',
+        email: 'super@example.com',
         is_active: true,
       });
       (getUserPermissions as any).mockResolvedValue({
@@ -138,6 +140,28 @@ describe('auth-helper', () => {
 
       const { error } = await requirePermissionApi('products:manage');
       expect(error).toBeNull();
+    });
+
+    it('should NOT allow non-super admin (even with admin role) if permission is missing', async () => {
+      process.env.SUPER_ADMIN_EMAIL = 'super@example.com';
+      const mockSupabase = {
+        auth: {
+          getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-id', email: 'not-super@example.com' } } }),
+        },
+      };
+      (createServerClient as any).mockReturnValue(mockSupabase);
+      (prisma.employee.findUnique as any).mockResolvedValue({
+        id: 'user-id',
+        email: 'not-super@example.com',
+        is_active: true,
+      });
+      (getUserPermissions as any).mockResolvedValue({
+        role: 'admin',
+        permissions: [],
+      });
+
+      const { error } = await requirePermissionApi('products:manage');
+      expect(error).not.toBeNull();
     });
   });
 

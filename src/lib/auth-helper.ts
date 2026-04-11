@@ -52,8 +52,7 @@ export const getCurrentUser = cache(async () => {
     const { role, permissions } = await getUserPermissions(employee.id);
 
     const isSuperAdmin =
-      role === 'admin' ||
-      (!!process.env.SUPER_ADMIN_EMAIL && employee.email === process.env.SUPER_ADMIN_EMAIL);
+      !!process.env.SUPER_ADMIN_EMAIL && employee.email === process.env.SUPER_ADMIN_EMAIL;
 
     return {
       id: employee.id,
@@ -81,7 +80,10 @@ export function authResponse(error: string, status: number = 401): NextResponse 
 export async function requirePermissionApi(permission: string) {
   const user = await getCurrentUser();
   if (!user) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }), user: null };
+  
+  // Super Admin bypasses all checks
   if (user.isAdmin) return { error: null, user };
+  
   if (!user.permissions.includes(permission)) {
     return { error: NextResponse.json({ error: `Forbidden: ${permission} required` }, { status: 403 }), user: null };
   }
@@ -94,7 +96,11 @@ export async function requirePermissionApi(permission: string) {
 export async function requireAdminApi() {
   const user = await getCurrentUser();
   if (!user) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }), user: null };
-  if (!user.isAdmin) return { error: NextResponse.json({ error: "Forbidden: Admin only" }, { status: 403 }), user: null };
+  
+  // Only super admin or user with admin:access permission can access admin routes
+  const hasAdminAccess = user.isAdmin || user.permissions.includes('admin:access');
+  
+  if (!hasAdminAccess) return { error: NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 }), user: null };
   return { error: null, user };
 }
 

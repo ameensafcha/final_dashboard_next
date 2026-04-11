@@ -29,12 +29,27 @@ describe('checkPermission', () => {
     vi.clearAllMocks();
   });
 
-  it('should return true for admin role regardless of specific permission', async () => {
+  it('should return FALSE for admin role if specific permission is missing', async () => {
     (prisma.employee.findUnique as any).mockResolvedValue({
       role_id: 'admin-role-id',
       role: { 
         name: 'admin',
         permissions: []
+      },
+    });
+
+    const result = await checkPermission('dashboard:view', 'user-123');
+    expect(result).toBe(false);
+  });
+
+  it('should return true for admin role IF it has the permission', async () => {
+    (prisma.employee.findUnique as any).mockResolvedValue({
+      role_id: 'admin-role-id',
+      role: { 
+        name: 'admin',
+        permissions: [
+          { permission: { resource: 'dashboard', action: 'view' } },
+        ]
       },
     });
 

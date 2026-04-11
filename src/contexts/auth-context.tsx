@@ -48,18 +48,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchEmployeeData = async () => {
     try {
       const [empRes, permRes] = await Promise.all([
-        fetch("/api/auth/employee"),
-        fetch("/api/users/permissions"),
+        fetch("/api/auth/employee").catch(() => null),
+        fetch("/api/users/permissions").catch(() => null),
       ]);
-      if (empRes.ok) {
+
+      if (empRes && empRes.ok) {
         const emp = await empRes.json();
         setEmployee(emp);
+      } else {
+        console.warn("Failed to fetch employee data");
       }
-      if (permRes.ok) {
+
+      if (permRes && permRes.ok) {
         const { permissions: perms } = await permRes.json();
         setPermissions(perms || []);
+      } else {
+        console.warn("Failed to fetch permissions, falling back to empty array");
+        setPermissions([]);
       }
-    } catch {}
+    } catch (error) {
+      console.error("Auth initialization error:", error);
+      setPermissions([]);
+    }
   };
 
   useEffect(() => {
@@ -100,7 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const role = employee?.role ?? null;
-  const isAdmin = role === "admin";
+  const isAdmin = employee?.isAdmin === true || role === "admin";
 
   return (
     <AuthContext.Provider

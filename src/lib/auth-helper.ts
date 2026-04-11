@@ -3,6 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { cache } from "react";
+import { getUserPermissions } from "@/lib/rbac";
 
 // 1. Supabase Client Setup
 async function getSupabase() {
@@ -34,33 +35,33 @@ export const getCurrentUser = cache(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
 
+    // Get basic employee info
     const employee = await prisma.employee.findUnique({
       where: { id: user.id },
-      include: {
-        role: {
-          include: {
-            permissions: { 
-              where: { is_active: true },
-              include: { permission: true }
-            }
-          }
-        }
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        is_active: true,
       }
     });
 
     if (!employee || !employee.is_active) return null;
 
+    // Get role and permissions from RBAC module (with caching)
+    const { role, permissions } = await getUserPermissions(employee.id);
+
     const isSuperAdmin =
-      employee.role?.name === 'admin' ||
+      role === 'admin' ||
       (!!process.env.SUPER_ADMIN_EMAIL && employee.email === process.env.SUPER_ADMIN_EMAIL);
 
     return {
       id: employee.id,
       email: employee.email,
       name: employee.name,
-      role: employee.role?.name || null,
+      role: role,
       isAdmin: isSuperAdmin,
-      permissions: employee.role?.permissions.map(p => `${p.permission.resource}:${p.permission.action}`) || []
+      permissions: permissions
     };
   } catch (error) {
     return null;

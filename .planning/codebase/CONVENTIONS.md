@@ -41,10 +41,9 @@ import { getCurrentUser, authResponse } from "@/lib/auth-helper";
 ```typescript
 export async function DELETE(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
-    if (!user) return authResponse("Unauthorized");
+    const auth = await requireAdminApi();
+    if (auth.error) return auth.error;
     // ... logic
-    return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
@@ -58,24 +57,20 @@ export async function DELETE(request: NextRequest) {
 - Server components by default
 - Use `cn()` utility for className merging
 
-## Error Handling
+## Permissions
 
-| Status | Use Case |
-|--------|----------|
-| 200 | Success |
-| 400 | Validation errors |
-| 401 | Unauthorized |
-| 403 | Forbidden (no permission) |
-| 500 | Server errors |
+- Centralized in `src/lib/permissions.ts`
+- Use `requirePermissionApi()` for permission guards
+- Use `requireAdminApi()` for admin-only endpoints
 
 ## Naming
 
 | Type | Convention | Example |
 |------|------------|---------|
-| Files (utils) | kebab-case | `auth-helper.ts` |
+| Files (utils) | kebab-case | `auth-helper.ts`, `permissions.ts` |
 | Files (components) | PascalCase | `AppSidebar.tsx` |
 | Variables | camelCase | `const userId` |
-| Functions | camelCase + verb | `getCurrentUser` |
+| Functions | camelCase + verb | `getCurrentUser`, `hasPermission` |
 | Types | PascalCase | `interface Employee` |
 
 ---

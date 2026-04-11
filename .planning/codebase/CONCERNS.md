@@ -2,27 +2,32 @@
 
 ## Known Issues
 
-### Orphaned Files
-- `src/app/production/page.tsx` - Referenced in build but not moved to new structure
+### Orphaned File
+- `src/app/production/page.tsx` - Referenced in build but not in new structure
 - LSP shows errors for this file (module not found)
 
-### Incomplete Feature
-- Packing logs pages at `/packing-logs` and `/packing-receives` - not under production module
+### Permission List Hardcoded (In Progress)
+- `src/lib/permissions.ts` - Permission list hardcoded, not from DB
+- Should fetch available permissions from `role_permissions` table
+- Plan to fix: Create `/api/permissions` endpoint to fetch from DB
+
+### Incomplete Module Restructuring
+- `/packing-logs` and `/packing-receives` - Not under production module
 - Should be `/production/packing-logs` and `/production/packing-receives`
 
 ## Technical Debt
 
 ### Middleware
-- Currently only checks auth, doesn't check permissions at edge level
-- Role-based route protection relies on client-side + API guards more than middleware
+- Only checks auth, doesn't check detailed permissions at edge
+- Role-based route protection relies on client-side + API guards
 
 ### Data Fetching
 - Mix of Server Components (direct Prisma) and Client Components (React Query)
 - Could standardize on one approach
 
-### Role Permissions
-- `requirePermissionApi` and `requireAdminApi` exist but not applied to all API routes
-- Need to audit which routes are missing permission guards
+### Missing API Guards
+- Not all API routes have `requirePermissionApi()` applied
+- Should audit and add guards to all relevant routes
 
 ## Security Considerations
 
@@ -32,7 +37,7 @@
 ## Build Warnings
 
 - ESLint shows errors in `.opencode/get-shit-done/bin/` - tool scripts using require()
-- Not in user code, but may want to exclude that directory
+- Not in user code - can ignore or exclude
 
 ---
 

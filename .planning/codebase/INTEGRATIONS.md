@@ -4,7 +4,7 @@
 
 **PostgreSQL** - Primary database via Prisma ORM
 
-- Connection: Configured via `DATABASE_URL` environment variable
+- Connection: Configured via `DATABASE_URL` or `DIRECT_URL` environment variables
 - ORM: Prisma 7.6.0 with PostgreSQL adapter
 - Location: `prisma/schema.prisma`
 
@@ -18,6 +18,7 @@
 - Environment Variables:
   - `NEXT_PUBLIC_SUPABASE_URL`
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  - `SUPER_ADMIN_EMAIL` (optional - for super admin detection)
 
 ## External APIs
 
@@ -30,9 +31,9 @@ No external REST APIs currently integrated. All data operations go through:
 Required `.env` variables:
 ```
 DATABASE_URL=postgresql://...
+DIRECT_URL=postgresql://... (for Prisma)
 NEXT_PUBLIC_SUPABASE_URL=https://...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-SUPER_ADMIN_EMAIL=... (optional)
 ```
 
 ---

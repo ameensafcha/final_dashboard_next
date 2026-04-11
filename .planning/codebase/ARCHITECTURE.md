@@ -29,6 +29,7 @@
 │  Lib (src/lib/*)                        │
 │  - prisma.ts - Database client         │
 │  - auth-helper.ts - Auth utilities     │
+│  - permissions.ts - Permission config  │
 │  - supabase.ts - Supabase client       │
 │  - stores/ - Zustand state management  │
 └─────────────────────────────────────────┘
@@ -65,6 +66,7 @@
 - **Admin**: Role name = "admin" OR email matches `SUPER_ADMIN_EMAIL`
 - **Permissions**: Stored in `role_permissions` table (DB-driven)
 - **Sidebar**: Filters menu items based on permissions via `PERMISSION_MAP`
+- **Seed**: Default permissions seeded via `prisma/seed.ts`
 
 ---
 

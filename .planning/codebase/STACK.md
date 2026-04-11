@@ -50,7 +50,6 @@
 - `tailwind.config` / PostCSS config - Styling
 - `vitest.config.ts` - Test configuration
 - `prisma/schema.prisma` - Database schema
-- `playwright.config.ts` - E2E test configuration
 
 ## Build Scripts
 
@@ -60,7 +59,8 @@
   "build": "next build",
   "start": "next start",
   "lint": "eslint",
-  "test": "vitest run"
+  "test": "vitest run",
+  "db:seed": "npx tsx prisma/seed.ts"
 }
 ```
 

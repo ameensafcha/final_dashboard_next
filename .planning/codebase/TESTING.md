@@ -3,8 +3,9 @@
 ## Test Framework
 
 **Vitest** (v4.1.4) - Unit testing for React/Next.js
+**Playwright** (v1.59.1) - E2E testing
 
-Config: `vitest.config.ts`
+Config: `vitest.config.ts`, `playwright.config.ts`
 
 ## Test Commands
 
@@ -25,15 +26,16 @@ src/
 
 ## Current State
 
-- Test framework configured but limited test coverage
-- Example tests exist in `src/app/api/tasks/__tests__/`
-- No unit tests for components yet
+- Test framework configured (Vitest + Playwright)
+- Limited test coverage - only example tests in `src/app/api/tasks/__tests__/`
+- No component tests yet
 
-## Recommendations
+## Recommended Tests
 
-1. Add unit tests for utility functions (`auth-helper.ts`, `utils.ts`)
-2. Add component tests for complex UI (`app-sidebar.tsx`)
-3. Add API route tests for permission guards
+1. **Unit tests**: Utility functions in `src/lib/` (auth-helper, permissions)
+2. **API tests**: Permission guards, role-based access
+3. **Component tests**: app-sidebar permission filtering, auth-context
+4. **E2E tests**: Login flow, role-based navigation
 
 ---
 

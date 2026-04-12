@@ -2,14 +2,53 @@ import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
-// @ts-ignore
-import { PERMISSIONS, PERMISSION_LABELS } from '../src/lib/permissions';
 
 const { Pool } = pg;
 
 const pool = new Pool({ connectionString: process.env.DIRECT_URL || process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
+
+// Re-defining permissions locally since the source file was deleted
+const PERMISSIONS = {
+  DASHBOARD: 'dashboard:view',
+  INVENTORY: 'inventory:read',
+  STOCKS: 'stocks:view',
+  RECEIVING: 'receiving:manage',
+  PRODUCTS: 'products:read',
+  VARIANTS: 'products:variants',
+  FLAVORS: 'products:flavors',
+  SIZES: 'products:sizes',
+  PRODUCTION: 'production:read',
+  BATCHES: 'production:batches',
+  FINISHED_PRODUCTS: 'production:finished',
+  TASKS: 'tasks:read',
+  VIEW_ALL_TASKS: 'tasks:view_all',
+  TASKS_MANAGE: 'tasks:manage',
+  ADMIN: 'admin:access',
+  ROLES: 'roles:manage',
+  EMPLOYEES: 'employees:manage',
+};
+
+const PERMISSION_LABELS: Record<string, string> = {
+  'dashboard:view': 'View Dashboard',
+  'inventory:read': 'View Inventory',
+  'stocks:view': 'View Stocks',
+  'receiving:manage': 'Manage Receiving',
+  'products:read': 'View Products',
+  'products:variants': 'Manage Variants',
+  'products:flavors': 'Manage Flavors',
+  'products:sizes': 'Manage Sizes',
+  'production:read': 'View Production',
+  'production:batches': 'Manage Batches',
+  'production:finished': 'Manage Finished Products',
+  'tasks:read': 'View Tasks',
+  'tasks:manage': 'Manage Tasks',
+  'admin:access': 'Access Admin Panel',
+  'roles:manage': 'Manage Roles',
+  'employees:manage': 'Manage Employees',
+  'tasks:view_all': 'View All Tasks',
+};
 
 const ROLE_DEFINITIONS = [
   { name: 'admin', description: 'Full system access' },
@@ -52,9 +91,9 @@ async function main() {
   const permissionsList = Object.values(PERMISSIONS);
   for (const permissionValue of permissionsList) {
     const [resource, action] = (permissionValue as string).split(':');
-    const label = PERMISSION_LABELS[permissionValue as keyof typeof PERMISSION_LABELS];
+    const label = PERMISSION_LABELS[permissionValue];
     
-    await (prisma as any).permission.upsert({
+    await prisma.permission.upsert({
       where: { action_resource: { action, resource } },
       update: { label },
       create: { action, resource, label },
@@ -65,7 +104,7 @@ async function main() {
   // 2. Seed Roles
   console.log('Seeding roles...');
   for (const roleDef of ROLE_DEFINITIONS) {
-    await (prisma as any).role.upsert({
+    await prisma.role.upsert({
       where: { name: roleDef.name },
       update: { description: roleDef.description },
       create: { name: roleDef.name, description: roleDef.description },
@@ -74,12 +113,12 @@ async function main() {
   console.log(`✓ Created/Updated ${ROLE_DEFINITIONS.length} roles`);
 
   // 3. Clear existing role permissions
-  await (prisma as any).rolePermission.deleteMany({});
+  await prisma.rolePermission.deleteMany({});
   console.log('✓ Cleared existing role permissions');
 
   // 4. Assign permissions to roles
   for (const roleName in ROLE_PERMISSIONS) {
-    const role = await (prisma as any).role.findUnique({ where: { name: roleName } });
+    const role = await prisma.role.findUnique({ where: { name: roleName } });
     if (!role) continue;
 
     const rolePerms = ROLE_PERMISSIONS[roleName];
@@ -87,7 +126,7 @@ async function main() {
 
     for (const permissionValue of rolePerms) {
       const [resource, action] = (permissionValue as string).split(':');
-      const permission = await (prisma as any).permission.findUnique({
+      const permission = await prisma.permission.findUnique({
         where: { action_resource: { action, resource } }
       });
 
@@ -101,7 +140,7 @@ async function main() {
     }
 
     if (rolePermissionData.length > 0) {
-      await (prisma as any).rolePermission.createMany({
+      await prisma.rolePermission.createMany({
         data: rolePermissionData,
       });
       console.log(`✓ Assigned ${rolePermissionData.length} permissions to ${roleName}`);

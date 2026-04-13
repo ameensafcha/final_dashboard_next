@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import { TaskBoard } from "@/components/task-board";
+import { TaskBoard } from "@/components/tasks/task-board";
 
 export const dynamic = "force-dynamic";
 

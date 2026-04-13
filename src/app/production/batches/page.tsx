@@ -152,7 +152,7 @@ export default function ProductionPage() {
     queryFn: async () => {
       const res = await fetch("/api/settings?key=default_raw_material_id");
       const json = await res.json();
-      return json.data;
+      return json.data ?? null;
     },
   });
 

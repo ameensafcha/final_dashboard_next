@@ -39,18 +39,17 @@ export default function AdminSettingsPage() {
     queryKey: ["settings", "default_raw_material_id"],
     queryFn: async () => {
       const res = await fetch("/api/settings?key=default_raw_material_id");
-      
+
       // FIX: Agar API chup-chaap login page pe redirect ho gayi hai
       if (res.redirected) {
         window.location.href = "/login";
         return null;
       }
-      if (!res.ok) return null; 
-      
+      if (!res.ok) return null;
+
       const json = await res.json();
-      return json.data;
-    },
-  });
+      return json.data ?? null;
+    },  });
 
   useEffect(() => {
     if (setting?.value) {

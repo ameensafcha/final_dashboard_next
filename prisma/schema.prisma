@@ -279,11 +279,20 @@ model variant_inventory {
   @@index([quantity(sort: Desc)])
 }
 
+model companies {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  tasks       tasks[]
+}
+
 model tasks {
   id            String           @id @default(uuid())
   title         String
   description   String?
   area          String?
+  company_id    String?
   assignee_id   String?
   created_by    String
   status        String           @default("not_started")
@@ -293,12 +302,14 @@ model tasks {
   completed_at  DateTime?
   estimated_hours Float?
   recurrence      String?
+  has_spawned_recurrence Boolean @default(false)
   created_at    DateTime         @default(now())
   updated_at    DateTime         @updatedAt
   subtasks      subtasks[]
   comments      task_comments[]
   time_logs     task_time_logs[]
   attachments   task_attachments[]
+  company       companies?       @relation(fields: [company_id], references: [id])
   assignee      Employee?        @relation("task_assignee", fields: [assignee_id], references: [id])
   creator       Employee         @relation("task_creator", fields: [created_by], references: [id])
   notifications notifications[]
@@ -309,6 +320,7 @@ model tasks {
   @@index([due_date])
   @@index([created_by])
   @@index([area])
+  @@index([company_id])
 }
 
 model task_attachments {

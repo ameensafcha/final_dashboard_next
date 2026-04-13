@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { KPICards } from "./kpi-cards";
 import { TaskList } from "./task-list";
-import { TaskDetail } from "@/components/task-detail";
+import { TaskDetail } from "@/components/tasks/task-detail";
 import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
 import { useAuth } from "@/contexts/auth-context";
 
@@ -19,6 +19,7 @@ interface TaskDetailTask {
   created_at: string;
   estimated_hours: number | null;
   recurrence: string | null;
+  company?: { id: string; name: string } | null;
   assignee?: { id: string; name: string; email: string } | null;
   creator?: { id: string; name: string; email: string };
   subtasks?: { id: string; title: string; is_completed: boolean }[];
@@ -51,6 +52,7 @@ interface SerializedTask {
   created_at: string;
   estimated_hours?: number | null;
   recurrence?: string | null;
+  company?: { id: string; name: string } | null;
   assignee?: { id: string; name: string; email?: string } | null;
   creator?: { id: string; name: string; email?: string } | null;
   attachments?: any[];
@@ -107,6 +109,7 @@ export function DashboardClient({ kpis: initialKpis, tasks: initialTasks, error,
       created_at: task.created_at,
       estimated_hours: task.estimated_hours ?? null,
       recurrence: task.recurrence ?? null,
+      company: task.company ?? null,
       assignee: task.assignee ? { id: task.assignee.id, name: task.assignee.name, email: task.assignee.email ?? "" } : null,
       creator: task.creator ? { id: task.creator.id, name: task.creator.name, email: task.creator.email ?? "" } : { id: "", name: "", email: "" },
       subtasks: [],

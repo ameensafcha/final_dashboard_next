@@ -1,41 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
-
-async function getSupabaseServerClient() {
-  const cookieStore = await cookies();
-  const { createServerClient } = await import("@supabase/ssr");
-
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
-        },
-      },
-    }
-  );
-}
+import { getCurrentUser } from "@/lib/auth";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: taskId } = await params;
-    const supabase = await getSupabaseServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { id: taskId } = await params;
 
     const subtasks = await prisma.subtasks.findMany({
       where: { task_id: taskId },
@@ -54,45 +29,23 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { id: taskId } = await params;
-    const supabase = await getSupabaseServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { title } = await request.json();
 
     if (!title) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
     }
 
-    // Verify task exists and user has access
+    // Verify task exists
     const task = await prisma.tasks.findUnique({
       where: { id: taskId },
     });
 
     if (!task) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
-    }
-
-    const currentEmployee = await prisma.employees.findUnique({
-      where: { id: user.id },
-      include: { role: true },
-    });
-
-    if (!currentEmployee) {
-      return NextResponse.json({ error: "Employee not found" }, { status: 404 });
-    }
-
-    // Permission: admin, task creator, or assignee can add subtasks
-    const isAdmin = currentEmployee.role?.name === "admin";
-    const isCreator = task.created_by === user.id;
-    const isAssignee = task.assignee_id === user.id;
-
-    if (!isAdmin && !isCreator && !isAssignee) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const subtask = await prisma.subtasks.create({
@@ -115,14 +68,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { id: taskId } = await params;
-    const supabase = await getSupabaseServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { id, title, is_completed } = await request.json();
 
     if (!id) {
@@ -137,24 +86,6 @@ export async function PUT(
 
     if (!subtask || subtask.task_id !== taskId) {
       return NextResponse.json({ error: "Subtask not found" }, { status: 404 });
-    }
-
-    const currentEmployee = await prisma.employees.findUnique({
-      where: { id: user.id },
-      include: { role: true },
-    });
-
-    if (!currentEmployee) {
-      return NextResponse.json({ error: "Employee not found" }, { status: 404 });
-    }
-
-    // Permission: admin, task creator, or assignee can update subtasks
-    const isAdmin = currentEmployee.role?.name === "admin";
-    const isCreator = subtask.task.created_by === user.id;
-    const isAssignee = subtask.task.assignee_id === user.id;
-
-    if (!isAdmin && !isCreator && !isAssignee) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const updatedSubtask = await prisma.subtasks.update({
@@ -177,14 +108,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { id: taskId } = await params;
-    const supabase = await getSupabaseServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
@@ -200,23 +127,6 @@ export async function DELETE(
 
     if (!subtask || subtask.task_id !== taskId) {
       return NextResponse.json({ error: "Subtask not found" }, { status: 404 });
-    }
-
-    const currentEmployee = await prisma.employees.findUnique({
-      where: { id: user.id },
-      include: { role: true },
-    });
-
-    if (!currentEmployee) {
-      return NextResponse.json({ error: "Employee not found" }, { status: 404 });
-    }
-
-    // Permission: admin or task creator can delete subtasks
-    const isAdmin = currentEmployee.role?.name === "admin";
-    const isCreator = subtask.task.created_by === user.id;
-
-    if (!isAdmin && !isCreator) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     await prisma.subtasks.delete({

@@ -1,13 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { getCurrentUser, authResponse } from "@/lib/auth-helper";
+import { getCurrentUser } from "@/lib/auth";
+
+export const dynamic = 'force-dynamic';
 
 export async function POST() {
   try {
     const user = await getCurrentUser();
-    if (!user) {
-      return authResponse("Unauthorized");
-    }
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const existing = await prisma.powder_stock.findFirst();
     if (existing) {
@@ -33,20 +33,31 @@ export async function POST() {
 
     return NextResponse.json(powderStock);
   } catch (error) {
+    console.error('[PowderStock POST] Error:', error);
     return NextResponse.json({ error: "Failed to initialize" }, { status: 500 });
   }
 }
 
 export async function GET() {
   try {
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const powderStock = await prisma.powder_stock.findFirst();
     
     if (!powderStock) {
-      return NextResponse.json({ error: "Powder stock not initialized" }, { status: 404 });
+      return NextResponse.json({
+        id: 0,
+        total_from_batches: 0,
+        total_sent: 0,
+        available: 0,
+        message: "Powder stock not initialized"
+      });
     }
 
     return NextResponse.json(powderStock);
   } catch (error) {
+    console.error('[PowderStock GET] Error:', error);
     return NextResponse.json({ error: "Failed to fetch" }, { status: 500 });
   }
 }

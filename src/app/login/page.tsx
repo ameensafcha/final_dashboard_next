@@ -1,13 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, login, isLoading } = useAuth();
   const [loading, setLoading] = useState(false);
+
+  const authError = searchParams.get("error");
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -15,8 +18,8 @@ export default function LoginPage() {
     }
   }, [user, isLoading, router]);
   const [formData, setFormData] = useState({
-    email: "admin@mail.com",
-    password: "123456",
+    email: "",
+    password: "",
   });
   const [error, setError] = useState("");
 
@@ -50,6 +53,12 @@ export default function LoginPage() {
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
             {error}
+          </div>
+        )}
+
+        {authError === "unauthorized" && (
+          <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 text-sm">
+            You were redirected because your session expired. Please log in again.
           </div>
         )}
 
@@ -101,4 +110,29 @@ export default function LoginPage() {
       </div>
     </div>
   );
+}
+
+function LoginFormWithSuspense() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#F5F4EE" }}>
+        <div className="w-full max-w-md p-8 rounded-xl shadow-lg" style={{ backgroundColor: "#FFFFFF" }}>
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-bold" style={{ color: "#1A1A1A" }}>
+              Welcome Back
+            </h1>
+            <p className="text-sm mt-2" style={{ color: "#6B7280" }}>
+              Loading...
+            </p>
+          </div>
+        </div>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+export default function LoginPage() {
+  return <LoginFormWithSuspense />;
 }

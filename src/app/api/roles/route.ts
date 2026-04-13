@@ -1,43 +1,40 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { createServerSupabaseClient } from "@/lib/supabase";
+import { getCurrentUser } from "@/lib/auth";
 
-function getCookies(request: Request) {
-  const cookieHeader = request.headers.get("cookie") || "";
-  const cookies = cookieHeader.split(";").map(c => c.trim()).filter(Boolean).reduce((acc, cookie) => {
-    const [name, ...rest] = cookie.split("=");
-    if (name) acc.push({ name, value: rest.join("=") });
-    return acc;
-  }, [] as { name: string; value: string }[]);
-  return cookies;
-}
+export const dynamic = "force-dynamic";
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    const supabase = createServerSupabaseClient({ getAll: () => getCookies(request) });
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const employee = await prisma.employees.findUnique({
-      where: { id: user.id },
-      include: { role: true },
-    });
-
-    if (!employee || employee.role?.name !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const roles = await prisma.roles.findMany({
+    const roles = await prisma.role.findMany({
       where: { is_active: true },
       orderBy: { name: "asc" },
     });
-
     return NextResponse.json({ data: roles });
   } catch (error) {
-    console.error("Error fetching roles:", error);
     return NextResponse.json({ error: "Failed to fetch roles" }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const user = await getCurrentUser();
+    const isSuperAdmin = process.env.SUPER_ADMIN_EMAIL && user?.email === process.env.SUPER_ADMIN_EMAIL;
+    if (!user || !isSuperAdmin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+    const body = await request.json();
+    const { name, description } = body;
+
+    if (!name) return NextResponse.json({ error: "Role name required" }, { status: 400 });
+
+    const role = await prisma.role.create({
+      data: { name, description, is_active: true },
+    });
+    return NextResponse.json(role, { status: 201 });
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to create role" }, { status: 500 });
   }
 }

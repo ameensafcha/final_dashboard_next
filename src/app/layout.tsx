@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { SidebarWrapper } from "@/components/sidebar-wrapper";
 import { Providers } from "@/components/providers";
 import { ToastContainer } from "@/components/toast-container";
+import { GlobalAuthWrapper } from "@/components/global-auth-wrapper";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -16,8 +17,29 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Inventory App",
-  description: "Raw materials inventory management",
+  title: {
+    template: "%s | Inventory App",
+    default: "Inventory App",
+  },
+  description: "Raw materials inventory management system for tracking materials, production, and stock",
+  keywords: ["inventory", "raw materials", "stock management", "production"],
+  authors: [{ name: "Inventory Team" }],
+  openGraph: {
+    title: "Inventory App",
+    description: "Raw materials inventory management system",
+    type: "website",
+    locale: "en_US",
+    siteName: "Inventory App",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Inventory App",
+    description: "Raw materials inventory management system",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({
@@ -33,8 +55,10 @@ export default function RootLayout({
       <body className="min-h-full flex">
         <Providers>
           <SidebarWrapper />
-          <main className="flex-1">
-            {children}
+          <main className="flex-1 overflow-auto">
+            <GlobalAuthWrapper>
+              {children}
+            </GlobalAuthWrapper>
           </main>
           <ToastContainer />
         </Providers>

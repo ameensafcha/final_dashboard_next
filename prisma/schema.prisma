@@ -6,36 +6,46 @@ datasource db {
   provider = "postgresql"
 }
 
-model roles {
+model Role {
   id          String   @id @default(uuid())
   name        String   @unique
   description String?
   is_active   Boolean  @default(true)
   created_at  DateTime @default(now())
 
-  employees employees[]
- 
+  employees   Employee[]
+
   @@index([name])
   @@index([is_active])
+  @@map("roles")
 }
 
-model employees {
-  id             String           @id
-  name           String
-  email          String           @unique
-  is_active      Boolean          @default(true)
-  created_at     DateTime         @default(now())
-  updated_at     DateTime         @updatedAt
-  role_id        String?
-  role           roles?           @relation(fields: [role_id], references: [id])
-  comments       task_comments[]
-  time_logs      task_time_logs[]
-  assigned_tasks tasks[]          @relation("task_assignee")
-  created_tasks  tasks[]          @relation("task_creator")
+model Employee {
+  id                     String           @id
+  name                   String
+  email                  String           @unique
+  is_active              Boolean          @default(true)
+  created_at             DateTime         @default(now())
+  updated_at             DateTime         @updatedAt
+  role_id                String?
+  
+  role                   Role?            @relation(fields: [role_id], references: [id], onDelete: SetNull)
+  
+  comments               task_comments[]
+  time_logs              task_time_logs[]
+  assigned_tasks         tasks[]          @relation("task_assignee")
+  created_tasks          tasks[]          @relation("task_creator")
+  notifications_received notifications[]  @relation("notification_recipient")
+  notifications_sent     notifications[]  @relation("notification_actor")
+
+  batches                batches[]
+  transactions           transactions[]
+  task_attachments       task_attachments[]
 
   @@index([email])
   @@index([role_id])
   @@index([is_active])
+  @@map("employees")
 }
 
 model raw_materials {
@@ -46,7 +56,8 @@ model raw_materials {
   unit         String                @default("kg")
   logs         raw_material_logs[]
   receivings   receiving_materials[]
-
+  batches      batches[]
+  
   @@index([name])
 }
 
@@ -103,6 +114,7 @@ model product_variants {
   product       products                @relation(fields: [product_id], references: [id], onDelete: Cascade)
   size          sizes                   @relation(fields: [size_id], references: [id])
   inventory     variant_inventory?
+  stock         product_stock?
 
   @@unique([product_id, flavor_id, size_id])
   @@index([product_id])
@@ -135,19 +147,26 @@ model transactions {
   amount       Float
   date         DateTime @default(now())
   reference_id String?
-  person       String?
+  
+  person_id    String?   
+  employee     Employee? @relation(fields: [person_id], references: [id])
+  
   note         String?
   created_at   DateTime @default(now())
 
   @@index([type])
   @@index([date(sort: Desc)])
+  @@index([person_id])
 }
 
 model batches {
   id              String   @id @default(uuid())
   batch_id        String   @unique
   date            DateTime @default(now())
+  
   logged_by       String
+  employee        Employee @relation(fields: [logged_by], references: [id])
+
   flavor_id       String
   leaves_in       Float
   powder_out      Float
@@ -157,12 +176,16 @@ model batches {
   status          String
   notes           String?
   created_at      DateTime @default(now())
+  
   raw_material_id String?
+  raw_material    raw_materials? @relation(fields: [raw_material_id], references: [id])
+  
   flavor          flavors  @relation(fields: [flavor_id], references: [id])
 
   @@index([status])
   @@index([created_at(sort: Desc)])
   @@index([flavor_id])
+  @@index([logged_by])
 }
 
 model raw_material_logs {
@@ -201,11 +224,29 @@ model packing_logs {
   @@index([created_at(sort: Desc)])
 }
 
+model raw_material_stock {
+  id           String   @id
+  name         String
+  quantity     Float    @default(0)
+  unit         String   @default("kg")
+  price_per_kg Float?
+  updated_at   DateTime @default(now())
+}
+
+model product_stock {
+  variant_id String           @id
+  quantity   Int              @default(0)
+  updated_at DateTime         @default(now())
+  variant    product_variants @relation(fields: [variant_id], references: [id], onDelete: Cascade)
+}
+
 model powder_stock {
   id                 Int      @id @default(autoincrement())
-  total_from_batches Float
-  total_sent         Float
-  available          Float
+  received           Float    @default(0)
+  sent               Float    @default(0)
+  total_from_batches Float    @default(0)
+  total_sent         Float    @default(0)
+  available          Float    @default(0)
   updated_at         DateTime @default(now())
 }
 
@@ -239,29 +280,51 @@ model variant_inventory {
 }
 
 model tasks {
-  id           String           @id @default(uuid())
-  title        String
-  description  String?
-  assignee_id  String?
-  created_by   String
-  status       String           @default("not_started")
-  priority     String           @default("medium")
-  due_date     DateTime?
-  start_date   DateTime?
-  completed_at DateTime?
-  created_at   DateTime         @default(now())
-  updated_at   DateTime         @updatedAt
-  subtasks     subtasks[]
-  comments     task_comments[]
-  time_logs    task_time_logs[]
-  assignee     employees?       @relation("task_assignee", fields: [assignee_id], references: [id])
-  creator      employees        @relation("task_creator", fields: [created_by], references: [id])
+  id            String           @id @default(uuid())
+  title         String
+  description   String?
+  area          String?
+  assignee_id   String?
+  created_by    String
+  status        String           @default("not_started")
+  priority      String           @default("medium")
+  due_date      DateTime?
+  start_date    DateTime?
+  completed_at  DateTime?
+  estimated_hours Float?
+  recurrence      String?
+  created_at    DateTime         @default(now())
+  updated_at    DateTime         @updatedAt
+  subtasks      subtasks[]
+  comments      task_comments[]
+  time_logs     task_time_logs[]
+  attachments   task_attachments[]
+  assignee      Employee?        @relation("task_assignee", fields: [assignee_id], references: [id])
+  creator       Employee         @relation("task_creator", fields: [created_by], references: [id])
+  notifications notifications[]
 
   @@index([status])
   @@index([assignee_id])
   @@index([priority])
   @@index([due_date])
   @@index([created_by])
+  @@index([area])
+}
+
+model task_attachments {
+  id          String   @id @default(uuid())
+  task_id     String
+  file_name   String
+  file_url    String
+  file_size   Int?
+  file_type   String?
+  uploaded_by String
+  created_at  DateTime @default(now())
+  
+  task        tasks    @relation(fields: [task_id], references: [id], onDelete: Cascade)
+  uploader    Employee @relation(fields: [uploaded_by], references: [id])
+
+  @@index([task_id])
 }
 
 model subtasks {
@@ -281,11 +344,34 @@ model task_comments {
   employee_id String
   content     String
   created_at  DateTime  @default(now())
-  employee    employees @relation(fields: [employee_id], references: [id])
+  employee    Employee  @relation(fields: [employee_id], references: [id])
   task        tasks     @relation(fields: [task_id], references: [id], onDelete: Cascade)
 
   @@index([task_id])
   @@index([employee_id])
+}
+
+model notifications {
+  id           String    @id @default(uuid())
+  recipient_id String
+  actor_id     String
+  action_type  String
+  task_id      String
+  task_title   String
+  created_at   DateTime  @default(now())
+  read_at      DateTime?
+  recipient    Employee  @relation("notification_recipient", fields: [recipient_id], references: [id])
+  actor        Employee  @relation("notification_actor", fields: [actor_id], references: [id])
+  task         tasks     @relation(fields: [task_id], references: [id], onDelete: Cascade)
+
+  @@index([recipient_id, created_at(sort: Desc)])
+  @@index([task_id])
+}
+
+model app_settings {
+  key        String   @id
+  value      String
+  updated_at DateTime @default(now()) @updatedAt
 }
 
 model task_time_logs {
@@ -295,9 +381,50 @@ model task_time_logs {
   hours       Float
   notes       String?
   created_at  DateTime  @default(now())
-  employee    employees @relation(fields: [employee_id], references: [id])
+  employee    Employee  @relation(fields: [employee_id], references: [id])
   task        tasks     @relation(fields: [task_id], references: [id], onDelete: Cascade)
 
   @@index([task_id])
   @@index([employee_id])
+}
+
+
+
+
+// Daily Command Center - Standalone Module
+
+model DailyPlan {
+  id             String         @id @default(uuid())
+  plan_date      DateTime       @unique @default(now())
+  final_score    Int            @default(0)
+  
+  tomorrow_notes TomorrowNotes?
+  items          DailyItem[]
+  blockers       DailyBlocker[]
+}
+
+model DailyItem {
+  id              String    @id @default(uuid())
+  daily_plan_id   String
+  title           String
+  tier            Int
+  biz             String
+  status          String    @default("Pending")
+  carryover_count Int       @default(0)
+  daily_plan      DailyPlan @relation(fields: [daily_plan_id], references: [id], onDelete: Cascade)
+}
+
+model DailyBlocker {
+  id             String    @id @default(uuid())
+  daily_plan_id  String
+  blocker_text   String
+  action_owner   String?
+  daily_plan     DailyPlan @relation(fields: [daily_plan_id], references: [id], onDelete: Cascade)
+}
+
+model TomorrowNotes {
+  id  String @id @default(uuid())
+  notes String[]
+  daily_plan_id String    @unique
+  daily_plan DailyPlan @relation(fields:[daily_plan_id],references:[id],onDelete:Cascade)
 }

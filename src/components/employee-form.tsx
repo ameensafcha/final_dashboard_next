@@ -2,11 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useUIStore } from "@/lib/stores";
-import { useAuth } from "@/contexts/auth-context";
+import styles from "./employee-form.module.css";
 
 interface Role {
   id: string;
@@ -131,78 +128,88 @@ export function EmployeeForm({ open, onClose, employee }: EmployeeFormProps) {
 
   const isLoading = createMutation.isPending || updateMutation.isPending;
 
+  if (!open) return null;
+
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>{employee ? "Edit Employee" : "Add Employee"}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Name</label>
-            <Input
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Enter name"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Email</label>
-            <Input
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              placeholder="Enter email"
-              required
-              disabled={!!employee}
-            />
-          </div>
-          {!employee && (
-            <div>
-              <label className="block text-sm font-medium mb-1">Password</label>
-              <Input
-                type="password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                placeholder="Min 8 characters"
+    <div className={styles.modalOverlay}>
+      <div className={styles.modalContent}>
+        <div className={styles.modalHeader}>
+          <h3 className={styles.modalTitle}>{employee ? "Edit Employee" : "Add Employee"}</h3>
+          <button className={styles.modalClose} onClick={onClose}>&times;</button>
+        </div>
+        <form onSubmit={handleSubmit}>
+          <div className={styles.modalBody}>
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Name</label>
+              <input
+                className={styles.input}
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Enter name"
                 required
-                minLength={8}
               />
             </div>
-          )}
-          {employee && (
-          <div>
-            <label className="block text-sm font-medium mb-1">Role</label>
-            <select
-              value={roleId}
-              onChange={(e) => setRoleId(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg"
-              required
-            >
-              <option value="">Select role</option>
-              {roles?.map((role) => (
-                <option key={role.id} value={role.id}>
-                  {role.name}
-                </option>
-              ))}
-            </select>
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Email</label>
+              <input
+                className={styles.input}
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="Enter email"
+                required
+                disabled={!!employee}
+              />
+            </div>
+            {!employee && (
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Password</label>
+                <input
+                  className={styles.input}
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder="Min 8 characters"
+                  required
+                  minLength={8}
+                />
+              </div>
+            )}
+            <div>
+              <label className={styles.label}>Role</label>
+              <select
+                value={roleId}
+                onChange={(e) => setRoleId(e.target.value)}
+                className={styles.select}
+                required
+              >
+                <option value="">Select role</option>
+                {roles?.map((role) => (
+                  <option key={role.id} value={role.id}>
+                    {role.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-          )}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+          <div className={styles.modalFooter}>
+            <button
+              type="button"
+              className={`${styles.button} ${styles.buttonOutline}`}
+              onClick={onClose}
+            >
               Cancel
-            </Button>
-            <Button
+            </button>
+            <button
               type="submit"
+              className={`${styles.button} ${styles.buttonPrimary}`}
               disabled={isLoading}
-              style={{ backgroundColor: "#E8C547" }}
             >
               {isLoading ? "Saving..." : employee ? "Update" : "Create"}
-            </Button>
-          </DialogFooter>
+            </button>
+          </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }

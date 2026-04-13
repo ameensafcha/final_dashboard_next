@@ -1,39 +1,29 @@
 "use client";
 
-import { useEffect } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { role, isLoading, user, employee } = useAuth();
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { user, isAdmin, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && user && employee && role !== "admin") {
+    if (!isLoading && (!user || !isAdmin)) {
       router.push("/dashboard");
     }
-  }, [role, isLoading, user, employee, router]);
+  }, [user, isAdmin, isLoading, router]);
 
-  if (isLoading) {
+  if (isLoading || !user || !isAdmin) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin w-8 h-8 border-2 border-t-transparent rounded-full" style={{ borderColor: "#E8C547", borderTopColor: "transparent" }}></div>
+      <div className="flex h-screen w-full items-center justify-center bg-[#F5F4EE]">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-amber-500 border-t-transparent"></div>
       </div>
     );
-  }
-
-  // Wait for employee data to load before checking role
-  if (!employee) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin w-8 h-8 border-2 border-t-transparent rounded-full" style={{ borderColor: "#E8C547", borderTopColor: "transparent" }}></div>
-      </div>
-    );
-  }
-
-  // Don't render anything if not admin (redirect will happen in useEffect)
-  if (role !== "admin") {
-    return null;
   }
 
   return <>{children}</>;

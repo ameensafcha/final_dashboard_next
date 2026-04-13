@@ -24,6 +24,10 @@
   --border: #E8E7E1;
   --input: #E8E7E1;
   --ring: #E8C547;
+  
+  --popover: #FFFFFF;
+  --popover-foreground: #1A1A1A;
+
   --radius: 0.75rem;
 }
 

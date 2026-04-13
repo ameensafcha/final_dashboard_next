@@ -119,7 +119,7 @@ export default function VariantsPage() {
   const { data: variantsData, isLoading } = useQuery({
     queryKey: ["variants", page],
     queryFn: () => fetchVariants(page, 50),
-    refetchInterval: 5000,
+    refetchInterval: 30000,
     placeholderData: (prev) => prev,
   });
 

@@ -1,115 +1,95 @@
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser, authResponse } from "@/lib/auth-helper";
+import { getCurrentUser } from "@/lib/auth";
 
 export async function GET() {
   try {
     const user = await getCurrentUser();
-    if (!user) {
-      return authResponse("Unauthorized");
-    }
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const receives = await prisma.packing_receives.findMany({
-      include: {
-        items: {
-          include: {
-            variant: {
-              include: {
-                product: true,
-                flavor: true,
-                size: true,
+    const [receives, variants] = await Promise.all([
+      prisma.packing_receives.findMany({
+        include: {
+          items: {
+            include: {
+              variant: {
+                include: {
+                  product: true,
+                  flavor: true,
+                  size: true,
+                },
               },
             },
           },
         },
-      },
-      orderBy: { created_at: "desc" },
-    });
-    return NextResponse.json(receives);
+        orderBy: { created_at: "desc" },
+      }),
+      prisma.product_variants.findMany({
+        include: {
+          product: true,
+          flavor: true,
+          size: true,
+        },
+        where: { is_active: true },
+      }),
+    ]);
+
+    return NextResponse.json({ receives, variants });
   } catch (error) {
-    console.error("Error fetching packing receives:", error);
-    return NextResponse.json({ error: "Failed to fetch" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch receives" }, { status: 500 });
   }
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(request: Request) {
   try {
     const user = await getCurrentUser();
-    if (!user) {
-      return authResponse("Unauthorized");
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const { third_party_name, notes, items } = await request.json();
+
+    if (!third_party_name || !items || !items.length) {
+      return NextResponse.json({ error: "Required fields missing" }, { status: 400 });
     }
 
-    const body = await req.json();
-    const { third_party_name, notes, items } = body;
-
-    // Validation
-    if (!third_party_name || typeof third_party_name !== "string" || third_party_name.trim().length === 0) {
-      return NextResponse.json({ error: "Third party name is required" }, { status: 400 });
-    }
-
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      return NextResponse.json({ error: "At least one item is required" }, { status: 400 });
-    }
-
-    // Validate each item
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      if (!item.variant_id || typeof item.variant_id !== "string") {
-        return NextResponse.json({ error: `Item ${i + 1}: variant_id is required` }, { status: 400 });
-      }
-      if (!item.quantity || typeof item.quantity !== "number" || item.quantity < 1) {
-        return NextResponse.json({ error: `Item ${i + 1}: quantity must be at least 1` }, { status: 400 });
-      }
-    }
-
-    // Create receive record and items in transaction
     const result = await prisma.$transaction(async (tx) => {
       const receive = await tx.packing_receives.create({
         data: {
           third_party_name,
-          notes: notes || null,
+          notes,
         },
       });
 
-      for (const item of items) {
-        // Create receive item
-        await tx.packing_receive_items.create({
-          data: {
-            packing_receive_id: receive.id,
-            variant_id: item.variant_id,
-            quantity: item.quantity,
-          },
-        });
-
-        // Update variant inventory
-        const existingInventory = await tx.variant_inventory.findUnique({
-          where: { variant_id: item.variant_id },
-        });
-
-        if (existingInventory) {
-          await tx.variant_inventory.update({
-            where: { variant_id: item.variant_id },
+      const receiveItems = await Promise.all(
+        items.map(async (item: any) => {
+          const receiveItem = await tx.packing_receive_items.create({
             data: {
-              quantity: { increment: item.quantity },
+              packing_receive_id: receive.id,
+              variant_id: item.variant_id,
+              quantity: parseInt(item.quantity),
+            },
+          });
+
+          await tx.product_stock.upsert({
+            where: { variant_id: item.variant_id },
+            update: {
+              quantity: { increment: parseInt(item.quantity) },
               updated_at: new Date(),
             },
-          });
-        } else {
-          await tx.variant_inventory.create({
-            data: {
+            create: {
               variant_id: item.variant_id,
-              quantity: item.quantity,
+              quantity: parseInt(item.quantity),
             },
           });
-        }
-      }
 
-      return receive;
+          return receiveItem;
+        })
+      );
+
+      return { ...receive, items: receiveItems };
     });
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
-    console.error("Error creating packing receive:", error);
-    return NextResponse.json({ error: "Failed to create" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to create receive" }, { status: 500 });
   }
 }

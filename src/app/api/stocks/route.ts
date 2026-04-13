@@ -1,86 +1,35 @@
-import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { getCurrentUser, authResponse } from "@/lib/auth-helper";
+import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
+
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
     const user = await getCurrentUser();
-    if (!user) {
-      return authResponse("Unauthorized");
-    }
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const [rawMaterials, powderStock, variantInventory] = await Promise.all([
-      prisma.raw_materials.findMany({
-        orderBy: { name: "asc" },
-      }),
-      prisma.powder_stock.findFirst(),
-      prisma.variant_inventory.findMany({
-        include: {
-          variant: {
-            include: {
-              product: true,
-              flavor: true,
-              size: true,
-            },
-          },
-        },
-        orderBy: { quantity: "desc" },
-      }),
+    const [rawMaterials, finishedProducts, productStock, packingReceiveItems] = await Promise.all([
+      prisma.raw_materials.findMany(),
+      prisma.finished_products.findMany(),
+      prisma.product_stock.findMany({ include: { variant: { include: { product: true, flavor: true, size: true } } } }),
+      prisma.packing_receive_items.findMany({ include: { variant: { include: { product: true, flavor: true, size: true } } } }),
     ]);
 
-    const totalRawMaterialQty = rawMaterials.reduce((sum, rm) => sum + rm.quantity, 0);
-    const totalVariantStock = variantInventory.reduce((sum, vi) => sum + vi.quantity, 0);
-
-    if (!powderStock) {
-      const finishedProducts = await prisma.finished_products.findMany();
-      const totalFromBatches = finishedProducts.reduce((sum, fp) => sum + fp.quantity, 0);
-
-      const packingLogs = await prisma.packing_logs.findMany();
-      const totalSent = packingLogs.reduce((sum, log) => sum + log.total_kg, 0);
-
-      const newPowderStock = await prisma.powder_stock.create({
-        data: {
-          total_from_batches: totalFromBatches,
-          total_sent: totalSent,
-          available: totalFromBatches - totalSent,
-        },
-      });
-
-      return NextResponse.json({
-        raw_materials: {
-          items: rawMaterials,
-          total_quantity: totalRawMaterialQty,
-          item_count: rawMaterials.length,
-        },
-        powder: {
-          received: newPowderStock.total_from_batches,
-          sent: newPowderStock.total_sent,
-          available: newPowderStock.available,
-        },
-        products: {
-          items: variantInventory,
-          total_stock: totalVariantStock,
-          variant_count: variantInventory.length,
-        },
-      });
-    }
+    const powderStock = await prisma.powder_stock.findFirst();
 
     return NextResponse.json({
       raw_materials: {
         items: rawMaterials,
-        total_quantity: totalRawMaterialQty,
+        total_quantity: rawMaterials.reduce((sum, item) => sum + item.quantity, 0),
         item_count: rawMaterials.length,
       },
-      powder: {
-        received: powderStock.total_from_batches,
-        sent: powderStock.total_sent,
-        available: powderStock.available,
-      },
+      powder: powderStock || { received: 0, sent: 0, available: 0 },
       products: {
-        items: variantInventory,
-        total_stock: totalVariantStock,
-        variant_count: variantInventory.length,
-      },
+        items: productStock,
+        total_stock: productStock.reduce((sum, item) => sum + item.quantity, 0),
+        variant_count: productStock.length,
+      }
     });
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch stocks" }, { status: 500 });

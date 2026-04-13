@@ -1,56 +1,51 @@
-"use client";
-
-import { useAuth } from "@/contexts/auth-context";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import Link from "next/link";
+import { Users, ShieldCheck, Settings as SettingsIcon } from "lucide-react";
 
 export default function AdminPage() {
-  const { role, isLoading } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!isLoading && role !== "admin") {
-      router.push("/dashboard");
+  const adminCards = [
+    {
+      title: "Employees",
+      description: "Manage team members and their status",
+      href: "/admin/employees",
+      icon: Users
+    },
+    {
+      title: "Roles & Permissions",
+      description: "Configure system roles and DB permissions",
+      href: "/admin/roles",
+      icon: ShieldCheck
+    },
+    {
+      title: "Settings",
+      description: "Default raw material & system config",
+      href: "/admin/settings",
+      icon: SettingsIcon
     }
-  }, [role, isLoading, router]);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin w-8 h-8 border-2 border-t-transparent rounded-full" style={{ borderColor: "#E8C547", borderTopColor: "transparent" }}></div>
-      </div>
-    );
-  }
-
-  if (role !== "admin") {
-    return null;
-  }
+  ];
 
   return (
     <div className="p-6">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold" style={{ color: "#1A1A1A" }}>Admin Panel</h1>
-        <p className="text-gray-600">Manage your team and system settings</p>
+        <h1 className="text-2xl font-bold text-slate-900">Admin Panel</h1>
+        <p className="text-slate-500">Manage your team and database-driven permissions</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <a
-          href="/admin/employees"
-          className="p-6 bg-amber-50 border-2 border-amber-400 rounded-lg hover:bg-amber-100 transition-colors cursor-pointer"
-        >
-          <h2 className="text-lg font-semibold text-amber-800">Employees</h2>
-          <p className="text-amber-600 text-sm mt-1">Manage team members and roles</p>
-        </a>
-
-        <div className="p-6 bg-gray-50 border-2 border-gray-300 rounded-lg opacity-60">
-          <h2 className="text-lg font-semibold text-gray-800">Roles</h2>
-          <p className="text-gray-500 text-sm mt-1">Coming soon</p>
-        </div>
-
-        <div className="p-6 bg-gray-50 border-2 border-gray-300 rounded-lg opacity-60">
-          <h2 className="text-lg font-semibold text-gray-800">Settings</h2>
-          <p className="text-gray-500 text-sm mt-1">Coming soon</p>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {adminCards.map((card) => (
+          <Link
+            key={card.href}
+            href={card.href}
+            className="p-6 bg-white border-2 border-slate-100 rounded-xl hover:border-amber-400 hover:bg-amber-50/30 transition-all group shadow-sm"
+          >
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 bg-amber-100 rounded-lg group-hover:bg-amber-200 transition-colors">
+                <card.icon className="w-6 h-6 text-amber-700" />
+              </div>
+              <h2 className="text-lg font-bold text-slate-800">{card.title}</h2>
+            </div>
+            <p className="text-slate-500 text-sm">{card.description}</p>
+          </Link>
+        ))}
       </div>
     </div>
   );

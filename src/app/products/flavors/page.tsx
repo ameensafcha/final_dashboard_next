@@ -59,7 +59,7 @@ export default function FlavorsPage() {
   const { data: flavors, isLoading } = useQuery({
     queryKey: ["flavors"],
     queryFn: fetchFlavors,
-    refetchInterval: 5000,
+    refetchInterval: 30000,
     placeholderData: (previousData) => previousData,
   });
 

@@ -52,7 +52,7 @@ export default function TransactionsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["transactions"],
     queryFn: fetchTransactions,
-    refetchInterval: 5000,
+    refetchInterval: 30000,
   });
 
   const createMutation = useMutation({

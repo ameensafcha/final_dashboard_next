@@ -66,7 +66,7 @@ export default function PackingReceivesPage() {
   const { data: receives, isLoading } = useQuery({
     queryKey: ["packing-receives"],
     queryFn: fetchPackingReceives,
-    refetchInterval: 5000,
+    refetchInterval: 30000,
   });
 
   const receiveMutation = useMutation({
@@ -165,7 +165,7 @@ export default function PackingReceivesPage() {
           <p className="text-sm mt-1" style={{ color: "#C9A83A" }}>Receive packed products from 3rd party</p>
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/finished-products">
+          <Link href="/production/finished-products">
             <button 
               className="flex items-center gap-2 px-4 py-2 rounded-lg border transition-all hover:bg-yellow-50 cursor-pointer"
               style={{ borderColor: "#E8C547", color: "#1A1A1A" }}

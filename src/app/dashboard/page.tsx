@@ -1,53 +1,55 @@
-"use client";
+import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
+import { DashboardClient } from "./dashboard-client";
 
-import { useAuth } from "@/contexts/auth-context";
-import Link from "next/link";
+export const dynamic = "force-dynamic";
 
-export default function DashboardPage() {
-  const { employee, role } = useAuth();
+function calcKpis(tasks: any[]) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return {
+    total: tasks.length,
+    completed: tasks.filter(t => t.status === "completed").length,
+    pending: tasks.filter(t => t.status !== "completed").length,
+    overdue: tasks.filter(t => t.due_date && new Date(t.due_date) < today && t.status !== "completed").length,
+  };
+}
 
-  return (
-    <div className="p-6">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold">Welcome, {employee?.name || "User"}!</h1>
-        <p className="text-gray-600">Role: {role || "guest"}</p>
-      </div>
+export default async function DashboardPage() {
+  const user = await getCurrentUser();
+  if (!user) return null;
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {role === "admin" && (
-          <Link
-            href="/admin"
-            className="p-6 bg-amber-50 border-2 border-amber-400 rounded-lg hover:bg-amber-100 transition-colors"
-          >
-            <h2 className="text-lg font-semibold text-amber-800">Admin Panel</h2>
-            <p className="text-amber-600 text-sm mt-1">Manage employees and roles</p>
-          </Link>
-        )}
+  let allTasks: any[] = [];
+  try {
+    const isSuperAdmin = process.env.SUPER_ADMIN_EMAIL && user.email === process.env.SUPER_ADMIN_EMAIL;
+    const taskFilter = isSuperAdmin ? {} : {
+      OR: [
+        { created_by: user.id },
+        { assignee_id: user.id }
+      ]
+    };
 
-        <Link
-          href="/tasks"
-          className="p-6 bg-blue-50 border-2 border-blue-400 rounded-lg hover:bg-blue-100 transition-colors"
-        >
-          <h2 className="text-lg font-semibold text-blue-800">All Tasks</h2>
-          <p className="text-blue-600 text-sm mt-1">View and manage all tasks</p>
-        </Link>
+    allTasks = await prisma.tasks.findMany({
+      where: taskFilter,
+      include: {
+        assignee: true,
+        creator: true,
+      },
+      orderBy: { created_at: "desc" },
+    });
+  } catch (err) {
+    console.error("[Dashboard] Failed to fetch tasks:", err);
+  }
 
-        <Link
-          href="/tasks/board"
-          className="p-6 bg-green-50 border-2 border-green-400 rounded-lg hover:bg-green-100 transition-colors"
-        >
-          <h2 className="text-lg font-semibold text-green-800">Kanban Board</h2>
-          <p className="text-green-600 text-sm mt-1">Drag and drop task management</p>
-        </Link>
+  const serializedTasks = allTasks.map(t => ({
+    ...t,
+    due_date: t.due_date?.toISOString() || null,
+    start_date: t.start_date?.toISOString() || null,
+    completed_at: t.completed_at?.toISOString() || null,
+    created_at: t.created_at.toISOString(),
+  }));
 
-        <Link
-          href="/tasks/my-tasks"
-          className="p-6 bg-purple-50 border-2 border-purple-400 rounded-lg hover:bg-purple-100 transition-colors"
-        >
-          <h2 className="text-lg font-semibold text-purple-800">My Tasks</h2>
-          <p className="text-purple-600 text-sm mt-1">View your assigned tasks</p>
-        </Link>
-      </div>
-    </div>
-  );
+  const kpis = calcKpis(serializedTasks);
+
+  return <DashboardClient kpis={kpis} tasks={serializedTasks.slice(0, 10)} />;
 }

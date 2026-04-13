@@ -94,6 +94,3 @@ export function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
   );
 }
 
-export function TaskCardSimple({ task, onClick }: TaskCardProps) {
-  return <TaskCard task={task} onClick={onClick} />;
-}

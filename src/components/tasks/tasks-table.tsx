@@ -214,10 +214,10 @@ export function TasksTable({
 
           <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val || "all"); setPage(1); }}>
             <SelectTrigger className="w-[140px] h-9 bg-gray-50 border-gray-200 rounded-full text-xs font-bold text-gray-700">
-              <SelectValue placeholder="All Status" />
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="all">Status: All</SelectItem>
               <SelectItem value="not_started">Not Started</SelectItem>
               <SelectItem value="in_progress">In Progress</SelectItem>
               <SelectItem value="review">Review</SelectItem>
@@ -227,10 +227,10 @@ export function TasksTable({
 
           <Select value={priorityFilter} onValueChange={(val) => { setPriorityFilter(val || "all"); setPage(1); }}>
             <SelectTrigger className="w-[140px] h-9 bg-gray-50 border-gray-200 rounded-full text-xs font-bold text-gray-700">
-              <SelectValue placeholder="All Priority" />
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Priority</SelectItem>
+              <SelectItem value="all">Priority: All</SelectItem>
               <SelectItem value="low">Low</SelectItem>
               <SelectItem value="medium">Medium</SelectItem>
               <SelectItem value="high">High</SelectItem>
@@ -240,10 +240,10 @@ export function TasksTable({
 
           <Select value={areaFilter} onValueChange={(val) => { setAreaFilter(val || "all"); setPage(1); }}>
             <SelectTrigger className="w-[140px] h-9 bg-gray-50 border-gray-200 rounded-full text-xs font-bold text-gray-700">
-              <SelectValue placeholder="All Areas" />
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Areas</SelectItem>
+              <SelectItem value="all">Area: All</SelectItem>
               <SelectItem value="Production">Production</SelectItem>
               <SelectItem value="Quality">Quality</SelectItem>
               <SelectItem value="Warehouse">Warehouse</SelectItem>
@@ -257,12 +257,10 @@ export function TasksTable({
 
           <Select value={companyFilter} onValueChange={(val) => { setCompanyFilter(val || "all"); setPage(1); }}>
             <SelectTrigger className="w-[140px] h-9 bg-gray-50 border-gray-200 rounded-full text-xs font-bold text-gray-700">
-              <SelectValue placeholder="All Companies">
-                {companyFilter === "all" ? "All Companies" : companies.find((c) => c.id === companyFilter)?.name || "All Companies"}
-              </SelectValue>
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Companies</SelectItem>
+              <SelectItem value="all">Company: All</SelectItem>
               {companies.map((company) => (
                 <SelectItem key={company.id} value={company.id}>{company.name}</SelectItem>
               ))}

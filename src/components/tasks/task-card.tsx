@@ -15,6 +15,7 @@ interface Task {
   due_date: string | null;
   start_date: string | null;
   created_at: string;
+  company?: { id: string; name: string } | null;
   assignee?: {
     id: string;
     name: string;
@@ -67,12 +68,19 @@ export function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
         task.priority === "low" && "border-l-gray-400"
       )}
     >
-      <h4 className="font-medium text-sm text-gray-900 line-clamp-2">
-        {task.title}
-      </h4>
+      <div className="flex justify-between items-start gap-2 mb-1">
+        <h4 className="font-bold text-sm text-gray-900 line-clamp-2 leading-snug">
+          {task.title}
+        </h4>
+        {task.company && (
+          <span className="shrink-0 text-[9px] font-black uppercase tracking-tighter bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">
+            {task.company.name}
+          </span>
+        )}
+      </div>
       
       {task.description && (
-        <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+        <p className="text-xs text-gray-500 mt-1 line-clamp-2 font-medium">
           {task.description}
         </p>
       )}
@@ -81,12 +89,15 @@ export function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
         <PriorityBadge priority={task.priority} />
         
         {task.assignee && (
-          <Avatar name={task.assignee.name} size="sm" />
+          <div className="flex items-center gap-1.5">
+            <Avatar name={task.assignee.name} size="sm" />
+            <span className="text-[10px] font-bold text-gray-500">{task.assignee.name.split(' ')[0]}</span>
+          </div>
         )}
 
         {task.due_date && (
-          <span className="text-xs text-gray-400 ml-auto">
-            {new Date(task.due_date).toLocaleDateString()}
+          <span className="text-[10px] font-bold text-gray-400 ml-auto uppercase">
+            {new Date(task.due_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
           </span>
         )}
       </div>

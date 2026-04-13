@@ -26,6 +26,7 @@ interface Task {
   title: string;
   description: string | null;
   area: string | null;
+  company_id: string | null;
   status: string;
   priority: string;
   assignee_id: string | null;
@@ -35,6 +36,7 @@ interface Task {
   created_at: string;
   estimated_hours: number | null;
   recurrence: string | null;
+  company?: { id: string; name: string } | null;
   assignee?: {
     id: string;
     name: string;
@@ -54,6 +56,11 @@ interface Task {
     file_type: string | null;
     created_at: string;
   }[];
+}
+
+interface Company {
+  id: string;
+  name: string;
 }
 
 interface TasksTableProps {
@@ -77,14 +84,24 @@ export function TasksTable({
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [areaFilter, setAreaFilter] = useState("all");
+  const [companyFilter, setCompanyFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [now, setNow] = useState(() => Date.now());
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const limit = 20;
 
+  const { data: companies = [] } = useQuery<Company[]>({
+    queryKey: ["active-companies"],
+    queryFn: async () => {
+      const res = await fetch("/api/companies?active=true");
+      const json = await res.json();
+      return json.data || [];
+    },
+  });
+
   const { data, isLoading } = useQuery({
-    queryKey: ["tasks", { search, statusFilter, priorityFilter, areaFilter, page, filterAssigneeId }],
+    queryKey: ["tasks", { search, statusFilter, priorityFilter, areaFilter, companyFilter, page, filterAssigneeId }],
     queryFn: async () => {
       const params = new URLSearchParams({
         page: page.toString(),
@@ -93,6 +110,7 @@ export function TasksTable({
         status: statusFilter,
         priority: priorityFilter,
         area: areaFilter,
+        company_id: companyFilter === "all" ? "" : companyFilter,
       });
       if (filterAssigneeId) params.append("assignee_id", filterAssigneeId);
       
@@ -194,7 +212,7 @@ export function TasksTable({
             />
           </div>
 
-          <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setPage(1); }}>
+          <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val || "all"); setPage(1); }}>
             <SelectTrigger className="w-[140px] h-9 bg-gray-50 border-gray-200 rounded-full text-xs font-bold text-gray-700">
               <SelectValue placeholder="All Status" />
             </SelectTrigger>
@@ -207,7 +225,7 @@ export function TasksTable({
             </SelectContent>
           </Select>
 
-          <Select value={priorityFilter} onValueChange={(val) => { setPriorityFilter(val); setPage(1); }}>
+          <Select value={priorityFilter} onValueChange={(val) => { setPriorityFilter(val || "all"); setPage(1); }}>
             <SelectTrigger className="w-[140px] h-9 bg-gray-50 border-gray-200 rounded-full text-xs font-bold text-gray-700">
               <SelectValue placeholder="All Priority" />
             </SelectTrigger>
@@ -220,7 +238,7 @@ export function TasksTable({
             </SelectContent>
           </Select>
 
-          <Select value={areaFilter} onValueChange={(val) => { setAreaFilter(val); setPage(1); }}>
+          <Select value={areaFilter} onValueChange={(val) => { setAreaFilter(val || "all"); setPage(1); }}>
             <SelectTrigger className="w-[140px] h-9 bg-gray-50 border-gray-200 rounded-full text-xs font-bold text-gray-700">
               <SelectValue placeholder="All Areas" />
             </SelectTrigger>
@@ -234,6 +252,20 @@ export function TasksTable({
               <SelectItem value="Admin">Admin</SelectItem>
               <SelectItem value="Maintenance">Maintenance</SelectItem>
               <SelectItem value="Finance">Finance</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={companyFilter} onValueChange={(val) => { setCompanyFilter(val || "all"); setPage(1); }}>
+            <SelectTrigger className="w-[140px] h-9 bg-gray-50 border-gray-200 rounded-full text-xs font-bold text-gray-700">
+              <SelectValue placeholder="All Companies">
+                {companyFilter === "all" ? "All Companies" : companies.find((c) => c.id === companyFilter)?.name || "All Companies"}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Companies</SelectItem>
+              {companies.map((company) => (
+                <SelectItem key={company.id} value={company.id}>{company.name}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -254,6 +286,7 @@ export function TasksTable({
           <thead>
             <tr className="bg-gray-50/50 border-b border-gray-100">
               <th className="text-left py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider">Task</th>
+              <th className="text-left py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider">Company</th>
               <th className="text-left py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider">Area</th>
               <th className="text-left py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
               <th className="text-left py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider">Priority</th>
@@ -275,6 +308,13 @@ export function TasksTable({
                       <p className="text-xs text-gray-500 mt-1 line-clamp-1 max-w-[200px]">{task.description}</p>
                     )}
                   </div>
+                </td>
+                <td className="py-4 px-6">
+                  {task.company ? (
+                    <span className="text-xs font-bold px-3 py-1 bg-[#E8C547]/10 text-[#E8C547] rounded-full uppercase tracking-tighter">{task.company.name}</span>
+                  ) : (
+                    <span className="text-sm text-gray-400">-</span>
+                  )}
                 </td>
                 <td className="py-4 px-6">
                   {task.area ? (

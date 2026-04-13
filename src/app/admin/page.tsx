@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Users, ShieldCheck, Settings as SettingsIcon } from "lucide-react";
+import { Users, ShieldCheck, Settings as SettingsIcon, Building2 } from "lucide-react";
 
 export default function AdminPage() {
   const adminCards = [
@@ -14,6 +14,12 @@ export default function AdminPage() {
       description: "Configure system roles and DB permissions",
       href: "/admin/roles",
       icon: ShieldCheck
+    },
+    {
+      title: "Companies",
+      description: "Manage companies for task association",
+      href: "/admin/companies",
+      icon: Building2
     },
     {
       title: "Settings",

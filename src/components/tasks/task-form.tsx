@@ -20,6 +20,7 @@ interface Task {
   title: string;
   description: string | null;
   area: string | null;
+  company_id: string | null;
   status: string;
   priority: string;
   assignee_id: string | null;
@@ -27,6 +28,13 @@ interface Task {
   start_date: string | null;
   estimated_hours: number | null;
   recurrence: string | null;
+  assignee?: { id: string; name: string; email?: string } | null;
+  company?: { id: string; name: string } | null;
+}
+
+interface Company {
+  id: string;
+  name: string;
 }
 
 interface Employee {
@@ -51,6 +59,7 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
     title: string;
     description: string;
     area: string;
+    company_id: string;
     priority: string;
     assignee_id: string;
     due_date: string;
@@ -61,6 +70,7 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
     title: "",
     description: "",
     area: "",
+    company_id: "",
     priority: "medium",
     assignee_id: "",
     due_date: "",
@@ -75,8 +85,9 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
         title: task.title,
         description: task.description || "",
         area: task.area || "",
+        company_id: task.company_id || "",
         priority: task.priority,
-        assignee_id: task.assignee_id || "",
+        assignee_id: task.assignee_id || task.assignee?.id || "",
         due_date: task.due_date ? task.due_date.split("T")[0] : "",
         start_date: task.start_date ? task.start_date.split("T")[0] : "",
         estimated_hours: task.estimated_hours?.toString() || "",
@@ -87,6 +98,7 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
         title: "",
         description: "",
         area: "",
+        company_id: "",
         priority: "medium",
         assignee_id: defaultAssigneeId || "",
         due_date: "",
@@ -107,6 +119,16 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
     enabled: canChangeAssignee,
   });
 
+  const { data: companies = [] } = useQuery<Company[]>({
+    queryKey: ["active-companies"],
+    queryFn: async () => {
+      const res = await fetch("/api/companies?active=true");
+      const json = await res.json();
+      return json.data || [];
+    },
+    enabled: open,
+  });
+
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       const res = await fetch("/api/tasks", {
@@ -116,6 +138,7 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
           title: data.title,
           description: data.description || null,
           area: data.area || null,
+          company_id: data.company_id || null,
           priority: data.priority,
           assignee_id: data.assignee_id || defaultAssigneeId || null,
           due_date: data.due_date || null,
@@ -150,6 +173,7 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
           title: data.title,
           description: data.description || null,
           area: data.area || null,
+          company_id: data.company_id || null,
           priority: data.priority,
           assignee_id: data.assignee_id || defaultAssigneeId || null,
           due_date: data.due_date || null,
@@ -213,17 +237,40 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
             />
           </div>
 
+          <div>
+            <label className="block text-sm font-medium mb-1">Company</label>
+            <Select 
+              value={formData.company_id || "none"} 
+              onValueChange={(val) => setFormData({ ...formData, company_id: val === "none" ? "" : (val || "") })}
+            >
+              <SelectTrigger className="w-full text-sm">
+                <SelectValue placeholder="Select Company">
+                  {formData.company_id && formData.company_id !== "none"
+                    ? companies.find((c) => c.id === formData.company_id)?.name || "Select Company"
+                    : undefined}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {companies.map((company) => (
+                  <SelectItem key={company.id} value={company.id}>{company.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Area / Department</label>
               <Select 
-                value={formData.area} 
-                onValueChange={(val) => setFormData({ ...formData, area: val || "" })}
+                value={formData.area || "none"} 
+                onValueChange={(val) => setFormData({ ...formData, area: val === "none" ? "" : (val || "") })}
               >
                 <SelectTrigger className="w-full text-sm">
                   <SelectValue placeholder="Select Area" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
                   <SelectItem value="Production">Production</SelectItem>
                   <SelectItem value="Quality">Quality</SelectItem>
                   <SelectItem value="Warehouse">Warehouse</SelectItem>
@@ -293,11 +340,15 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
             <label className="block text-sm font-medium mb-1">Assignee</label>
             {canChangeAssignee ? (
               <Select 
-                value={formData.assignee_id} 
-                onValueChange={(val) => setFormData({ ...formData, assignee_id: val || "" })}
+                value={formData.assignee_id || "unassigned"} 
+                onValueChange={(val) => setFormData({ ...formData, assignee_id: val === "unassigned" ? "" : (val || "") })}
               >
                 <SelectTrigger className="w-full text-sm">
-                  <SelectValue placeholder="Unassigned" />
+                  <SelectValue placeholder="Unassigned">
+                    {formData.assignee_id && formData.assignee_id !== "unassigned"
+                      ? employees.find((e) => e.id === formData.assignee_id)?.name || "Unassigned"
+                      : undefined}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="unassigned">Unassigned</SelectItem>

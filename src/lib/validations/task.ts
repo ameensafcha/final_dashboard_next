@@ -14,22 +14,39 @@ export const taskAreaSchema = z.enum([
 ]);
 export const taskRecurrenceSchema = z.enum(["daily", "weekly", "monthly", "yearly"]).nullable();
 
+const dateSchema = z.preprocess((arg) => {
+  if (typeof arg === "string" && arg === "") return null;
+  if (typeof arg === "string" || arg instanceof Date) return new Date(arg);
+  return arg;
+}, z.date().nullable().optional());
+
 export const createTaskSchema = z.object({
   title: z.string().min(1, "Title is required").max(255),
   description: z.string().nullable().optional(),
-  area: taskAreaSchema.nullable().optional(),
+  area: z.preprocess((v) => (v === "" || v === undefined || v === null ? null : v), taskAreaSchema.nullable().optional()),
+  
+  // FIX: Removed .uuid()
+  company_id: z.preprocess((v) => (v === "" || v === undefined || v === null ? null : v), z.string().nullable().optional()),
+  
   priority: taskPrioritySchema.default("medium"),
-  assignee_id: z.string().uuid().nullable().optional(),
-  due_date: z.string().datetime().nullable().optional().or(z.date().nullable().optional()),
-  start_date: z.string().datetime().nullable().optional().or(z.date().nullable().optional()),
-  estimated_hours: z.number().min(0).nullable().optional().or(z.string().transform(v => v ? parseFloat(v) : null).nullable().optional()),
-  recurrence: taskRecurrenceSchema.optional(),
+  
+  // FIX: Removed .uuid()
+  assignee_id: z.preprocess((v) => (v === "" || v === "unassigned" || v === undefined || v === null ? null : v), z.string().nullable().optional()),
+  
+  due_date: dateSchema,
+  start_date: dateSchema,
+  estimated_hours: z.preprocess((v) => {
+    if (v === "" || v === undefined || v === null) return null;
+    return typeof v === "string" ? parseFloat(v) : v;
+  }, z.number().min(0).nullable().optional()),
+  recurrence: z.preprocess((v) => (v === "" || v === undefined || v === null ? null : v), taskRecurrenceSchema.optional()),
 });
 
 export const updateTaskSchema = createTaskSchema.partial().extend({
-  id: z.string().uuid(),
+  // FIX: Removed .uuid()
+  id: z.string(),
   status: taskStatusSchema.optional(),
-  completed_at: z.string().datetime().nullable().optional().or(z.date().nullable().optional()),
+  completed_at: dateSchema,
 });
 
 export const taskQuerySchema = z.object({
@@ -39,8 +56,12 @@ export const taskQuerySchema = z.object({
   status: taskStatusSchema.optional().or(z.literal("all")).transform(v => v === "all" ? undefined : v),
   priority: taskPrioritySchema.optional().or(z.literal("all")).transform(v => v === "all" ? undefined : v),
   area: taskAreaSchema.optional().or(z.literal("all")).transform(v => v === "all" ? undefined : v),
-  assignee_id: z.string().uuid().optional(),
-  created_by: z.string().uuid().optional(),
+  
+  // FIX: Removed .uuid()
+  company_id: z.preprocess((v) => (v === "" || v === undefined || v === null ? undefined : v), z.string().optional()),
+  assignee_id: z.preprocess((v) => (v === "" || v === undefined || v === null ? undefined : v), z.string().optional()),
+  created_by: z.preprocess((v) => (v === "" || v === undefined || v === null ? undefined : v), z.string().optional()),
+  
   sortBy: z.enum(["created_at", "due_date", "priority"]).default("created_at"),
   sortOrder: z.enum(["asc", "desc"]).default("desc"),
 });

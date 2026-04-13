@@ -5,7 +5,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUIStore } from "@/lib/stores";
 import { cn } from "@/lib/utils";
-import { Check, Clock, MessageSquare, Plus, Trash2, User, Calendar, Flag, Activity, FileText, ExternalLink, Paperclip, Loader2 } from "lucide-react";
+import { Check, Clock, MessageSquare, Plus, Trash2, User, Calendar, Flag, Activity, FileText, ExternalLink, Paperclip, Loader2, Building2 } from "lucide-react";
 import { TaskAttachmentUploader } from "./task-attachment-uploader";
 import {
   Select,
@@ -14,7 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
 interface Task {
   id: string;
   title: string;
@@ -27,6 +26,7 @@ interface Task {
   created_at: string;
   estimated_hours: number | null;
   recurrence: string | null;
+  company?: { id: string; name: string } | null;
   assignee?: { id: string; name: string; email: string } | null;
   creator?: { id: string; name: string; email: string };
   subtasks?: { id: string; title: string; is_completed: boolean }[];
@@ -304,6 +304,14 @@ export function TaskDetail({ task, open, onClose }: TaskDetailProps) {
                     )}>
                       {currentTask.priority}
                     </span>
+                  </PropertyRow>
+
+                  <PropertyRow icon={Building2} label="Company">
+                    {currentTask.company ? (
+                      <div className="bg-gray-50 px-3 py-1 rounded-full w-fit">
+                        <span className="text-gray-700">{currentTask.company.name}</span>
+                      </div>
+                    ) : <span className="text-gray-300 italic">No Company</span>}
                   </PropertyRow>
 
                   <PropertyRow icon={User} label="Assignee">

@@ -4,10 +4,20 @@ import { getCurrentUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { searchParams } = new URL(request.url);
+    const key = searchParams.get('key');
+
+    if (key) {
+      const setting = await prisma.app_settings.findUnique({
+        where: { key }
+      });
+      return NextResponse.json({ data: setting });
+    }
 
     const settingsList = await prisma.app_settings.findMany();
     const settings = settingsList.reduce((acc, curr) => ({
@@ -24,8 +34,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const user = await getCurrentUser();
-    const isSuperAdmin = process.env.SUPER_ADMIN_EMAIL && user?.email === process.env.SUPER_ADMIN_EMAIL;
-    if (!user || !isSuperAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await request.json();
     const { key, value } = body;
@@ -38,8 +47,12 @@ export async function POST(request: Request) {
       create: { key, value: String(value) },
     });
 
-    return NextResponse.json(updated);
+    return NextResponse.json({ data: updated });
   } catch (error) {
     return NextResponse.json({ error: 'Server Error' }, { status: 500 });
   }
+}
+
+export async function PUT(request: Request) {
+  return POST(request);
 }

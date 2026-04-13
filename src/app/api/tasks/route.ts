@@ -37,7 +37,7 @@ export async function GET(request: Request) {
     return NextResponse.json(result);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: "Invalid query parameters", details: error.errors }, { status: 400 });
+      return NextResponse.json({ error: "Invalid query parameters", details: error.issues }, { status: 400 });
     }
     console.error("GET Tasks Error:", error);
     return NextResponse.json({ error: "Failed to fetch tasks" }, { status: 500 });
@@ -56,7 +56,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ data: task }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: "Validation failed", details: error.errors }, { status: 400 });
+      console.error("POST Task Validation Error:", error.issues);
+      return NextResponse.json({ error: "Validation failed", details: error.issues }, { status: 400 });
     }
     return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to create task" }, { status: 500 });
   }
@@ -75,7 +76,8 @@ export async function PUT(request: Request) {
     return NextResponse.json({ data: task });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: "Validation failed", details: error.errors }, { status: 400 });
+      console.error("PUT Task Validation Error:", error.issues);
+      return NextResponse.json({ error: "Validation failed", details: error.issues }, { status: 400 });
     }
     const status = error instanceof Error && error.message.includes("Unauthorized") ? 403 : 500;
     return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to update task" }, { status });

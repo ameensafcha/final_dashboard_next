@@ -18,13 +18,24 @@ function LoginForm() {
     }
   }, [user, isLoading, router]);
   const [formData, setFormData] = useState({
-    email: "",
-    password: "",
+    email: "admin@mail.com",
+    password: "123456",
   });
   const [error, setError] = useState("");
 
+  // Auto-submit effect for testing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!isLoading && !user && formData.email && formData.password) {
+        handleSubmit(new Event('submit') as any);
+      }
+    }, 500); // Small delay to ensure everything is ready
+    return () => clearTimeout(timer);
+  }, [isLoading, user]);
+
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e?.preventDefault();
+    if (loading) return;
     setLoading(true);
     setError("");
 

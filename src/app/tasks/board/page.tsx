@@ -1,48 +1,58 @@
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth-helper";
-import { redirect } from "next/navigation";
-import { KanbanClient } from "./kanban-client";
+import { getCurrentUser } from "@/lib/auth";
+import { TaskBoard } from "@/components/task-board";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-export default async function KanbanPage() {
+export default async function BoardPage() {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) return null;
+
+  const isSuperAdmin = process.env.SUPER_ADMIN_EMAIL && user.email === process.env.SUPER_ADMIN_EMAIL;
+  const taskFilter = isSuperAdmin ? {} : {
+    OR: [
+      { created_by: user.id },
+      { assignee_id: user.id }
+    ]
+  };
 
   const tasks = await prisma.tasks.findMany({
+    where: taskFilter,
     include: {
-      assignee: true,
-      creator: true,
+      assignee: { select: { id: true, name: true, email: true } },
+      creator: { select: { id: true, name: true, email: true } },
       subtasks: true,
+      attachments: true,
+      _count: { select: { comments: true } },
     },
-    orderBy: { created_at: "desc" },
   });
 
-  const serializedTasks = tasks.map((task) => ({
-    id: task.id,
-    title: task.title,
-    description: task.description,
-    area: task.area,
-    status: task.status,
-    priority: task.priority,
-    assignee_id: task.assignee_id,
-    due_date: task.due_date?.toISOString() || null,
-    start_date: task.start_date?.toISOString() || null,
-    completed_at: task.completed_at?.toISOString() || null,
-    created_at: task.created_at.toISOString(),
-    assignee: task.assignee
-      ? { id: task.assignee.id, name: task.assignee.name, email: task.assignee.email }
-      : null,
-    creator: task.creator
-      ? { id: task.creator.id, name: task.creator.name, email: task.creator.email }
-      : undefined,
-    subtasks: task.subtasks.map((st) => ({ id: st.id, title: st.title, is_completed: st.is_completed })),
+  const serializedTasks = tasks.map(t => ({
+    ...t,
+    due_date: t.due_date?.toISOString() || null,
+    start_date: t.start_date?.toISOString() || null,
+    completed_at: t.completed_at?.toISOString() || null,
+    created_at: t.created_at.toISOString(),
+    attachments: t.attachments.map(a => ({
+      ...a,
+      created_at: a.created_at.toISOString(),
+    })),
   }));
 
+  const employees = await prisma.employee.findMany({
+    select: { id: true, name: true, email: true },
+    orderBy: { name: "asc" },
+  });
+
   return (
-    <KanbanClient
-      userId={user.id}
-      initialData={serializedTasks}
-    />
+    <div className="p-8 h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
+      <header className="mb-8 flex-shrink-0">
+        <h1 className="text-2xl font-bold tracking-tight">Kanban Board</h1>
+        <p className="text-gray-500">Visualize and manage your tasks through stages</p>
+      </header>
+      <div className="flex-1 overflow-auto scrollbar-hide">
+        <TaskBoard initialData={serializedTasks} currentUserId={user.id} />
+      </div>
+    </div>
   );
 }

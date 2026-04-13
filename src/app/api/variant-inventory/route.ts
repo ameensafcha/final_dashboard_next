@@ -1,12 +1,12 @@
-import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { getCurrentUser, authResponse } from "@/lib/auth-helper";
+import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 
 export async function GET() {
   try {
     const user = await getCurrentUser();
     if (!user) {
-      return authResponse("Unauthorized");
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const inventory = await prisma.variant_inventory.findMany({
@@ -19,11 +19,13 @@ export async function GET() {
           },
         },
       },
-      orderBy: { quantity: "desc" },
+      orderBy: {
+        quantity: "desc",
+      },
     });
+
     return NextResponse.json(inventory);
   } catch (error) {
-    console.error("Error fetching variant inventory:", error);
-    return NextResponse.json({ error: "Failed to fetch" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch inventory" }, { status: 500 });
   }
 }

@@ -37,7 +37,6 @@ export function useRealtimeSubscription({
     if (!enabled) {
       // Cleanup when disabled
       if (channelRef.current) {
-        console.log(`[Realtime] Cleaning up disabled subscription`);
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
@@ -49,7 +48,6 @@ export function useRealtimeSubscription({
     // to prevent one cleanup destroying another's subscription
     const channelName = `${schema}:${table}:${event}${filter ? ':' + filter : ''}-${instanceId}`;
 
-    console.log(`[Realtime] Subscribing to ${channelName}`);
 
     const channel = supabase.channel(channelName);
 
@@ -66,17 +64,13 @@ export function useRealtimeSubscription({
     // Subscribe to postgres changes - use ref to always get latest callback
     const subscription = channel
       .on('postgres_changes', postgresChangeConfig, (payload) => {
-        console.log(`[Realtime] ✅ Event on ${table}:${event}`, payload);
         onMessageRef.current(payload);
       })
       .on('system', { event: 'join' }, () => {
-        console.log(`[Realtime] ✅ Joined channel: ${channelName}`);
       })
       .on('system', { event: 'leave' }, () => {
-        console.log(`[Realtime] ❌ Left channel: ${channelName}`);
       })
       .subscribe((status) => {
-        console.log(`[Realtime] Subscription status for ${channelName}: ${status} (OK=connected, ERROR=failed, TIMED_OUT=timeout, CLOSED=closed)`);
       });
 
     channelRef.current = channel;
@@ -84,7 +78,6 @@ export function useRealtimeSubscription({
     // CRITICAL: Cleanup function to prevent memory leaks
     // This runs when component unmounts or dependencies change
     return () => {
-      console.log(`[Realtime] Unsubscribing from ${channelName}`);
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;

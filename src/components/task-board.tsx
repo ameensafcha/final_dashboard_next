@@ -24,6 +24,7 @@ import { TaskDetail } from "./task-detail";
 import { useMutation } from "@tanstack/react-query";
 import { useUIStore } from "@/lib/stores";
 import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
+import { Loader2 } from "lucide-react";
 
 interface Task {
   id: string;
@@ -35,6 +36,8 @@ interface Task {
   start_date: string | null;
   completed_at: string | null;
   created_at: string;
+  estimated_hours: number | null;
+  recurrence: string | null;
   assignee?: {
     id: string;
     name: string;
@@ -46,6 +49,14 @@ interface Task {
     email: string;
   };
   subtasks?: { id: string; title: string; is_completed: boolean }[];
+  attachments?: {
+    id: string;
+    file_name: string;
+    file_url: string;
+    file_size: number | null;
+    file_type: string | null;
+    created_at: string;
+  }[];
 }
 
 const COLUMNS = [
@@ -123,11 +134,27 @@ export function TaskBoard({ initialData = [], currentUserId }: TaskBoardProps) {
   }, [initialData]);
 
   const handleTaskUpdate = useCallback((payload: { new: Task }) => {
-    setLocalTasks((current) => current.map(t => t.id === payload.new.id ? { ...t, ...payload.new } : t));
+    // Preserve nested assignee/creator — realtime payload is a flat row without joins
+    setLocalTasks((current) =>
+      current.map((t) =>
+        t.id === payload.new.id
+          ? { ...t, ...payload.new, assignee: t.assignee, creator: t.creator }
+          : t
+      )
+    );
   }, []);
 
-  const handleTaskInsert = useCallback((payload: { new: Task }) => {
-    setLocalTasks((current) => [payload.new, ...current]);
+  const handleTaskInsert = useCallback(async (payload: { new: { id: string } }) => {
+    // Fetch full task with joins — realtime payload is a flat row without nested data
+    try {
+      const res = await fetch(`/api/tasks/${payload.new.id}`);
+      if (res.ok) {
+        const { data } = await res.json();
+        setLocalTasks((current) => [data, ...current]);
+      }
+    } catch {
+      // silently ignore — board stays consistent on next refresh
+    }
   }, []);
 
   const handleTaskDelete = useCallback((payload: { old: { id: string } }) => {
@@ -202,10 +229,20 @@ export function TaskBoard({ initialData = [], currentUserId }: TaskBoardProps) {
     const taskId = active.id as string;
     const task = visibleTasks.find((t) => t.id === taskId);
     if (task && task.status !== targetColumn) {
+      const previousStatus = task.status;
       setLocalTasks((prev) =>
         prev.map((t) => (t.id === taskId ? { ...t, status: targetColumn } : t))
       );
-      updateTaskMutation.mutate({ id: taskId, status: targetColumn });
+      updateTaskMutation.mutate(
+        { id: taskId, status: targetColumn },
+        {
+          onError: () => {
+            setLocalTasks((prev) =>
+              prev.map((t) => (t.id === taskId ? { ...t, status: previousStatus } : t))
+            );
+          },
+        }
+      );
     }
   };
 
@@ -218,7 +255,15 @@ export function TaskBoard({ initialData = [], currentUserId }: TaskBoardProps) {
     visibleTasks.filter((task) => task.status === status);
 
   return (
-    <>
+    <div className="relative h-full">
+      {updateTaskMutation.isPending && (
+        <div className="absolute top-0 right-0 z-50 p-4">
+          <div className="bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-lg border border-gray-100 flex items-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin text-[#E8C547]" />
+            <span className="text-xs font-bold text-gray-600">Updating...</span>
+          </div>
+        </div>
+      )}
       <DndContext
         sensors={sensors}
         collisionDetection={rectIntersection}
@@ -253,6 +298,6 @@ export function TaskBoard({ initialData = [], currentUserId }: TaskBoardProps) {
         open={!!selectedTask}
         onClose={() => setSelectedTask(null)}
       />
-    </>
+    </div>
   );
 }

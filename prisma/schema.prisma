@@ -14,7 +14,6 @@ model Role {
   created_at  DateTime @default(now())
 
   employees   Employee[]
-  permissions RolePermission[]
 
   @@index([name])
   @@index([is_active])
@@ -30,8 +29,6 @@ model Employee {
   updated_at             DateTime         @updatedAt
   role_id                String?
   
-  // 👈 CHANGE 1: Yahan `onDelete: SetNull` add kiya hai. 
-  // Iska fayda: Agar admin ne galti se koi Role delete kar diya, toh us role ke employees delete nahi honge, bas unka role 'null' ho jayega.
   role                   Role?            @relation(fields: [role_id], references: [id], onDelete: SetNull)
   
   comments               task_comments[]
@@ -41,11 +38,9 @@ model Employee {
   notifications_received notifications[]  @relation("notification_recipient")
   notifications_sent     notifications[]  @relation("notification_actor")
 
-  // 👈 CHANGE 2 (Optional but Recommended): 
-  // Agar tumne pichle step me `batches` aur `transactions` table me employee ka relation add kiya tha, 
-  // toh unka reverse relation yahan add karna zaroori hai.
   batches                batches[]
   transactions           transactions[]
+  task_attachments       task_attachments[]
 
   @@index([email])
   @@index([role_id])
@@ -153,7 +148,6 @@ model transactions {
   date         DateTime @default(now())
   reference_id String?
   
-  // 👈 'person' field ko employee_id store karne ke liye use karenge
   person_id    String?   
   employee     Employee? @relation(fields: [person_id], references: [id])
   
@@ -162,7 +156,7 @@ model transactions {
 
   @@index([type])
   @@index([date(sort: Desc)])
-  @@index([person_id]) // 👈 Fast searching ke liye index
+  @@index([person_id])
 }
 
 model batches {
@@ -170,7 +164,6 @@ model batches {
   batch_id        String   @unique
   date            DateTime @default(now())
   
-  // 👈 logged_by ko employee se jodne ke liye
   logged_by       String
   employee        Employee @relation(fields: [logged_by], references: [id])
 
@@ -184,7 +177,6 @@ model batches {
   notes           String?
   created_at      DateTime @default(now())
   
-  // 👈 raw_material_id ka bhi relation add kar diya safety ke liye
   raw_material_id String?
   raw_material    raw_materials? @relation(fields: [raw_material_id], references: [id])
   
@@ -193,7 +185,7 @@ model batches {
   @@index([status])
   @@index([created_at(sort: Desc)])
   @@index([flavor_id])
-  @@index([logged_by]) // 👈 Fast searching
+  @@index([logged_by])
 }
 
 model raw_material_logs {
@@ -232,7 +224,6 @@ model packing_logs {
   @@index([created_at(sort: Desc)])
 }
 
-// Consolidated powder stock model (replaces powder_stock and powder_stock_new)
 model raw_material_stock {
   id           String   @id
   name         String
@@ -251,10 +242,10 @@ model product_stock {
 
 model powder_stock {
   id                 Int      @id @default(autoincrement())
-  received           Float    @default(0) // From batches/finished products
-  sent               Float    @default(0) // Sent to packing
-  total_from_batches Float    @default(0) // Legacy field for backward compatibility
-  total_sent         Float    @default(0) // Legacy field for backward compatibility
+  received           Float    @default(0)
+  sent               Float    @default(0)
+  total_from_batches Float    @default(0)
+  total_sent         Float    @default(0)
   available          Float    @default(0)
   updated_at         DateTime @default(now())
 }
@@ -292,7 +283,7 @@ model tasks {
   id            String           @id @default(uuid())
   title         String
   description   String?
-  area          String? // Department/Area (e.g., Production, Quality, HR, Admin)
+  area          String?
   assignee_id   String?
   created_by    String
   status        String           @default("not_started")
@@ -300,11 +291,14 @@ model tasks {
   due_date      DateTime?
   start_date    DateTime?
   completed_at  DateTime?
+  estimated_hours Float?
+  recurrence      String?
   created_at    DateTime         @default(now())
   updated_at    DateTime         @updatedAt
   subtasks      subtasks[]
   comments      task_comments[]
   time_logs     task_time_logs[]
+  attachments   task_attachments[]
   assignee      Employee?        @relation("task_assignee", fields: [assignee_id], references: [id])
   creator       Employee         @relation("task_creator", fields: [created_by], references: [id])
   notifications notifications[]
@@ -315,6 +309,22 @@ model tasks {
   @@index([due_date])
   @@index([created_by])
   @@index([area])
+}
+
+model task_attachments {
+  id          String   @id @default(uuid())
+  task_id     String
+  file_name   String
+  file_url    String
+  file_size   Int?
+  file_type   String?
+  uploaded_by String
+  created_at  DateTime @default(now())
+  
+  task        tasks    @relation(fields: [task_id], references: [id], onDelete: Cascade)
+  uploader    Employee @relation(fields: [uploaded_by], references: [id])
+
+  @@index([task_id])
 }
 
 model subtasks {
@@ -378,45 +388,43 @@ model task_time_logs {
   @@index([employee_id])
 }
 
-model route_permissions {
-  id            String   @id @default(uuid())
-  route_path    String // Route pattern (e.g., "/settings", "/admin/*")
-  required_role String // Required role to access (admin, employee, viewer)
-  is_active     Boolean  @default(true)
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
 
-  @@unique([route_path])
-  @@index([route_path])
-  @@index([required_role])
+
+
+// Daily Command Center - Standalone Module
+
+model DailyPlan {
+  id             String         @id @default(uuid())
+  plan_date      DateTime       @unique @default(now())
+  final_score    Int            @default(0)
+  
+  tomorrow_notes TomorrowNotes?
+  items          DailyItem[]
+  blockers       DailyBlocker[]
 }
 
-model RolePermission {
-  id            String     @id @default(uuid())
-  role_id       String
-  permission_id String
-  is_active     Boolean    @default(true)
-  created_at    DateTime   @default(now())
-
-  role          Role       @relation(fields: [role_id], references: [id], onDelete: Cascade)
-  permission    Permission @relation(fields: [permission_id], references: [id], onDelete: Cascade)
-
-  @@unique([role_id, permission_id])
-  @@map("role_permissions")
+model DailyItem {
+  id              String    @id @default(uuid())
+  daily_plan_id   String
+  title           String
+  tier            Int
+  biz             String
+  status          String    @default("Pending")
+  carryover_count Int       @default(0)
+  daily_plan      DailyPlan @relation(fields: [daily_plan_id], references: [id], onDelete: Cascade)
 }
 
-model Permission {
-  id          String           @id @default(uuid())
-  action      String           // e.g., "create", "read", "update", "delete", "manage"
-  resource    String           // e.g., "products", "batches", "users"
-  label       String?          // e.g., "Create Product"
-  description String?          // e.g., "Ability to create new product entries"
-  created_at  DateTime         @default(now())
-  updated_at  DateTime         @updatedAt
-  roles       RolePermission[]
+model DailyBlocker {
+  id             String    @id @default(uuid())
+  daily_plan_id  String
+  blocker_text   String
+  action_owner   String?
+  daily_plan     DailyPlan @relation(fields: [daily_plan_id], references: [id], onDelete: Cascade)
+}
 
-  @@unique([action, resource])
-  @@index([action])
-  @@index([resource])
-  @@map("permissions")
+model TomorrowNotes {
+  id  String @id @default(uuid())
+  notes String[]
+  daily_plan_id String    @unique
+  daily_plan DailyPlan @relation(fields:[daily_plan_id],references:[id],onDelete:Cascade)
 }

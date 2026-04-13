@@ -1,83 +1,40 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { requireAdminApi } from '@/lib/auth-helper';
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const auth = await requireAdminApi();
-    if (auth.error) return auth.error;
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const roles = await prisma.role.findMany({
-      include: {
-        _count: { select: { employees: true } },
-        permissions: { 
-          where: { is_active: true },
-          include: { permission: true }
-        }
-      }
+      where: { is_active: true },
+      orderBy: { name: "asc" },
     });
     return NextResponse.json({ data: roles });
-  } catch (err) {
-    console.error('Fetch Roles Error:', err);
-    return NextResponse.json({ error: 'Failed to fetch roles' }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to fetch roles" }, { status: 500 });
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(request: Request) {
   try {
-    const auth = await requireAdminApi();
-    if (auth.error) return auth.error;
+    const user = await getCurrentUser();
+    const isSuperAdmin = process.env.SUPER_ADMIN_EMAIL && user?.email === process.env.SUPER_ADMIN_EMAIL;
+    if (!user || !isSuperAdmin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-    const body = await req.json();
+    const body = await request.json();
+    const { name, description } = body;
+
+    if (!name) return NextResponse.json({ error: "Role name required" }, { status: 400 });
+
     const role = await prisma.role.create({
-      data: {
-        name: body.name,
-        description: body.description,
-        is_active: true
-      }
+      data: { name, description, is_active: true },
     });
-    return NextResponse.json(role);
-  } catch (err) {
-    console.error('Create Role Error:', err);
-    return NextResponse.json({ error: 'Failed to create role' }, { status: 500 });
-  }
-}
-
-export async function PUT(req: Request) {
-  try {
-    const auth = await requireAdminApi();
-    if (auth.error) return auth.error;
-
-    const body = await req.json();
-    const { id, name, description } = body;
-    if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
-
-    const role = await prisma.role.update({
-      where: { id },
-      data: { name, description }
-    });
-    return NextResponse.json(role);
-  } catch (err) {
-    console.error('Update Role Error:', err);
-    return NextResponse.json({ error: 'Failed to update role' }, { status: 500 });
-  }
-}
-
-export async function DELETE(req: Request) {
-  try {
-    const auth = await requireAdminApi();
-    if (auth.error) return auth.error;
-
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
-    if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
-
-    await prisma.role.delete({ where: { id } });
-    return NextResponse.json({ success: true });
-  } catch (err) {
-    console.error('Delete Role Error:', err);
-    return NextResponse.json({ error: 'Failed to delete role' }, { status: 500 });
+    return NextResponse.json(role, { status: 201 });
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to create role" }, { status: 500 });
   }
 }

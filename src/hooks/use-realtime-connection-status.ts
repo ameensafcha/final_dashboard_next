@@ -20,10 +20,9 @@ export function useRealtimeConnectionStatus(): ConnectionStatus {
     // Check Supabase Realtime connection status
     const checkConnection = async () => {
       try {
-        // Supabase health check - try to get channel info
-        const { data, error } = await supabase.from('employees').select('id').limit(1).maybeSingle();
-        
-        // If no error, we're connected to Supabase
+        // Supabase health check - lightweight call instead of table query
+        const { error } = await supabase.auth.getSession();
+
         if (!error) {
           setStatus({
             isConnected: true,
@@ -31,7 +30,6 @@ export function useRealtimeConnectionStatus(): ConnectionStatus {
             lastHeartbeat: new Date(),
           });
         } else {
-          console.log('[Connection] Supabase error:', error.message);
           setStatus((s) => ({
             ...s,
             isConnected: false,
@@ -39,7 +37,6 @@ export function useRealtimeConnectionStatus(): ConnectionStatus {
           }));
         }
       } catch (error) {
-        console.log('[Connection] Offline detected', error);
         setStatus((s) => ({
           ...s,
           isConnected: false,

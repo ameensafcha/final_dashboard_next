@@ -14,9 +14,19 @@ interface Task {
   start_date: string | null;
   completed_at: string | null;
   created_at: string;
+  estimated_hours: number | null;
+  recurrence: string | null;
   assignee?: { id: string; name: string; email: string } | null;
   creator?: { id: string; name: string; email: string };
   subtasks?: { id: string; title: string; is_completed: boolean }[];
+  attachments?: {
+    id: string;
+    file_name: string;
+    file_url: string;
+    file_size: number | null;
+    file_type: string | null;
+    created_at: string;
+  }[];
 }
 
 interface KanbanClientProps {

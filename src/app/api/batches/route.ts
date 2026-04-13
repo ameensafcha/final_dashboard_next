@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser, authResponse } from "@/lib/auth-helper";
+import { getCurrentUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
     const user = await getCurrentUser();
-    if (!user) return authResponse("Unauthorized");
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const batches = await prisma.batches.findMany({
       include: { flavor: true },
       orderBy: { created_at: "desc" },
@@ -21,7 +21,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const user = await getCurrentUser();
-    if (!user) return authResponse("Unauthorized");
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
     const { date, logged_by, raw_material_id, flavor_id, leaves_in, powder_out, quality_check, status, notes } = body;
@@ -33,7 +33,6 @@ export async function POST(request: Request) {
     const leavesInFloat = parseFloat(leaves_in);
     const powderOutFloat = parseFloat(powder_out);
 
-    // Stock validation BEFORE creating batch
     if (raw_material_id && leavesInFloat > 0) {
       const currentRM = await prisma.raw_materials.findUnique({ where: { id: raw_material_id } });
       if (!currentRM) return NextResponse.json({ error: "Raw material not found" }, { status: 404 });
@@ -49,10 +48,7 @@ export async function POST(request: Request) {
     const dateStr = today.toISOString().split("T")[0].replace(/-/g, "");
     const batchIdPrefix = `BATCH-${dateStr}`;
     
-    // Generate batch ID inside transaction to prevent race condition
-    // Use advisory lock or find highest existing and increment atomically
     const result = await prisma.$transaction(async (tx) => {
-      // Get latest batch for today inside transaction to ensure atomicity
       const latestBatch = await tx.batches.findFirst({
         where: { batch_id: { startsWith: batchIdPrefix } },
         orderBy: { created_at: "desc" },
@@ -64,8 +60,6 @@ export async function POST(request: Request) {
         sequence = lastSeq + 1;
       }
       const batchId = `${batchIdPrefix}-${sequence.toString().padStart(4, "0")}`;
-      
-      console.log("[Batch Create] Starting transaction for batch:", batchId);
       
       const wasteLoss = leavesInFloat - powderOutFloat;
       const yieldPercent = (powderOutFloat / leavesInFloat) * 100;
@@ -88,9 +82,6 @@ export async function POST(request: Request) {
         include: { flavor: true },
       });
 
-      console.log("[Batch Create] Batch created:", batch.id);
-
-      // Deduct raw material (UUID string — !isNaN removed, was breaking deduction)
       if (raw_material_id && leavesInFloat > 0) {
         await tx.raw_materials.update({
           where: { id: raw_material_id },
@@ -99,12 +90,9 @@ export async function POST(request: Request) {
         await tx.raw_material_logs.create({
           data: { raw_material_id, quantity: leavesInFloat, type: "batch_used", reference_id: batch.id },
         });
-        console.log("[Batch Create] Raw material deducted:", leavesInFloat);
       }
 
-      // powder_stock update on "Sent in Factory"
       if ((status?.trim() || "") === "Sent in Factory") {
-        console.log("[Batch Create] Status is Sent in Factory, updating powder stock");
         await tx.finished_products.create({
           data: { flavor_id: batch.flavor_id, quantity: powderOutFloat, batch_reference: batch.batch_id },
         });
@@ -125,14 +113,9 @@ export async function POST(request: Request) {
             data: { total_from_batches: powderOutFloat, total_sent: 0, received: powderOutFloat, available: powderOutFloat },
           });
         }
-        console.log("[Batch Create] Powder stock updated for Sent in Factory");
       }
 
-      console.log("[Batch Create] Transaction completed successfully");
       return batch;
-    }).catch((error) => {
-      console.error("[Batch Create] Transaction failed:", error);
-      throw error;
     });
 
     return NextResponse.json(result, { status: 201 });
@@ -144,7 +127,7 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const user = await getCurrentUser();
-    if (!user) return authResponse("Unauthorized");
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
     const { id, date, logged_by, raw_material_id, flavor_id, leaves_in, powder_out, quality_check, status, notes } = body;
@@ -158,7 +141,6 @@ export async function PUT(request: Request) {
     const wasteLoss = leavesInFloat - powderOutFloat;
     const yieldPercent = (powderOutFloat / leavesInFloat) * 100;
 
-    // Stock validation: account for old leaves being restored
     if (raw_material_id && leavesInFloat > 0) {
       const currentRM = await prisma.raw_materials.findUnique({ where: { id: raw_material_id } });
       if (!currentRM) return NextResponse.json({ error: "Raw material not found" }, { status: 404 });
@@ -173,7 +155,6 @@ export async function PUT(request: Request) {
     }
 
     const result = await prisma.$transaction(async (tx) => {
-      // Restore old raw material
       if (existing.raw_material_id && existing.leaves_in) {
         await tx.raw_materials.update({
           where: { id: existing.raw_material_id },
@@ -181,7 +162,6 @@ export async function PUT(request: Request) {
         });
       }
 
-      // Deduct new raw material
       if (raw_material_id && leavesInFloat > 0) {
         await tx.raw_materials.update({
           where: { id: raw_material_id },
@@ -213,9 +193,7 @@ export async function PUT(request: Request) {
       const oldStatus = existing.status;
       const newStatus = status;
 
-      // Status changed TO "Sent in Factory"
       if (oldStatus !== "Sent in Factory" && newStatus === "Sent in Factory") {
-        console.log("[Batch Update] Status changed to Sent in Factory, updating powder stock");
         await tx.finished_products.create({
           data: { flavor_id: batch.flavor_id, quantity: powderOutFloat, batch_reference: batch.batch_id },
         });
@@ -224,9 +202,7 @@ export async function PUT(request: Request) {
         });
       }
 
-      // Status changed FROM "Sent in Factory"
       if (oldStatus === "Sent in Factory" && newStatus !== "Sent in Factory") {
-        console.log("[Batch Update] Status changed from Sent in Factory, reversing powder stock");
         await tx.finished_products.deleteMany({ where: { batch_reference: batch.batch_id } });
         await tx.powder_stock.updateMany({
           data: { total_from_batches: { decrement: existing.powder_out }, received: { decrement: existing.powder_out }, available: { decrement: existing.powder_out }, updated_at: new Date() },
@@ -245,7 +221,7 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const user = await getCurrentUser();
-    if (!user) return authResponse("Unauthorized");
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
@@ -255,7 +231,6 @@ export async function DELETE(request: Request) {
     if (!existing) return NextResponse.json({ error: "Batch not found" }, { status: 404 });
 
     await prisma.$transaction(async (tx) => {
-      // Restore raw material
       if (existing.raw_material_id && existing.leaves_in) {
         await tx.raw_materials.update({
           where: { id: existing.raw_material_id },
@@ -263,7 +238,6 @@ export async function DELETE(request: Request) {
         });
       }
 
-      // If "Sent in Factory" — clean finished_products + decrement powder_stock
       if (existing.status === "Sent in Factory") {
         await tx.finished_products.deleteMany({ where: { batch_reference: existing.batch_id } });
         await tx.powder_stock.updateMany({

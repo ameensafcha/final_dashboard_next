@@ -17,9 +17,19 @@ interface TaskDetailTask {
   start_date: string | null;
   completed_at: string | null;
   created_at: string;
+  estimated_hours: number | null;
+  recurrence: string | null;
   assignee?: { id: string; name: string; email: string } | null;
   creator?: { id: string; name: string; email: string };
   subtasks?: { id: string; title: string; is_completed: boolean }[];
+  attachments?: {
+    id: string;
+    file_name: string;
+    file_url: string;
+    file_size: number | null;
+    file_type: string | null;
+    created_at: string;
+  }[];
 }
 
 interface KPIData {
@@ -39,8 +49,11 @@ interface SerializedTask {
   start_date?: string | null;
   completed_at?: string | null;
   created_at: string;
+  estimated_hours?: number | null;
+  recurrence?: string | null;
   assignee?: { id: string; name: string; email?: string } | null;
   creator?: { id: string; name: string; email?: string } | null;
+  attachments?: any[];
 }
 
 function calcKpis(tasks: SerializedTask[]): KPIData {
@@ -66,15 +79,20 @@ export function DashboardClient({ kpis: initialKpis, tasks: initialTasks, error,
       const data = await res.json();
       if (data.data) {
         const all: SerializedTask[] = data.data;
+        // Only update if visible tasks changed or KPIs need updating
         setTasks(all.slice(0, 10));
         setKpis(calcKpis(all));
       }
     } catch {}
   }, []);
 
-  useRealtimeSubscription({ table: 'tasks', event: 'INSERT', onMessage: refreshTasks, enabled: !!user });
-  useRealtimeSubscription({ table: 'tasks', event: 'UPDATE', onMessage: refreshTasks, enabled: !!user });
-  useRealtimeSubscription({ table: 'tasks', event: 'DELETE', onMessage: refreshTasks, enabled: !!user });
+  // Standardized real-time subscriptions with basic filters
+  useRealtimeSubscription({ 
+    table: 'tasks', 
+    event: '*', 
+    onMessage: refreshTasks, 
+    enabled: !!user 
+  });
 
   const handleTaskClick = (task: SerializedTask) => {
     setSelectedTask({
@@ -87,9 +105,12 @@ export function DashboardClient({ kpis: initialKpis, tasks: initialTasks, error,
       start_date: task.start_date ?? null,
       completed_at: task.completed_at ?? null,
       created_at: task.created_at,
+      estimated_hours: task.estimated_hours ?? null,
+      recurrence: task.recurrence ?? null,
       assignee: task.assignee ? { id: task.assignee.id, name: task.assignee.name, email: task.assignee.email ?? "" } : null,
       creator: task.creator ? { id: task.creator.id, name: task.creator.name, email: task.creator.email ?? "" } : { id: "", name: "", email: "" },
       subtasks: [],
+      attachments: task.attachments ?? [],
     });
   };
 

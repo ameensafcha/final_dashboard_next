@@ -1,69 +1,56 @@
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth-helper";
-import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth";
 import { TasksTable } from "@/components/tasks-table";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export default async function TasksPage() {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) return null;
+
+  const isSuperAdmin = process.env.SUPER_ADMIN_EMAIL && user.email === process.env.SUPER_ADMIN_EMAIL;
+  const taskFilter = isSuperAdmin ? {} : {
+    OR: [
+      { created_by: user.id },
+      { assignee_id: user.id }
+    ]
+  };
 
   const tasks = await prisma.tasks.findMany({
+    where: taskFilter,
     include: {
-      assignee: true,
-      creator: true,
+      assignee: { select: { id: true, name: true, email: true } },
+      creator: { select: { id: true, name: true, email: true } },
       subtasks: true,
+      attachments: true,
+      _count: { select: { comments: true, time_logs: true } },
     },
-    orderBy: { created_at: "desc" },
+    orderBy: [
+      { priority: "desc" },
+      { created_at: "desc" },
+    ],
   });
 
-  const serializedTasks = tasks.map((task) => ({
-    id: task.id,
-    title: task.title,
-    description: task.description,
-    area: task.area,
-    status: task.status,
-    priority: task.priority,
-    assignee_id: task.assignee_id,
-    due_date: task.due_date?.toISOString() || null,
-    start_date: task.start_date?.toISOString() || null,
-    completed_at: task.completed_at?.toISOString() || null,
-    created_at: task.created_at.toISOString(),
-    assignee: task.assignee
-      ? {
-          id: task.assignee.id,
-          name: task.assignee.name,
-          email: task.assignee.email,
-        }
-      : null,
-    creator: {
-      id: task.creator.id,
-      name: task.creator.name,
-      email: task.creator.email,
-    },
-    subtasks: task.subtasks.map((st) => ({
-      id: st.id,
-      title: st.title,
-      is_completed: st.is_completed,
+  // Map to the Task interface expected by TasksTable
+  const serializedTasks = tasks.map(t => ({
+    ...t,
+    due_date: t.due_date?.toISOString() || null,
+    start_date: t.start_date?.toISOString() || null,
+    completed_at: t.completed_at?.toISOString() || null,
+    created_at: t.created_at.toISOString(),
+    attachments: t.attachments.map(a => ({
+      ...a,
+      created_at: a.created_at.toISOString(),
     })),
   }));
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: "#1A1A1A" }}>
-            All Tasks
-          </h1>
-          <p className="text-gray-600">View and manage all tasks</p>
-        </div>
-      </div>
-
-      <TasksTable
-        initialData={serializedTasks}
-        currentUserId={user.id}
-      />
+    <div className="p-8">
+      <header className="mb-8">
+        <h1 className="text-2xl font-bold tracking-tight">Task Management</h1>
+        <p className="text-gray-500">View and manage system-wide tasks</p>
+      </header>
+      <TasksTable initialData={serializedTasks} currentUserId={user.id} />
     </div>
   );
 }

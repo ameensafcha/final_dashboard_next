@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth-helper";
+import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { RawMaterialsTable } from "@/components/raw-materials-table";
 import { AddMaterialDialog } from "@/components/add-material-dialog";

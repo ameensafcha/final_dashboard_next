@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser, authResponse } from "@/lib/auth-helper";
+import { getCurrentUser } from "@/lib/auth";
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
     const user = await getCurrentUser();
-    if (!user) {
-      return authResponse("Unauthorized");
-    }
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const finishedProducts = await prisma.finished_products.findMany({
       include: {
@@ -19,6 +17,7 @@ export async function GET() {
     });
     return NextResponse.json(finishedProducts);
   } catch (error) {
+    console.error('[FinishedProducts GET] Error:', error);
     return NextResponse.json({ error: "Failed to fetch finished products" }, { status: 500 });
   }
 }
@@ -26,9 +25,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const user = await getCurrentUser();
-    if (!user) {
-      return authResponse("Unauthorized");
-    }
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
     const { flavor_id, quantity, batch_reference } = body;
@@ -50,6 +47,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(finishedProduct, { status: 201 });
   } catch (error) {
+    console.error('[FinishedProducts POST] Error:', error);
     return NextResponse.json({ error: "Failed to create finished product" }, { status: 500 });
   }
 }
@@ -57,7 +55,7 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const user = await getCurrentUser();
-    if (!user) return authResponse("Unauthorized");
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
     const { id, quantity } = body;
@@ -86,6 +84,7 @@ export async function PUT(request: Request) {
 
     return NextResponse.json(updated);
   } catch (error) {
+    console.error('[FinishedProducts PUT] Error:', error);
     return NextResponse.json({ error: "Failed to update finished product" }, { status: 500 });
   }
 }

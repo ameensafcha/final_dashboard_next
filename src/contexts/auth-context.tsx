@@ -6,18 +6,14 @@ import type { User } from "@supabase/supabase-js";
 
 interface Employee {
   id: string;
-  name: string;
   email: string;
-  role: string | null;
   isAdmin?: boolean;
 }
 
 interface AuthContextType {
   user: User | null;
   employee: Employee | null;
-  role: string | null;
   isAdmin: boolean;
-  permissions: string[];
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -26,9 +22,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   employee: null,
-  role: null,
   isAdmin: false,
-  permissions: [],
   isLoading: true,
   login: async () => {},
   logout: async () => {},
@@ -37,7 +31,6 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [employee, setEmployee] = useState<Employee | null>(null);
-  const [permissions, setPermissions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const supabase = createBrowserClient(
@@ -47,28 +40,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchEmployeeData = async () => {
     try {
-      const [empRes, permRes] = await Promise.all([
-        fetch("/api/auth/employee").catch(() => null),
-        fetch("/api/users/permissions").catch(() => null),
-      ]);
-
-      if (empRes && empRes.ok) {
+      const empRes = await fetch("/api/auth/employee");
+      if (empRes.ok) {
         const emp = await empRes.json();
         setEmployee(emp);
-      } else {
-        console.warn("Failed to fetch employee data");
-      }
-
-      if (permRes && permRes.ok) {
-        const { permissions: perms } = await permRes.json();
-        setPermissions(perms || []);
-      } else {
-        console.warn("Failed to fetch permissions, falling back to empty array");
-        setPermissions([]);
       }
     } catch (error) {
-      console.error("Auth initialization error:", error);
-      setPermissions([]);
+      console.error("Auth init error:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -76,21 +56,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchEmployeeData().finally(() => setIsLoading(false));
+        fetchEmployeeData();
       } else {
         setIsLoading(false);
       }
     });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchEmployeeData();
       } else {
         setEmployee(null);
-        setPermissions([]);
+        setIsLoading(false);
       }
     });
 
@@ -106,16 +84,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
     setUser(null);
     setEmployee(null);
-    setPermissions([]);
   };
 
-  const role = employee?.role ?? null;
-  const isAdmin = employee?.isAdmin === true || role === "admin";
+  const isAdmin = employee?.isAdmin === true;
 
   return (
-    <AuthContext.Provider
-      value={{ user, employee, role, isAdmin, permissions, isLoading, login, logout }}
-    >
+    <AuthContext.Provider value={{ user, employee, isAdmin, isLoading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

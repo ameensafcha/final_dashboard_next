@@ -18,12 +18,14 @@ export default async function RolesPage() {
     <div className={styles.container}>
       <header className={styles.header}>
         <div>
-          <h1 className={styles.title}>Roles & Permissions</h1>
+          <h1 className={styles.title}>System Roles</h1>
           <p style={{ color: '#6b7280', marginTop: '0.25rem' }}>
-            Manage system roles and their descriptive responsibilities
+            Manage system roles and view employee assignments
           </p>
         </div>
-        <AddRoleButton />
+        <div className={styles.actions}>
+          <AddRoleButton />
+        </div>
       </header>
 
       <section>

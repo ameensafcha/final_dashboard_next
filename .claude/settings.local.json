@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -E \"\\\\.ts$|\\\\.tsx$\")",
+      "mcp__Claude_Preview__preview_start"
+    ]
+  }
+}

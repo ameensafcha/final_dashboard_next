@@ -1,14 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
-import { getCurrentUser, authResponse } from "@/lib/auth-helper";
+import { getCurrentUser } from "@/lib/auth";
 
 export async function GET(request: Request) {
   try {
     const user = await getCurrentUser();
-    if (!user) {
-      return authResponse("Unauthorized");
-    }
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
@@ -17,49 +14,41 @@ export async function GET(request: Request) {
     const created_by = searchParams.get("created_by");
     const search = searchParams.get("search");
 
-    // Validate status enum
-    const validStatuses = ["not_started", "in_progress", "review", "completed"];
-    if (status && !validStatuses.includes(status)) {
-      return NextResponse.json({ error: "Invalid status value" }, { status: 400 });
-    }
-
-    // Validate priority enum
-    const validPriorities = ["low", "medium", "high", "urgent"];
-    if (priority && !validPriorities.includes(priority)) {
-      return NextResponse.json({ error: "Invalid priority value" }, { status: 400 });
-    }
-
-    // Sanitize search string - only allow alphanumeric, spaces, hyphens
-    const sanitizedSearch = search ? search.replace(/[^\w\s-]/g, "") : "";
-
-    // Build query conditions dynamically with proper typing
-    const queryConditions: Prisma.tasksWhereInput[] = [];
-
-    // Search filter (using sanitized input)
-    if (sanitizedSearch) {
+    const queryConditions: any[] = [];
+    if (search) {
       queryConditions.push({
         OR: [
-          { title: { contains: sanitizedSearch, mode: "insensitive" } },
-          { description: { contains: sanitizedSearch, mode: "insensitive" } },
+          { title: { contains: search, mode: "insensitive" } },
+          { description: { contains: search, mode: "insensitive" } },
         ],
       });
     }
 
-    // Additional filters (status, priority, etc.)
-    const filters: Prisma.tasksWhereInput[] = [];
+    const filters: any[] = [];
     if (status) filters.push({ status });
     if (priority) filters.push({ priority });
     if (assignee_id) filters.push({ assignee_id });
     if (created_by) filters.push({ created_by });
 
-    // Build final where clause
-    let where: Prisma.tasksWhereInput = {};
+    let where: any = {};
     if (queryConditions.length > 0 && filters.length > 0) {
       where = { AND: [...queryConditions, ...filters] };
     } else if (queryConditions.length > 0) {
       where = queryConditions.length === 1 ? queryConditions[0] : { AND: queryConditions };
     } else if (filters.length > 0) {
       where = filters.length === 1 ? filters[0] : { AND: filters };
+    }
+
+    // Simplified task filter: Admin sees all, User sees assigned/created
+    const isSuperAdmin = process.env.SUPER_ADMIN_EMAIL && user.email === process.env.SUPER_ADMIN_EMAIL;
+    if (!isSuperAdmin) {
+      const roleFilter = {
+        OR: [
+          { created_by: user.id },
+          { assignee_id: user.id }
+        ]
+      };
+      where = Object.keys(where).length > 0 ? { AND: [where, roleFilter] } : roleFilter;
     }
 
     const tasks = await prisma.tasks.findMany({
@@ -74,27 +63,19 @@ export async function GET(request: Request) {
         due_date: true,
         start_date: true,
         completed_at: true,
+        estimated_hours: true,
+        recurrence: true,
         created_at: true,
-        assignee: {
-          select: { id: true, name: true, email: true },
-        },
-        creator: {
-          select: { id: true, name: true, email: true },
-        },
+        assignee: { select: { id: true, name: true, email: true } },
+        creator: { select: { id: true, name: true, email: true } },
         subtasks: true,
-        _count: {
-          select: { comments: true, time_logs: true },
-        },
+        attachments: true,
+        _count: { select: { comments: true, time_logs: true } },
       },
-      orderBy: [
-        { priority: "desc" },
-        { created_at: "desc" },
-      ],
+      orderBy: [{ priority: "desc" }, { created_at: "desc" }],
     });
-
     return NextResponse.json({ data: tasks });
   } catch (error) {
-    console.error("Error fetching tasks:", error);
     return NextResponse.json({ error: "Failed to fetch tasks" }, { status: 500 });
   }
 }
@@ -102,19 +83,22 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const user = await getCurrentUser();
-    if (!user) {
-      return authResponse("Unauthorized");
-    }
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { title, description, area, priority, assignee_id, due_date, start_date } = await request.json();
+    const { 
+      title, 
+      description, 
+      area, 
+      priority, 
+      assignee_id, 
+      due_date, 
+      start_date,
+      estimated_hours,
+      recurrence
+    } = await request.json();
+    if (!title) return NextResponse.json({ error: "Title is required" }, { status: 400 });
 
-    if (!title) {
-      return NextResponse.json({ error: "Title is required" }, { status: 400 });
-    }
-
-    // Use transaction to ensure atomicity: task creation and notification succeed or both fail
     const task = await prisma.$transaction(async (tx) => {
-      // Create task first
       const newTask = await tx.tasks.create({
         data: {
           title,
@@ -126,18 +110,15 @@ export async function POST(request: Request) {
           assignee_id: assignee_id || null,
           due_date: due_date ? new Date(due_date) : null,
           start_date: start_date ? new Date(start_date) : null,
+          estimated_hours: estimated_hours ? parseFloat(estimated_hours) : null,
+          recurrence: recurrence || null,
         },
         include: {
-          assignee: {
-            select: { id: true, name: true, email: true },
-          },
-          creator: {
-            select: { id: true, name: true, email: true },
-          },
+          assignee: { select: { id: true, name: true, email: true } },
+          creator: { select: { id: true, name: true, email: true } },
         },
       });
 
-      // Create notification if assignee is set (D-01)
       if (assignee_id) {
         await tx.notifications.create({
           data: {
@@ -149,13 +130,11 @@ export async function POST(request: Request) {
           },
         });
       }
-
       return newTask;
     });
 
     return NextResponse.json({ data: task }, { status: 201 });
   } catch (error) {
-    console.error("Error creating task:", error);
     return NextResponse.json({ error: "Failed to create task" }, { status: 500 });
   }
 }
@@ -163,29 +142,28 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const user = await getCurrentUser();
-    if (!user) {
-      return authResponse("Unauthorized");
-    }
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { id, title, description, area, status, priority, assignee_id, due_date, start_date, completed_at } = await request.json();
+    const { 
+      id, 
+      title, 
+      description, 
+      area, 
+      status, 
+      priority, 
+      assignee_id, 
+      due_date, 
+      start_date, 
+      completed_at,
+      estimated_hours,
+      recurrence
+    } = await request.json();
+    if (!id) return NextResponse.json({ error: "Task ID is required" }, { status: 400 });
 
-    if (!id) {
-      return NextResponse.json({ error: "Task ID is required" }, { status: 400 });
-    }
+    const existingTask = await prisma.tasks.findUnique({ where: { id } });
+    if (!existingTask) return NextResponse.json({ error: "Task not found" }, { status: 404 });
 
-    const existingTask = await prisma.tasks.findUnique({
-      where: { id },
-      include: { assignee: true, creator: true },
-    });
-
-    if (!existingTask) {
-      return NextResponse.json({ error: "Task not found" }, { status: 404 });
-    }
-
-    // Auto-set completed_at when status changes to completed
     const isCompleting = status === "completed" && existingTask.status !== "completed";
-    const completionTime = isCompleting ? new Date() : null;
-
     const updateData = {
       ...(title !== undefined && { title }),
       ...(description !== undefined && { description }),
@@ -195,55 +173,76 @@ export async function PUT(request: Request) {
       ...(assignee_id !== undefined && { assignee_id: assignee_id || null }),
       ...(due_date !== undefined && { due_date: due_date ? new Date(due_date) : null }),
       ...(start_date !== undefined && { start_date: start_date ? new Date(start_date) : null }),
-      ...(completed_at !== undefined && { completed_at: completed_at ? new Date(completed_at) : completionTime }),
+      ...(estimated_hours !== undefined && { estimated_hours: estimated_hours ? parseFloat(estimated_hours) : null }),
+      ...(recurrence !== undefined && { recurrence: recurrence || null }),
+      ...(isCompleting && { completed_at: new Date() }),
     };
 
-    // Use transaction to ensure atomicity: both task update and notification creation succeed or both fail
     const task = await prisma.$transaction(async (tx) => {
-      // Update task
       const updatedTask = await tx.tasks.update({
         where: { id },
         data: updateData,
         include: {
-          assignee: {
-            select: { id: true, name: true, email: true },
-          },
-          creator: {
-            select: { id: true, name: true, email: true },
-          },
+          assignee: { select: { id: true, name: true, email: true } },
+          creator: { select: { id: true, name: true, email: true } },
           subtasks: true,
         },
       });
 
-      // Create notification if assignee changed (and new assignee exists)
-      const newAssigneeId = assignee_id !== undefined ? assignee_id : existingTask.assignee_id;
-      const assigneeChanged = newAssigneeId !== existingTask.assignee_id;
+      // Recurrence Logic
+      if (isCompleting && updatedTask.recurrence) {
+        const nextStartDate = updatedTask.start_date ? new Date(updatedTask.start_date) : null;
+        const nextDueDate = updatedTask.due_date ? new Date(updatedTask.due_date) : null;
 
-      if (assigneeChanged && newAssigneeId) {
-        // Verify new assignee exists
-        const newAssignee = await tx.employees.findUnique({
-          where: { id: newAssigneeId },
-        });
-
-        if (newAssignee) {
-          await tx.notifications.create({
-            data: {
-              recipient_id: newAssigneeId,
-              actor_id: user.id,
-              action_type: "task_assigned",
-              task_id: id,
-              task_title: updatedTask.title,
-            },
-          });
+        const interval = updatedTask.recurrence.toLowerCase();
+        
+        if (nextStartDate) {
+          if (interval === "daily") nextStartDate.setDate(nextStartDate.getDate() + 1);
+          else if (interval === "weekly") nextStartDate.setDate(nextStartDate.getDate() + 7);
+          else if (interval === "monthly") nextStartDate.setMonth(nextStartDate.getMonth() + 1);
+          else if (interval === "yearly") nextStartDate.setFullYear(nextStartDate.getFullYear() + 1);
         }
+
+        if (nextDueDate) {
+          if (interval === "daily") nextDueDate.setDate(nextDueDate.getDate() + 1);
+          else if (interval === "weekly") nextDueDate.setDate(nextDueDate.getDate() + 7);
+          else if (interval === "monthly") nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+          else if (interval === "yearly") nextDueDate.setFullYear(nextDueDate.getFullYear() + 1);
+        }
+
+        await tx.tasks.create({
+          data: {
+            title: updatedTask.title,
+            description: updatedTask.description,
+            area: updatedTask.area,
+            priority: updatedTask.priority,
+            status: "not_started",
+            created_by: updatedTask.created_by,
+            assignee_id: updatedTask.assignee_id,
+            estimated_hours: updatedTask.estimated_hours,
+            recurrence: updatedTask.recurrence,
+            start_date: nextStartDate,
+            due_date: nextDueDate,
+          },
+        });
       }
 
+      if (assignee_id && assignee_id !== existingTask.assignee_id) {
+        await tx.notifications.create({
+          data: {
+            recipient_id: assignee_id,
+            actor_id: user.id,
+            action_type: "task_assigned",
+            task_id: id,
+            task_title: updatedTask.title,
+          },
+        });
+      }
       return updatedTask;
     });
 
     return NextResponse.json({ data: task });
   } catch (error) {
-    console.error("Error updating task:", error);
     return NextResponse.json({ error: "Failed to update task" }, { status: 500 });
   }
 }
@@ -251,32 +250,15 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const user = await getCurrentUser();
-    if (!user) {
-      return authResponse("Unauthorized");
-    }
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
+    if (!id) return NextResponse.json({ error: "Task ID is required" }, { status: 400 });
 
-    if (!id) {
-      return NextResponse.json({ error: "Task ID is required" }, { status: 400 });
-    }
-
-    const existingTask = await prisma.tasks.findUnique({
-      where: { id },
-    });
-
-    if (!existingTask) {
-      return NextResponse.json({ error: "Task not found" }, { status: 404 });
-    }
-
-    await prisma.tasks.delete({
-      where: { id },
-    });
-
+    await prisma.tasks.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting task:", error);
     return NextResponse.json({ error: "Failed to delete task" }, { status: 500 });
   }
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
 import { AddMaterialDialog } from "./add-material-dialog";
 import { EditMaterialDialog } from "./edit-material-dialog";
 import { DeleteConfirmDialog } from "./delete-dialog";
@@ -30,42 +31,16 @@ export function RawMaterialsTable({ initialData = [] }: RawMaterialsTableProps) 
     setMaterials(initialData);
   }, [initialData]);
 
-  // Real-time subscription
-  useEffect(() => {
-    const channel = supabase
-      .channel("raw-materials-realtime")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "raw_materials",
-        },
-        (payload) => {
-          console.log("Raw materials update:", payload);
-          
-          if (payload.eventType === "INSERT") {
-            setMaterials((prev) => [payload.new as Material, ...prev]);
-          } else if (payload.eventType === "UPDATE") {
-            setMaterials((prev) =>
-              prev.map((m) => (m.id === (payload.new as Material).id ? { ...m, ...payload.new } as Material : m))
-            );
-          } else if (payload.eventType === "DELETE") {
-            setMaterials((prev) => prev.filter((m) => m.id !== (payload.old as Material).id));
-          }
-          
-          queryClient.invalidateQueries({ queryKey: ["raw-materials"] });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [queryClient]);
+  // Standardized real-time subscription
+  useRealtimeSubscription({
+    table: 'raw_materials',
+    onMessage: () => {
+      queryClient.invalidateQueries({ queryKey: ["raw-materials"] });
+    }
+  });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async (id: string) => {
       const res = await fetch(`/api/raw-materials?id=${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete");
       return res.json();
@@ -154,7 +129,7 @@ export function RawMaterialsTable({ initialData = [] }: RawMaterialsTableProps) 
       <DeleteConfirmDialog
         open={!!deleteId}
         onOpenChange={(open) => !open && setDeleteId(null)}
-        onConfirm={() => deleteId && deleteMutation.mutate(Number(deleteId))}
+        onConfirm={() => deleteId && deleteMutation.mutate(deleteId as string)}
         isPending={deleteMutation.isPending}
       />
     </>

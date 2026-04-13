@@ -1,45 +1,45 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { verifyApiAuth } from "@/lib/auth-helper";
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { getCurrentUser } from '@/lib/auth';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    const { error } = await verifyApiAuth();
-    if (error) return error;
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { searchParams } = new URL(request.url);
-    const key = searchParams.get("key");
+    const settingsList = await prisma.app_settings.findMany();
+    const settings = settingsList.reduce((acc, curr) => ({
+      ...acc,
+      [curr.key]: curr.value
+    }), {});
 
-    if (key) {
-      const setting = await prisma.app_settings.findUnique({ where: { key } });
-      return NextResponse.json({ data: setting });
-    }
-
-    const settings = await prisma.app_settings.findMany();
-    return NextResponse.json({ data: settings });
-  } catch {
-    return NextResponse.json({ error: "Failed to fetch settings" }, { status: 500 });
+    return NextResponse.json(settings);
+  } catch (error) {
+    return NextResponse.json({ error: 'Server Error' }, { status: 500 });
   }
 }
 
-export async function PUT(request: Request) {
+export async function POST(request: Request) {
   try {
-    const { error } = await verifyApiAuth();
-    if (error) return error;
+    const user = await getCurrentUser();
+    const isSuperAdmin = process.env.SUPER_ADMIN_EMAIL && user?.email === process.env.SUPER_ADMIN_EMAIL;
+    if (!user || !isSuperAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-    const { key, value } = await request.json();
-    if (!key) return NextResponse.json({ error: "Key is required" }, { status: 400 });
+    const body = await request.json();
+    const { key, value } = body;
 
-    const setting = await prisma.app_settings.upsert({
+    if (!key) return NextResponse.json({ error: 'Key required' }, { status: 400 });
+
+    const updated = await prisma.app_settings.upsert({
       where: { key },
-      update: { value, updated_at: new Date() },
-      create: { key, value },
+      update: { value: String(value) },
+      create: { key, value: String(value) },
     });
 
-    return NextResponse.json({ data: setting });
-  } catch {
-    return NextResponse.json({ error: "Failed to update setting" }, { status: 500 });
+    return NextResponse.json(updated);
+  } catch (error) {
+    return NextResponse.json({ error: 'Server Error' }, { status: 500 });
   }
 }

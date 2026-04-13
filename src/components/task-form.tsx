@@ -6,6 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUIStore } from "@/lib/stores";
+import { Loader2 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Task {
   id: string;
@@ -17,6 +25,8 @@ interface Task {
   assignee_id: string | null;
   due_date: string | null;
   start_date: string | null;
+  estimated_hours: number | null;
+  recurrence: string | null;
 }
 
 interface Employee {
@@ -37,7 +47,17 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
   const queryClient = useQueryClient();
   const { addNotification } = useUIStore();
   
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    title: string;
+    description: string;
+    area: string;
+    priority: string;
+    assignee_id: string;
+    due_date: string;
+    start_date: string;
+    estimated_hours: string;
+    recurrence: string;
+  }>({
     title: "",
     description: "",
     area: "",
@@ -45,6 +65,8 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
     assignee_id: "",
     due_date: "",
     start_date: "",
+    estimated_hours: "",
+    recurrence: "",
   });
 
   useEffect(() => {
@@ -57,6 +79,8 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
         assignee_id: task.assignee_id || "",
         due_date: task.due_date ? task.due_date.split("T")[0] : "",
         start_date: task.start_date ? task.start_date.split("T")[0] : "",
+        estimated_hours: task.estimated_hours?.toString() || "",
+        recurrence: task.recurrence || "",
       });
     } else {
       setFormData({
@@ -67,6 +91,8 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
         assignee_id: defaultAssigneeId || "",
         due_date: "",
         start_date: "",
+        estimated_hours: "",
+        recurrence: "",
       });
     }
   }, [task, open, defaultAssigneeId]);
@@ -94,6 +120,8 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
           assignee_id: data.assignee_id || defaultAssigneeId || null,
           due_date: data.due_date || null,
           start_date: data.start_date || null,
+          estimated_hours: data.estimated_hours || null,
+          recurrence: data.recurrence || null,
         }),
       });
       if (!res.ok) {
@@ -126,6 +154,8 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
           assignee_id: data.assignee_id || defaultAssigneeId || null,
           due_date: data.due_date || null,
           start_date: data.start_date || null,
+          estimated_hours: data.estimated_hours || null,
+          recurrence: data.recurrence || null,
         }),
       });
       if (!res.ok) {
@@ -157,7 +187,7 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{task ? "Edit Task" : "Create Task"}</DialogTitle>
         </DialogHeader>
@@ -183,61 +213,106 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Area / Department</label>
-            <select
-              value={formData.area}
-              onChange={(e) => setFormData({ ...formData, area: e.target.value })}
-              className="w-full px-3 py-2 border rounded-lg text-sm"
-            >
-              <option value="">Select Area</option>
-              <option value="Production">Production</option>
-              <option value="Quality">Quality</option>
-              <option value="Warehouse">Warehouse</option>
-              <option value="Procurement">Procurement</option>
-              <option value="HR">HR</option>
-              <option value="Admin">Admin</option>
-              <option value="Maintenance">Maintenance</option>
-              <option value="Finance">Finance</option>
-            </select>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Area / Department</label>
+              <Select 
+                value={formData.area} 
+                onValueChange={(val) => setFormData({ ...formData, area: val || "" })}
+              >
+                <SelectTrigger className="w-full text-sm">
+                  <SelectValue placeholder="Select Area" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Production">Production</SelectItem>
+                  <SelectItem value="Quality">Quality</SelectItem>
+                  <SelectItem value="Warehouse">Warehouse</SelectItem>
+                  <SelectItem value="Procurement">Procurement</SelectItem>
+                  <SelectItem value="HR">HR</SelectItem>
+                  <SelectItem value="Admin">Admin</SelectItem>
+                  <SelectItem value="Maintenance">Maintenance</SelectItem>
+                  <SelectItem value="Finance">Finance</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Priority</label>
+              <Select 
+                value={formData.priority} 
+                onValueChange={(val) => setFormData({ ...formData, priority: val || "" })}
+              >
+                <SelectTrigger className="w-full text-sm">
+                  <SelectValue placeholder="Select Priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="urgent">Urgent</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Priority</label>
-              <select
-                value={formData.priority}
-                onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg text-sm"
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </select>
+              <label className="block text-sm font-medium mb-1">Estimated Hours</label>
+              <Input
+                type="number"
+                step="0.5"
+                min="0"
+                value={formData.estimated_hours}
+                onChange={(e) => setFormData({ ...formData, estimated_hours: e.target.value })}
+                placeholder="e.g. 4.5"
+                className="text-sm"
+              />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Assignee</label>
-              {canChangeAssignee ? (
-                <select
-                  value={formData.assignee_id}
-                  onChange={(e) => setFormData({ ...formData, assignee_id: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg text-sm"
-                >
-                  <option value="">Unassigned</option>
-                  {employees.map((emp) => (
-                    <option key={emp.id} value={emp.id}>{emp.name}</option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  value="You (auto-assigned)"
-                  disabled
-                  className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 text-gray-500 cursor-not-allowed"
-                />
-              )}
+              <label className="block text-sm font-medium mb-1">Recurrence</label>
+              <Select 
+                value={formData.recurrence || "none"} 
+                onValueChange={(val) => setFormData({ ...formData, recurrence: val === "none" ? "" : (val || "") })}
+              >
+                <SelectTrigger className="w-full text-sm">
+                  <SelectValue placeholder="None" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="yearly">Yearly</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Assignee</label>
+            {canChangeAssignee ? (
+              <Select 
+                value={formData.assignee_id} 
+                onValueChange={(val) => setFormData({ ...formData, assignee_id: val || "" })}
+              >
+                <SelectTrigger className="w-full text-sm">
+                  <SelectValue placeholder="Unassigned" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                  {employees.map((emp) => (
+                    <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <input
+                value="You (auto-assigned)"
+                disabled
+                className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 text-gray-500 cursor-not-allowed"
+              />
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -263,15 +338,23 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={isLoading}
               style={{ backgroundColor: "#E8C547" }}
+              className="min-w-[100px]"
             >
-              {isLoading ? "Saving..." : task ? "Update" : "Create"}
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                task ? "Update Task" : "Create Task"
+              )}
             </Button>
           </DialogFooter>
         </form>

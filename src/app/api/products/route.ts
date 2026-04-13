@@ -1,160 +1,45 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser, authResponse } from "@/lib/auth-helper";
-
-export const dynamic = 'force-dynamic';
+import { getCurrentUser } from "@/lib/auth";
 
 export async function GET() {
   try {
     const user = await getCurrentUser();
-    if (!user) {
-      return authResponse("Unauthorized");
-    }
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const products = await prisma.products.findMany({
-      include: {
-        product_flavors: {
-          include: {
-            flavor: true,
-          },
-        },
-        variants: {
-          include: {
-            flavor: true,
-            size: true,
-          },
-          orderBy: [
-            { flavor: { name: 'asc' } },
-            { size: { size: 'asc' } }
-          ],
-        },
-      },
-      orderBy: { created_at: "desc" },
+      include: { product_flavors: { include: { flavor: true } } },
+      orderBy: { name: "asc" },
     });
-
-    const productsWithCounts = products.map(product => {
-      const activeCount = product.variants.filter((v: any) => v.is_active).length;
-      const inactiveCount = product.variants.filter((v: any) => !v.is_active).length;
-      return {
-        ...product,
-        variants_count: {
-          active: activeCount,
-          inactive: inactiveCount,
-          total: product.variants.length,
-        },
-      };
-    });
-
-    return NextResponse.json(productsWithCounts);
+    return NextResponse.json(products);
   } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch products" }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
     const user = await getCurrentUser();
-    if (!user) {
-      return authResponse("Unauthorized");
-    }
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const body = await request.json();
-    const { name, description, flavor_ids, is_active } = body;
+    const { name, description, flavors } = await request.json();
+    if (!name) return NextResponse.json({ error: "Name is required" }, { status: 400 });
 
-    if (!name || !flavor_ids || !Array.isArray(flavor_ids) || flavor_ids.length === 0) {
-      return NextResponse.json({ error: "Name and at least one flavor are required" }, { status: 400 });
-    }
-
-    const createdProduct = await prisma.products.create({
-      data: {
-        name,
-        description,
-        is_active: is_active ?? true,
-        product_flavors: {
-          create: flavor_ids.map((flavorId: string) => ({
-            flavor_id: flavorId,
-          })),
-        },
-      },
-      include: {
-        product_flavors: {
-          include: {
-            flavor: true,
-          },
-        },
-      },
-    });
-
-    return NextResponse.json(createdProduct);
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to create" }, { status: 500 });
-  }
-}
-
-export async function PUT(request: Request) {
-  try {
-    const user = await getCurrentUser();
-    if (!user) return authResponse("Unauthorized");
-
-    const body = await request.json();
-    const { id, name, description, flavor_ids, is_active } = body;
-
-    if (!id) {
-      return NextResponse.json({ error: "ID is required" }, { status: 400 });
-    }
-
-    if (flavor_ids && Array.isArray(flavor_ids)) {
-      await prisma.product_flavors.deleteMany({
-        where: { product_id: id },
+    const product = await prisma.$transaction(async (tx) => {
+      const p = await tx.products.create({ data: { name, description, is_active: true } });
+      if (flavors && Array.isArray(flavors)) {
+        await tx.product_flavors.createMany({
+          data: flavors.map((fId: string) => ({ product_id: p.id, flavor_id: fId })),
+        });
+      }
+      return tx.products.findUnique({
+        where: { id: p.id },
+        include: { product_flavors: { include: { flavor: true } } },
       });
-
-      await prisma.product_flavors.createMany({
-        data: flavor_ids.map((flavorId: string) => ({
-          product_id: id,
-          flavor_id: flavorId,
-        })),
-      });
-    }
-
-    const updatedProduct = await prisma.products.update({
-      where: { id },
-      data: {
-        name,
-        description,
-        is_active,
-      },
-      include: {
-        product_flavors: {
-          include: {
-            flavor: true,
-          },
-        },
-      },
     });
 
-    return NextResponse.json(updatedProduct);
+    return NextResponse.json(product, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to update" }, { status: 500 });
-  }
-}
-
-export async function DELETE(request: Request) {
-  try {
-    const user = await getCurrentUser();
-    if (!user) return authResponse("Unauthorized");
-
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-
-    if (!id) {
-      return NextResponse.json({ error: "ID required" }, { status: 400 });
-    }
-
-    await prisma.products.delete({
-      where: { id },
-    });
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to delete" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to create product" }, { status: 500 });
   }
 }

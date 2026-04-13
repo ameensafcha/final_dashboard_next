@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { Package, Archive, Truck } from "lucide-react";
+import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
 
 interface StocksData {
   raw_materials: {
@@ -41,84 +42,26 @@ export function StocksTable({ initialData }: StocksTableProps) {
   const [data, setData] = useState<StocksData>(initialData);
   const [activeTab, setActiveTab] = useState<TabType>("products");
 
-  // Real-time subscriptions for NEW stock tables (auto-updated via DB triggers)
-  useEffect(() => {
-    const refetchAll = async () => {
-      try {
-        const res = await fetch("/api/stocks");
-        const data = await res.json();
-        console.log('Refetched stock data:', data);
-        if (data && !data.error) {
-          setData(data);
-        }
-      } catch (err) {
-        console.error("Failed to refetch stocks:", err);
+  // Logic to fetch all stock data
+  const refetchAll = useCallback(async () => {
+    try {
+      const res = await fetch("/api/stocks");
+      const data = await res.json();
+      if (data && !data.error) {
+        setData(data);
       }
-    };
-
-    // Subscribe to ORIGINAL raw_materials table for raw materials
-    const rawMaterialsChannel = supabase
-      .channel('stocks-raw-materials')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'raw_materials' }, () => {
-        console.log('Raw materials changed, refetching...');
-        refetchAll();
-      })
-      .subscribe();
-
-    // Also listen to receiving_materials for raw materials updates
-    const receivingMaterialsChannel = supabase
-      .channel('stocks-receiving-materials')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'receiving_materials' }, () => {
-        console.log('Receiving materials changed, refetching...');
-        refetchAll();
-      })
-      .subscribe();
-
-    // Subscribe to NEW product_stock table
-    const productStockChannel = supabase
-      .channel('stocks-product-stock')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'product_stock' }, () => {
-        console.log('Product stock changed, refetching...');
-        refetchAll();
-      })
-      .subscribe();
-
-    // Also listen to source table (packing_receive_items) for products
-    const packingReceiveChannel = supabase
-      .channel('stocks-packing-receive-items')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'packing_receive_items' }, () => {
-        console.log('Packing receive items changed, refetching...');
-        refetchAll();
-      })
-      .subscribe();
-
-    // Subscribe to finished_products for powder
-    const finishedProductsChannel = supabase
-      .channel('stocks-finished-products')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'finished_products' }, () => {
-        console.log('Finished products changed, refetching...');
-        refetchAll();
-      })
-      .subscribe();
-
-    // Subscribe to packing_logs for powder
-    const packingLogsChannel = supabase
-      .channel('stocks-packing-logs')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'packing_logs' }, () => {
-        console.log('Packing logs changed, refetching...');
-        refetchAll();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(rawMaterialsChannel);
-      supabase.removeChannel(receivingMaterialsChannel);
-      supabase.removeChannel(productStockChannel);
-      supabase.removeChannel(packingReceiveChannel);
-      supabase.removeChannel(finishedProductsChannel);
-      supabase.removeChannel(packingLogsChannel);
-    };
+    } catch (err) {
+      console.error("Failed to refetch stocks:", err);
+    }
   }, []);
+
+  // Standardized real-time subscriptions for stock data
+  useRealtimeSubscription({ table: 'raw_materials', onMessage: refetchAll });
+  useRealtimeSubscription({ table: 'receiving_materials', onMessage: refetchAll });
+  useRealtimeSubscription({ table: 'product_stock', onMessage: refetchAll });
+  useRealtimeSubscription({ table: 'packing_receive_items', onMessage: refetchAll });
+  useRealtimeSubscription({ table: 'finished_products', onMessage: refetchAll });
+  useRealtimeSubscription({ table: 'packing_logs', onMessage: refetchAll });
 
   const tabs = [
     { id: "products" as TabType, label: "Product Inventory", icon: Truck },

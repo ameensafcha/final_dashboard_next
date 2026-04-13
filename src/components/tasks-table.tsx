@@ -10,8 +10,15 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { PriorityBadge } from "@/components/ui/priority-badge";
 import { Avatar } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Eye, Edit2, Trash2, Loader2 } from "lucide-react";
 import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Task {
   id: string;
@@ -25,6 +32,8 @@ interface Task {
   start_date: string | null;
   completed_at: string | null;
   created_at: string;
+  estimated_hours: number | null;
+  recurrence: string | null;
   assignee?: {
     id: string;
     name: string;
@@ -36,6 +45,14 @@ interface Task {
     email: string;
   };
   subtasks?: { id: string; title: string; is_completed: boolean }[];
+  attachments?: {
+    id: string;
+    file_name: string;
+    file_url: string;
+    file_size: number | null;
+    file_type: string | null;
+    created_at: string;
+  }[];
 }
 
 interface TasksTableProps {
@@ -59,6 +76,7 @@ export function TasksTable({
   const [priorityFilter, setPriorityFilter] = useState("");
   const [areaFilter, setAreaFilter] = useState("");
   const [now, setNow] = useState(() => Date.now());
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [tasks, setTasks] = useState<Task[]>(() =>
     filterAssigneeId
       ? initialData.filter(t => t.assignee?.id === filterAssigneeId)
@@ -110,12 +128,24 @@ const TimeLeftDisplay = React.memo(function TimeLeftDisplay({
     }
   }, [filterAssigneeId]);
 
-  const handleTaskInsert = useCallback((payload: { new: Task }) => {
-    setTasks((current) => [payload.new, ...current]);
+  const handleTaskInsert = useCallback(async (payload: { new: { id: string } }) => {
+    try {
+      const res = await fetch(`/api/tasks/${payload.new.id}`);
+      if (res.ok) {
+        const { data } = await res.json();
+        setTasks((current) => [data, ...current]);
+      }
+    } catch (err) {
+      console.error("Failed to fetch new task for realtime update:", err);
+    }
   }, []);
 
   const handleTaskUpdate = useCallback((payload: { new: Task }) => {
-    setTasks((current) => current.map(t => t.id === payload.new.id ? { ...t, ...payload.new } : t));
+    setTasks((current) => current.map(t => 
+      t.id === payload.new.id 
+        ? { ...t, ...payload.new, assignee: t.assignee, creator: t.creator } // Preserve relations
+        : t
+    ));
   }, []);
 
   const handleTaskDelete = useCallback((payload: { old: { id: string } }) => {
@@ -160,10 +190,12 @@ const TimeLeftDisplay = React.memo(function TimeLeftDisplay({
     return true;
   });
 
+  const isLoadingAny = isLoading || deleteMutation.isPending;
+
   if (isLoading) {
     return (
       <div className="text-center py-12 text-gray-400">
-        <div className="inline-block w-6 h-6 border-2 border-gray-300 border-t-[#E8C547] rounded-full animate-spin mb-3" />
+        <Loader2 className="inline-block w-6 h-6 animate-spin mb-3 text-[#E8C547]" />
         <p className="font-medium text-sm">Loading tasks...</p>
       </div>
     );
@@ -214,45 +246,48 @@ const TimeLeftDisplay = React.memo(function TimeLeftDisplay({
             />
           </div>
 
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-full text-sm font-bold text-gray-700 cursor-pointer outline-none transition-all focus:border-[#E8C547] focus:ring-1 focus:ring-[#E8C547]"
-          >
-            <option value="">All Status</option>
-            <option value="not_started">Not Started</option>
-            <option value="in_progress">In Progress</option>
-            <option value="review">Review</option>
-            <option value="completed">Completed</option>
-          </select>
+          <Select value={statusFilter || "all"} onValueChange={(val) => setStatusFilter(val === "all" ? "" : (val || ""))}>
+            <SelectTrigger className="w-[140px] h-9 bg-gray-50 border-gray-200 rounded-full text-xs font-bold text-gray-700">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="not_started">Not Started</SelectItem>
+              <SelectItem value="in_progress">In Progress</SelectItem>
+              <SelectItem value="review">Review</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+            </SelectContent>
+          </Select>
 
-          <select
-            value={priorityFilter}
-            onChange={(e) => setPriorityFilter(e.target.value)}
-            className="px-4 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-full text-sm font-bold text-gray-700 cursor-pointer outline-none transition-all focus:border-[#E8C547] focus:ring-1 focus:ring-[#E8C547]"
-          >
-            <option value="">All Priority</option>
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
-            <option value="urgent">Urgent</option>
-          </select>
+          <Select value={priorityFilter || "all"} onValueChange={(val) => setPriorityFilter(val === "all" ? "" : (val || ""))}>
+            <SelectTrigger className="w-[140px] h-9 bg-gray-50 border-gray-200 rounded-full text-xs font-bold text-gray-700">
+              <SelectValue placeholder="All Priority" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Priority</SelectItem>
+              <SelectItem value="low">Low</SelectItem>
+              <SelectItem value="medium">Medium</SelectItem>
+              <SelectItem value="high">High</SelectItem>
+              <SelectItem value="urgent">Urgent</SelectItem>
+            </SelectContent>
+          </Select>
 
-          <select
-            value={areaFilter}
-            onChange={(e) => setAreaFilter(e.target.value)}
-            className="px-4 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-full text-sm font-bold text-gray-700 cursor-pointer outline-none transition-all focus:border-[#E8C547] focus:ring-1 focus:ring-[#E8C547]"
-          >
-            <option value="">All Areas</option>
-            <option value="Production">Production</option>
-            <option value="Quality">Quality</option>
-            <option value="Warehouse">Warehouse</option>
-            <option value="Procurement">Procurement</option>
-            <option value="HR">HR</option>
-            <option value="Admin">Admin</option>
-            <option value="Maintenance">Maintenance</option>
-            <option value="Finance">Finance</option>
-          </select>
+          <Select value={areaFilter || "all"} onValueChange={(val) => setAreaFilter(val === "all" ? "" : (val || ""))}>
+            <SelectTrigger className="w-[140px] h-9 bg-gray-50 border-gray-200 rounded-full text-xs font-bold text-gray-700">
+              <SelectValue placeholder="All Areas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Areas</SelectItem>
+              <SelectItem value="Production">Production</SelectItem>
+              <SelectItem value="Quality">Quality</SelectItem>
+              <SelectItem value="Warehouse">Warehouse</SelectItem>
+              <SelectItem value="Procurement">Procurement</SelectItem>
+              <SelectItem value="HR">HR</SelectItem>
+              <SelectItem value="Admin">Admin</SelectItem>
+              <SelectItem value="Maintenance">Maintenance</SelectItem>
+              <SelectItem value="Finance">Finance</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {!filterAssigneeId && (
@@ -332,29 +367,36 @@ const TimeLeftDisplay = React.memo(function TimeLeftDisplay({
                     {/* View Button - Soft Blue */}
                     <button
                       onClick={() => setSelectedTask(task)}
-                      className="px-4 py-2 text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg cursor-pointer transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg cursor-pointer transition-all active:scale-95"
                     >
-                      View
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>View</span>
                     </button>
 
                     {/* Edit Button - Soft Amber */}
                     <button
                       onClick={() => { setEditingTask(task); setShowForm(true); }}
-                      className="px-4 py-2 text-xs font-bold bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-lg cursor-pointer transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-lg cursor-pointer transition-all active:scale-95"
                     >
-                      Edit
+                      <Edit2 className="w-3.5 h-3.5" />
+                      <span>Edit</span>
                     </button>
 
                     {/* Delete Button - Soft Red */}
                     <button
                       onClick={() => {
                         if (confirm("Delete this task?")) {
-                          deleteMutation.mutate(task.id);
+                          setDeletingId(task.id);
+                          deleteMutation.mutate(task.id, {
+                            onSettled: () => setDeletingId(null)
+                          });
                         }
                       }}
-                      className="px-4 py-2 text-xs font-bold bg-red-50 text-red-600 hover:bg-red-100 rounded-lg cursor-pointer transition-colors"
+                      disabled={deletingId === task.id}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-red-50 text-red-600 hover:bg-red-100 rounded-lg cursor-pointer transition-all active:scale-95 disabled:opacity-50"
                     >
-                      Delete
+                      {deletingId === task.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                      <span>Delete</span>
                     </button>
 
                   </div>

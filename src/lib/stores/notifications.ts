@@ -54,7 +54,8 @@ export const useNotificationStore = create<NotificationStore>()(
         notifications: state.notifications.filter((n) => n.id !== id),
       })),
 
-    markAsRead: (id) =>
+    markAsRead: (id) => {
+      // Optimistic local update
       set((state) => {
         const notif = state.notifications.find((n) => n.id === id);
         const wasUnread = notif && !notif.read_at;
@@ -64,16 +65,23 @@ export const useNotificationStore = create<NotificationStore>()(
           ),
           unreadCount: wasUnread ? state.unreadCount - 1 : state.unreadCount,
         };
-      }),
+      });
+      // Persist to backend (fire-and-forget)
+      fetch(`/api/notifications/${id}/read`, { method: 'PATCH' }).catch(() => {});
+    },
 
-    markAllAsRead: () =>
+    markAllAsRead: () => {
+      // Optimistic local update
       set((state) => ({
         notifications: state.notifications.map((n) => ({
           ...n,
           read_at: new Date().toISOString(),
         })),
         unreadCount: 0,
-      })),
+      }));
+      // Persist to backend (fire-and-forget)
+      fetch('/api/notifications/mark-all-read', { method: 'POST' }).catch(() => {});
+    },
 
     setNotifications: (notifs) =>
       set((state) => ({

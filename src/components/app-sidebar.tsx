@@ -20,7 +20,8 @@ import {
   Users,
   LogOut,
   ListTodo,
-  LayoutGrid
+  LayoutGrid,
+  ShieldCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth-context";
@@ -33,7 +34,7 @@ const inventoryItems = [
 ];
 
 const productsItems = [
-  { label: "Product", href: "/products/entry", icon: Plus },
+  { label: "Product Entry", href: "/products/entry", icon: Plus },
   { label: "Variants", href: "/products/variants", icon: Package },
   { label: "Flavors", href: "/products/flavors", icon: Sparkles },
   { label: "Sizes", href: "/products/sizes", icon: Ruler },
@@ -50,36 +51,19 @@ const financeItems = [
 
 const taskItems = [
   { label: "All Tasks", href: "/tasks", icon: ListTodo },
-  { label: "My Tasks", href: "/tasks/my-tasks", icon: Users },
   { label: "Kanban Board", href: "/tasks/board", icon: LayoutGrid },
 ];
 
-const inventoryPaths = ["/inventory/raw-materials", "/inventory/stocks", "/inventory/receiving"];
+const inventoryPaths = ["/inventory"];
 const productsPaths = ["/products"];
 const productionPaths = ["/production"];
 const financePaths = ["/finance"];
 const taskPaths = ["/tasks"];
 
-const PERMISSION_MAP: Record<string, string> = {
-  "/inventory": "inventory:read",
-  "/products": "products:read",
-  "/production": "production:read",
-  "/finance": "finance:read",
-  "/tasks": "tasks:read",
-  "/admin": "admin:access",
-};
-
-function hasPermission(permissions: string[], path: string, isAdmin: boolean): boolean {
-  if (isAdmin) return true;
-  const permission = PERMISSION_MAP[path];
-  if (!permission) return true;
-  return permissions.includes(permission);
-}
-
 export function AppSidebar() {
   const pathname = usePathname() || "";
   const router = useRouter();
-  const { user, employee, role, permissions, isAdmin, logout, isLoading } = useAuth();
+  const { user, employee, isAdmin, logout, isLoading } = useAuth();
 
   const [inventoryOpen, setInventoryOpen] = React.useState(() =>
     inventoryPaths.some(p => pathname.startsWith(p))
@@ -106,6 +90,7 @@ export function AppSidebar() {
   }, [pathname]);
 
   const isActive = (href: string) => pathname === href;
+  const isParentActive = (paths: string[]) => paths.some(p => pathname.startsWith(p));
 
   const handleLogout = async () => {
     await logout();
@@ -114,183 +99,209 @@ export function AppSidebar() {
 
   const isLoggedIn = !isLoading && user;
 
+  const NavItem = ({ href, label, icon: Icon, active }: { href: string, label: string, icon: any, active: boolean }) => (
+    <Link
+      href={href}
+      className={cn(
+        "flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 group",
+        active 
+          ? "bg-amber-100 text-amber-900 font-bold border-l-4 border-amber-500 rounded-l-none" 
+          : "text-gray-600 hover:bg-amber-50 hover:text-amber-900"
+      )}
+    >
+      <Icon className={cn("w-5 h-5", active ? "text-amber-600" : "text-gray-400 group-hover:text-amber-500")} />
+      <span className="text-sm">{label}</span>
+    </Link>
+  );
+
+  const SubItem = ({ href, label, icon: Icon, active }: { href: string, label: string, icon: any, active: boolean }) => (
+    <Link
+      href={href}
+      className={cn(
+        "flex items-center gap-3 px-3 py-1.5 rounded-lg transition-all duration-200 group ml-4",
+        active 
+          ? "text-amber-700 font-bold bg-white shadow-sm" 
+          : "text-gray-500 hover:text-amber-600 hover:bg-white/50"
+      )}
+    >
+      <Icon className={cn("w-4 h-4", active ? "text-amber-500" : "text-gray-300 group-hover:text-amber-400")} />
+      <span className="text-[13px]">{label}</span>
+    </Link>
+  );
+
   return (
     <aside
-      className="h-screen w-56 flex flex-col border-r"
-      style={{ backgroundColor: "#F5F4EE", borderColor: "#E8C54720" }}
+      className="h-screen w-64 flex flex-col border-r bg-[#F9F8F3] sticky top-0"
+      style={{ borderColor: "#E8C54720" }}
     >
-      <div className="p-4 border-b" style={{ borderColor: "#E8C54720" }}>
-        <h1 className="text-lg font-bold" style={{ color: "#1A1A1A" }}>Dashboard</h1>
+      <div className="p-6 border-b flex items-center gap-3" style={{ borderColor: "#E8C54720" }}>
+        <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center shadow-lg shadow-amber-500/20">
+          <Package className="w-5 h-5 text-white" />
+        </div>
+        <h1 className="text-xl font-black tracking-tight text-gray-900">SAFCHA</h1>
       </div>
 
-      <nav className="flex-1 p-3 space-y-2 overflow-y-auto">
-        {/* Dashboard */}
-        <Link
-          href="/dashboard"
-          className={cn(
-            "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
-            isActive("/dashboard") ? "bg-yellow-200 font-medium" : "hover:bg-yellow-100"
-          )}
-          style={{ color: "#1A1A1A" }}
-        >
-          <LayoutDashboard className="w-5 h-5" style={{ color: "#E8C547" }} />
-          <span>Dashboard</span>
-        </Link>
+      <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto scrollbar-hide">
+        <NavItem 
+          href="/dashboard" 
+          label="Overview" 
+          icon={LayoutDashboard} 
+          active={isActive("/dashboard")} 
+        />
 
-        {/* Inventory */}
-        {hasPermission(permissions, "/inventory", isAdmin || role === "admin") && (
-        <div>
-          <button
-            onClick={() => setInventoryOpen(!inventoryOpen)}
-            className={cn("w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all", inventoryOpen ? "bg-yellow-200" : "hover:bg-yellow-100")}
-            style={{ color: "#1A1A1A" }}
-          >
-            <Package className="w-5 h-5" style={{ color: "#E8C547" }} />
-            <span className="flex-1 text-left font-semibold">Inventory</span>
-            {inventoryOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-          </button>
-          {inventoryOpen && (
-            <div className="ml-2 space-y-1 mt-1">
-              {inventoryItems.map((item) => (
-                <Link key={item.href} href={item.href} className={cn("flex items-center gap-3 px-3 py-2 rounded-lg", isActive(item.href) ? "bg-yellow-200" : "hover:bg-yellow-100")}>
-                  <item.icon className="w-4 h-4" style={{ color: "#C9A83A" }} />
-                  <span className="text-sm">{item.label}</span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-        )}
-
-        {/* Products */}
-        {hasPermission(permissions, "/products", isAdmin || role === "admin") && (
-        <div>
-          <button
-            onClick={() => setProductsOpen(!productsOpen)}
-            className={cn("w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all", productsOpen ? "bg-yellow-200" : "hover:bg-yellow-100")}
-            style={{ color: "#1A1A1A" }}
-          >
-            <ShoppingBag className="w-5 h-5" style={{ color: "#E8C547" }} />
-            <span className="flex-1 text-left font-semibold">Products</span>
-            {productsOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-          </button>
-          {productsOpen && (
-            <div className="ml-2 space-y-1 mt-1">
-              {productsItems.map((item) => (
-                <Link key={item.href} href={item.href} className={cn("flex items-center gap-3 px-3 py-2 rounded-lg", isActive(item.href) ? "bg-yellow-200" : "hover:bg-yellow-100")}>
-                  <item.icon className="w-4 h-4" style={{ color: "#C9A83A" }} />
-                  <span className="text-sm">{item.label}</span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-        )}
-
-        {/* Production */}
-        {hasPermission(permissions, "/production", isAdmin || role === "admin") && (
-        <div>
-          <button
-            onClick={() => setProductionOpen(!productionOpen)}
-            className={cn("w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all", productionOpen ? "bg-yellow-200" : "hover:bg-yellow-100")}
-            style={{ color: "#1A1A1A" }}
-          >
-            <Factory className="w-5 h-5" style={{ color: "#E8C547" }} />
-            <span className="flex-1 text-left font-semibold">Production</span>
-            {productionOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-          </button>
-          {productionOpen && (
-            <div className="ml-2 space-y-1 mt-1">
-              {productionItems.map((item) => (
-                <Link key={item.href} href={item.href} className={cn("flex items-center gap-3 px-3 py-2 rounded-lg", isActive(item.href) ? "bg-yellow-200" : "hover:bg-yellow-100")}>
-                  <item.icon className="w-4 h-4" style={{ color: "#C9A83A" }} />
-                  <span className="text-sm">{item.label}</span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-        )}
-
-        {/* Finance */}
-        {hasPermission(permissions, "/finance", isAdmin || role === "admin") && (
-        <div>
-          <button
-            onClick={() => setFinanceOpen(!financeOpen)}
-            className={cn("w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all", financeOpen ? "bg-yellow-200" : "hover:bg-yellow-100")}
-            style={{ color: "#1A1A1A" }}
-          >
-            <DollarSign className="w-5 h-5" style={{ color: "#E8C547" }} />
-            <span className="flex-1 text-left font-semibold">Finance</span>
-            {financeOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-          </button>
-          {financeOpen && (
-            <div className="ml-2 space-y-1 mt-1">
-              {financeItems.map((item) => (
-                <Link key={item.href} href={item.href} className={cn("flex items-center gap-3 px-3 py-2 rounded-lg", isActive(item.href) ? "bg-yellow-200" : "hover:bg-yellow-100")}>
-                  <item.icon className="w-4 h-4" style={{ color: "#C9A83A" }} />
-                  <span className="text-sm">{item.label}</span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-        )}
-
-        {/* Tasks */}
-        {isLoggedIn && hasPermission(permissions, "/tasks", isAdmin || role === "admin") && (
-          <div>
-            <button onClick={() => setTaskOpen(!taskOpen)} className={cn("w-full flex items-center gap-3 px-3 py-2.5 rounded-lg", taskOpen ? "bg-yellow-200" : "hover:bg-yellow-100")}>
-              <ListTodo className="w-5 h-5" style={{ color: "#E8C547" }} />
-              <span className="flex-1 text-left font-semibold">Tasks</span>
-              {taskOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        <div className="pt-4 pb-2">
+          <p className="px-3 text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Management</p>
+          
+          <div className="space-y-1">
+            <button
+              onClick={() => setInventoryOpen(!inventoryOpen)}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all group",
+                isParentActive(inventoryPaths) ? "text-amber-900 font-bold" : "text-gray-600 hover:bg-amber-50"
+              )}
+            >
+              <Package className={cn("w-5 h-5", isParentActive(inventoryPaths) ? "text-amber-600" : "text-gray-400 group-hover:text-amber-500")} />
+              <span className="flex-1 text-left text-sm">Inventory</span>
+              <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", !inventoryOpen && "-rotate-90 text-gray-300")} />
             </button>
-            {taskOpen && (
-              <div className="ml-2 space-y-1 mt-1">
-                {taskItems.map((item) => (
-                  <Link key={item.href} href={item.href} className={cn("flex items-center gap-3 px-3 py-2 rounded-lg", isActive(item.href) ? "bg-yellow-200" : "hover:bg-yellow-100")}>
-                    <item.icon className="w-4 h-4" style={{ color: "#C9A83A" }} />
-                    <span className="text-sm">{item.label}</span>
-                  </Link>
+            {inventoryOpen && (
+              <div className="space-y-1 py-1">
+                {inventoryItems.map((item) => (
+                  <SubItem key={item.href} {...item} active={isActive(item.href)} />
                 ))}
               </div>
             )}
           </div>
-        )}
 
-        {/* Admin Panel */}
-        {isLoggedIn && hasPermission(permissions, "/admin", isAdmin || role === "admin") && (
-          <Link
-            href="/admin"
-            className={cn("flex items-center gap-3 px-3 py-2.5 rounded-lg", isActive("/admin") ? "bg-yellow-200" : "hover:bg-yellow-100")}
-          >
-            <Users className="w-5 h-5" style={{ color: "#E8C547" }} />
-            <span className="font-semibold">Admin Panel</span>
-          </Link>
+          <div className="space-y-1 mt-1">
+            <button
+              onClick={() => setProductsOpen(!productsOpen)}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all group",
+                isParentActive(productsPaths) ? "text-amber-900 font-bold" : "text-gray-600 hover:bg-amber-50"
+              )}
+            >
+              <ShoppingBag className={cn("w-5 h-5", isParentActive(productsPaths) ? "text-amber-600" : "text-gray-400 group-hover:text-amber-500")} />
+              <span className="flex-1 text-left text-sm">Products</span>
+              <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", !productsOpen && "-rotate-90 text-gray-300")} />
+            </button>
+            {productsOpen && (
+              <div className="space-y-1 py-1">
+                {productsItems.map((item) => (
+                  <SubItem key={item.href} {...item} active={isActive(item.href)} />
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-1 mt-1">
+            <button
+              onClick={() => setProductionOpen(!productionOpen)}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all group",
+                isParentActive(productionPaths) ? "text-amber-900 font-bold" : "text-gray-600 hover:bg-amber-50"
+              )}
+            >
+              <Factory className={cn("w-5 h-5", isParentActive(productionPaths) ? "text-amber-600" : "text-gray-400 group-hover:text-amber-500")} />
+              <span className="flex-1 text-left text-sm">Production</span>
+              <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", !productionOpen && "-rotate-90 text-gray-300")} />
+            </button>
+            {productionOpen && (
+              <div className="space-y-1 py-1">
+                {productionItems.map((item) => (
+                  <SubItem key={item.href} {...item} active={isActive(item.href)} />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="pt-2 pb-2">
+          <p className="px-3 text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Operations</p>
+          
+          <div className="space-y-1">
+            <button
+              onClick={() => setTaskOpen(!taskOpen)}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all group",
+                isParentActive(taskPaths) ? "text-amber-900 font-bold" : "text-gray-600 hover:bg-amber-50"
+              )}
+            >
+              <ListTodo className={cn("w-5 h-5", isParentActive(taskPaths) ? "text-amber-600" : "text-gray-400 group-hover:text-amber-500")} />
+              <span className="flex-1 text-left text-sm">Tasks</span>
+              <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", !taskOpen && "-rotate-90 text-gray-300")} />
+            </button>
+            {taskOpen && (
+              <div className="space-y-1 py-1">
+                {taskItems.map((item) => (
+                  <SubItem key={item.href} {...item} active={isActive(item.href)} />
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-1 mt-1">
+            <button
+              onClick={() => setFinanceOpen(!financeOpen)}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all group",
+                isParentActive(financePaths) ? "text-amber-900 font-bold" : "text-gray-600 hover:bg-amber-50"
+              )}
+            >
+              <DollarSign className={cn("w-5 h-5", isParentActive(financePaths) ? "text-amber-600" : "text-gray-400 group-hover:text-amber-500")} />
+              <span className="flex-1 text-left text-sm">Finance</span>
+              <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", !financeOpen && "-rotate-90 text-gray-300")} />
+            </button>
+            {financeOpen && (
+              <div className="space-y-1 py-1">
+                {financeItems.map((item) => (
+                  <SubItem key={item.href} {...item} active={isActive(item.href)} />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Admin Panel Link */}
+        {isLoggedIn && isAdmin && (
+          <div className="pt-2">
+            <p className="px-3 text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Settings</p>
+            <NavItem 
+              href="/admin" 
+              label="Admin Panel" 
+              icon={ShieldCheck} 
+              active={isActive("/admin")} 
+            />
+          </div>
         )}
       </nav>
 
-      {/* Footer */}
+      {/* Modern Footer */}
       {isLoggedIn && (
-        <div className="p-3 border-t" style={{ borderColor: "#E8C54720" }}>
-          {/* User info row with notification bell */}
-          <div className="flex items-center justify-between mb-2 px-1">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold truncate" style={{ color: "#1A1A1A" }}>
-                {employee?.name || "User"}
-              </p>
-              <p className="text-xs capitalize opacity-70" style={{ color: "#1A1A1A" }}>
-                {role || "guest"}
-              </p>
+        <div className="p-4 bg-white/50 border-t mx-2 mb-2 rounded-2xl border-amber-100 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 bg-amber-100 rounded-xl flex items-center justify-center text-amber-700 font-bold text-xs shrink-0 border border-amber-200">
+                {employee?.email?.substring(0, 2).toUpperCase() || "US"}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-gray-900 truncate">
+                  {employee?.email?.split('@')[0] || "User"}
+                </p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600">
+                  {isAdmin ? "admin" : "member"}
+                </p>
+              </div>
             </div>
             <NotificationCenter />
           </div>
+          
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-red-50 text-red-600 transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gray-50 hover:bg-red-50 text-gray-500 hover:text-red-600 transition-all duration-200 group border border-gray-100 hover:border-red-100"
           >
-            <LogOut className="w-4 h-4" />
-            <span className="text-sm font-medium">Logout</span>
+            <LogOut className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+            <span className="text-xs font-bold uppercase tracking-widest">Sign Out</span>
           </button>
         </div>
       )}

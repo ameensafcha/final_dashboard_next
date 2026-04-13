@@ -3,6 +3,8 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import type { User } from "@supabase/supabase-js";
+import { useQueryClient } from "@tanstack/react-query";
+import { useNotificationStore } from "@/lib/stores/notifications";
 
 interface Employee {
   id: string;
@@ -32,6 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -82,8 +85,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     await supabase.auth.signOut();
+    
+    // Clear all state and cache
     setUser(null);
     setEmployee(null);
+    queryClient.clear();
+    
+    // Reset notification store
+    useNotificationStore.setState({
+      notifications: [],
+      unreadCount: 0,
+      dropdownOpen: false
+    });
+
+    // Optional: Refresh the page to ensure all memory is cleared
+    window.location.href = "/login";
   };
 
   const isAdmin = employee?.isAdmin === true;

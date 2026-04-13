@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { KPICards } from "./kpi-cards";
 import { TaskList } from "./task-list";
-import { TaskDetail } from "@/components/task-detail";
+import { TaskDetail } from "@/components/tasks/task-detail";
 import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
 import { useAuth } from "@/contexts/auth-context";
 

@@ -293,6 +293,7 @@ model tasks {
   completed_at  DateTime?
   estimated_hours Float?
   recurrence      String?
+  has_spawned_recurrence Boolean @default(false)
   created_at    DateTime         @default(now())
   updated_at    DateTime         @updatedAt
   subtasks      subtasks[]

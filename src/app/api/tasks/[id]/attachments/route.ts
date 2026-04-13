@@ -1,6 +1,19 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { getSupabaseAdmin } from "@/lib/supabase";
+
+async function checkIsAdmin(user: any) {
+  if (!user) return false;
+  if (process.env.SUPER_ADMIN_EMAIL && user.email === process.env.SUPER_ADMIN_EMAIL) {
+    return true;
+  }
+  const employee = await prisma.employee.findUnique({
+    where: { id: user.id },
+    include: { role: true }
+  });
+  return employee?.role?.name === "Admin";
+}
 
 export async function POST(
   request: Request,
@@ -50,7 +63,39 @@ export async function DELETE(
       return NextResponse.json({ error: "Attachment ID is required" }, { status: 400 });
     }
 
-    // Optional: Add check to ensure user has permission or is uploader
+    const attachment = await prisma.task_attachments.findUnique({
+      where: { id: attachment_id },
+      include: { task: true }
+    });
+
+    if (!attachment) {
+      return NextResponse.json({ error: "Attachment not found" }, { status: 404 });
+    }
+
+    // Authorization: Only Admin, Uploader, or Task Creator can delete
+    const isAdmin = await checkIsAdmin(user);
+    const isUploader = attachment.uploaded_by === user.id;
+    const isCreator = attachment.task.created_by === user.id;
+
+    if (!isAdmin && !isUploader && !isCreator) {
+      return NextResponse.json({ error: "Forbidden: You don't have permission to delete this attachment" }, { status: 403 });
+    }
+
+    // Delete from Supabase Storage first
+    try {
+      const supabaseAdmin = getSupabaseAdmin();
+      // file_url looks like: https://.../storage/v1/object/public/task-attachments/attachments/...
+      const pathParts = attachment.file_url.split('/task-attachments/');
+      if (pathParts.length > 1) {
+        const storagePath = pathParts[1];
+        await supabaseAdmin.storage.from('task-attachments').remove([storagePath]);
+      }
+    } catch (storageError) {
+      console.error("Failed to delete physical file from storage:", storageError);
+      // We continue to delete the DB record even if storage deletion fails
+    }
+
+    // Delete from Database
     await prisma.task_attachments.delete({
       where: { id: attachment_id },
     });

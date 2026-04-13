@@ -1,69 +1,120 @@
-# Production Plan: Daily Command Center
+# Production Plan: Daily Command Center (V3 - Final Layout)
 
-## 1. Background & Motivation
-The goal is to build a "Daily Command Center" at `/tasks/daily`. The module must be production-ready, featuring a clean architecture that leverages both Server-Side Rendering (SSR) for fast initial loads and React Query for snappy client-side interactions. 
+## 1. UI & Visual Design (Based on Screenshot)
+The module will follow a dark-themed, clean layout exactly as the example provided.
 
-The flow requires:
-1. Checking if a plan for the current day exists.
-2. If **No**: Show a smart "Add Plan" form.
-3. If **Yes**: Show the active "View Plan" dashboard.
-4. Always show pending tasks from the last 3 days below the main interface, allowing them to be carried over.
+| Section | Key Features |
+|-------|---------|
+| **Header** | Centered title "Daily Command Center", Date, and Score (x / 10) |
+| **Tier 1: Move the Needle** | High-priority focus tasks (Columns: Task, Biz, Done, Notes) |
+| **Tier 2: Quick Wins** | Smaller tasks (Columns: Task, Biz, Done, Notes) |
+| **Blockers & Delegations** | Two-column grid: "What's Blocked?" and "Who Needs to Act?" |
+| **End of Day Review** | Sections for "Carry Forward" and "Kill / Delegate" |
+| **Tomorrow's Plan** | A focused list of items for the next day |
 
-## 2. Folder Structure & Architecture
-To maintain a clean and scalable codebase, the module will be structured as follows:
-
+## 2. Folder Structure
 ```text
 src/
 ├── app/
 │   ├── api/
 │   │   ├── daily-plans/
-│   │   │   ├── route.ts              # POST: Create a new plan (with nested items, blockers, notes)
-│   │   │   └── today/route.ts        # GET: Fetch today's plan
+│   │   │   ├── route.ts              # POST: Create plan, GET: Today's plan
 │   │   ├── daily-items/
-│   │   │   ├── [id]/route.ts         # PUT: Toggle item status (Pending/Completed)
-│   │   │   └── pending/route.ts      # GET: Fetch pending tasks from the last 3 days
+│   │   │   ├── [id]/route.ts         # PUT: Toggle status, Update blocker notes
+│   │   │   └── pending/route.ts      # GET: Pending tasks last 3 days
 │   ├── tasks/
 │   │   ├── daily/
-│   │   │   ├── page.tsx              # Server Component: Fetches initial data (SSR) and passes to client
-│   │   │   ├── daily-client.tsx      # Client Component: Manages React Query & View routing
-│   │   │   ├── components/
-│   │   │   │   ├── add-plan-form.tsx # Form to build today's plan
-│   │   │   │   ├── view-plan.tsx     # Interactive dashboard for the active plan
-│   │   │   │   └── pending-tasks.tsx # List of overdue tasks with "Carry Over" action
+│   │   │   ├── page.tsx              # Server Component: Initial SSR fetch
+│   │   │   ├── daily-client.tsx      # Client Component: Manages view routing
+│   │   │   └── components/
+│   │   │       ├── add-plan-form.tsx # Builder for new plans
+│   │   │       ├── view-plan.tsx     # Focused Dashboard (Tiers, Blockers)
+│   │   │       ├── pending-tasks.tsx # Overdue tasks with carry-over logic
+│   │   │       └── blocker-dialog.tsx # Pop-up for blocker reason/owner
 ```
 
-## 3. Server-Side Flow & Implementation Steps
+## 2. Updated Data Model (Prisma)
 
-### Step 1: Backend APIs (Prisma & Next.js Routes)
-- **`POST /api/daily-plans`**: 
-  - Receives payload: `{ items: [], blockers: [], tomorrowNotes: [] }`.
-  - Uses a **Prisma Transaction** (`prisma.$transaction`) to safely create the `DailyPlan` and all nested records (`DailyItem`, `DailyBlocker`, `TomorrowNotes`) simultaneously.
-- **`GET /api/daily-items/pending`**: 
-  - Queries `DailyItem` where `status == "Pending"` and the associated `DailyPlan.plan_date` is `>=` 3 days ago AND `<` today's start of day.
-- **`PUT /api/daily-items/[id]`**: 
-  - Updates the status of a specific task. If a task is being carried over, it increments the `carryover_count`.
+```prisma
+model DailyPlan {
+  id             String         @id @default(uuid())
+  employee_id    String
+  plan_date      DateTime       @unique @default(now())
+  score          Int            @default(0) // Out of 10
+  
+  items          DailyItem[]
+  blockers       DailyBlocker[]
+  tomorrow_notes String[]       // Tomorrow's plan items
+  
+  @@unique([plan_date, employee_id])
+}
 
-### Step 2: The Server Component (`page.tsx`)
-- Instead of raw `useEffect` fetching, `page.tsx` will be an `async` Server Component.
-- It will query the database directly to check if a plan exists for `new Date()` (Today) and fetch the pending tasks.
-- It passes this data as `initialData` to the `<DailyClient />` component, ensuring a zero-flicker, instant page load.
+model DailyItem {
+  id              String    @id @default(uuid())
+  daily_plan_id   String
+  title           String
+  biz             String    // e.g., 'S', 'N'
+  tier            Int       // 1 or 2
+  status          String    @default("PENDING") // COMPLETED, BLOCKED
+  notes           String?   // Contextual notes
+  blocker_reason  String?   // "Why it was blocked"
+  action_owner    String?   // "Who needs to act" (Delegation)
+  carryover_count Int       @default(0)
+  
+  daily_plan      DailyPlan @relation(fields: [daily_plan_id], references: [id], onDelete: Cascade)
+}
+```
 
-### Step 3: The Client Component (`daily-client.tsx`)
-- Wraps the UI in React Query.
-- Evaluates `initialData`:
-  - Renders `<AddPlanForm />` if today's plan is missing.
-  - Renders `<ViewPlan />` if it exists.
-  - Always renders `<PendingTasks />` at the bottom.
+## 3. Implementation Flow
 
-### Step 4: The Smart Builder (`add-plan-form.tsx`)
-- Allows users to add Tier 1 & Tier 2 tasks.
-- **Carry-over functionality:** When a user clicks "+ Add to Today" on a task in the `<PendingTasks />` section below, that task's text is automatically injected into the form, and a flag is set to update its `carryover_count` upon submission.
+### Step 1: SSR Page (`/tasks/daily`)
+- Fetches today's plan using `plan_date` and `auth.user.id`.
+- If missing, provides an interface to build today's plan by showing the "3-Day History" of pending/blocked tasks.
 
-### Step 5: The Focus Dashboard (`view-plan.tsx`)
-- Displays today's tasks with interactive checkboxes.
-- Uses React Query's `useMutation` with Optimistic Updates so clicking a checkbox feels instant (no waiting for the server response).
-- Distinct visual sections for Blockers and Tomorrow's Notes (formatted as bullet points).
+### Step 2: Smart Interaction (View Mode)
+- **Ticking a Task:** Sets `status` to `COMPLETED`.
+- **Marking as Blocked:**
+  - UI shows a "Blocker Form" for that item.
+  - User fills: "Kyun block hua?" and "Who needs to act?".
+  - Updates `blocker_reason` and `action_owner`.
 
-## 4. Edge Cases & Verification
-- **Timezone Safety:** We will use `date-fns` or strict start-of-day/end-of-day logic to ensure "Today" accurately reflects the user's current day, preventing plans from resetting at the wrong time.
-- **Idempotency:** Ensure the "Add Plan" API rejects creation if a plan for today already exists (returning a 409 Conflict).
+### Step 3: End of Day Review
+- User can decide to:
+  - **Carry Forward:** Task will appear in the next day's builder.
+  - **Kill/Delegate:** Task is removed from daily focus but preserved in history as "Killed".
+
+### Step 4: The 3-Day Rule (Logic)
+- When building a new plan:
+  - Fetch items from last 3 days with `status != COMPLETED`.
+  - Highlight items with `carryover_count >= 3` with a warning (3-Day Rule).
+  - Show the `blocker_reason` and `action_owner` next to each overdue task.
+
+## 4. API Structure
+- `GET /api/daily-plans/today`
+- `POST /api/daily-plans` (Transaction to create items and plan)
+- `PUT /api/daily-items/[id]` (Update status, notes, blockers)
+- `GET /api/daily-items/pending` (Context-rich history)
+
+## 5. Archive & Delegation
+- **Kill/Delegate** → Archive in `DailyItem` with status 'ARCHIVED'
+- **Action Owner** → Can view delegated tasks via separate query
+
+## 6. UI/UX Details
+- **Aesthetic:** High-contrast layout (Dark background, light tables)
+- **Responsive:** Desktop first but mobile-friendly tables
+- **Score:** 1 point per task → (completed / total) * 10
+
+## 7. Blocker & Delegation Flow Table
+
+| Action | DailyItem Field | Description |
+|--------|---------------|-------------|
+| Mark Blocked | blocker_reason | Why blocked |
+| Delegate | action_owner | Who needs to act |
+| Archive | status = 'ARCHIVED' | Killed/delegated tasks |
+
+## 8. Score Calculation
+
+| Metric | Formula |
+|--------|---------|
+| Score | (completed_items / total_items) * 10 |
+| Biz Type | 1 = Sales, N = Non-Sales |

@@ -1,30 +1,37 @@
-"use client";
+import { Suspense } from 'react';
+import DailyClient from './daily-client';
+import { getCurrentUser } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { startOfDay, endOfDay } from 'date-fns';
 
-import { useEffect, useState } from "react";
-import axios from "axios";
+export default async function DailyTasksPage() {
+  const user = await getCurrentUser();
+  
+  if (!user) {
+    return <div>Unauthorized</div>;
+  }
 
-export default function DailyPlanPage() {
-    const [plan, setPlan] = useState(null);
-    const [loading, setLoading] = useState(true);
+  // Fetch initial state if possible (optional SSR optimization)
+  const today = new Date();
+  const plan = await prisma.dailyPlan.findFirst({
+    where: {
+      employee_id: user.id,
+      plan_date: {
+        gte: startOfDay(today),
+        lte: endOfDay(today),
+      },
+    },
+    include: {
+      items: true,
+      blockers: true,
+    },
+  });
 
-    useEffect(()=>{
-        const getTodayPlan = async () => {
-            try {
-                const todayPlan = await axios.get("/api/daily-task/");
-                setPlan(todayPlan.data);
-            
-            } catch (error) {
-                console.error("Error fetching today's plan f:", error);
-            }finally{
-                setLoading(false);
-            }
-        }
-        
-        getTodayPlan();
-    },[])
-    return (
-        <div>
-
-        </div>
-    )
+  return (
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 bg-[#fbfaf1] min-h-screen text-gray-900">
+      <Suspense fallback={<div className="flex items-center justify-center h-screen">Loading Command Center...</div>}>
+        <DailyClient initialPlan={JSON.parse(JSON.stringify(plan))} />
+      </Suspense>
+    </div>
+  );
 }

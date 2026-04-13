@@ -201,71 +201,87 @@ export function TasksTable({
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 bg-white p-4 rounded-[24px] shadow-sm border border-gray-100">
         <div className="flex flex-wrap gap-3 items-center flex-1 w-full md:w-auto">
           
-          <div className="relative flex-1 min-w-[200px] max-w-xs">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              placeholder="Search tasks..."
-              className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 focus:border-[#E8C547] focus:bg-white rounded-full text-sm font-medium transition-all outline-none focus:ring-1 focus:ring-[#E8C547]"
-            />
+          <div className="flex flex-col gap-1.5 flex-1 min-w-[200px] max-w-xs">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Search</span>
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                placeholder="Search tasks..."
+                className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 focus:border-[#E8C547] focus:bg-white rounded-full text-sm font-medium transition-all outline-none focus:ring-1 focus:ring-[#E8C547]"
+              />
+            </div>
           </div>
 
-          <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val || "all"); setPage(1); }}>
-            <SelectTrigger className="w-[140px] h-9 bg-gray-50 border-gray-200 rounded-full text-xs font-bold text-gray-700">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Status: All</SelectItem>
-              <SelectItem value="not_started">Not Started</SelectItem>
-              <SelectItem value="in_progress">In Progress</SelectItem>
-              <SelectItem value="review">Review</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Status</span>
+            <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val || "all"); setPage(1); }}>
+              <SelectTrigger className="w-[140px] h-9 bg-gray-50 border-gray-200 rounded-full text-xs font-bold text-gray-700">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Status: All</SelectItem>
+                <SelectItem value="not_started">Not Started</SelectItem>
+                <SelectItem value="in_progress">In Progress</SelectItem>
+                <SelectItem value="review">Review</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Select value={priorityFilter} onValueChange={(val) => { setPriorityFilter(val || "all"); setPage(1); }}>
-            <SelectTrigger className="w-[140px] h-9 bg-gray-50 border-gray-200 rounded-full text-xs font-bold text-gray-700">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Priority: All</SelectItem>
-              <SelectItem value="low">Low</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-              <SelectItem value="urgent">Urgent</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Priority</span>
+            <Select value={priorityFilter} onValueChange={(val) => { setPriorityFilter(val || "all"); setPage(1); }}>
+              <SelectTrigger className="w-[140px] h-9 bg-gray-50 border-gray-200 rounded-full text-xs font-bold text-gray-700">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Priority: All</SelectItem>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="urgent">Urgent</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Select value={areaFilter} onValueChange={(val) => { setAreaFilter(val || "all"); setPage(1); }}>
-            <SelectTrigger className="w-[140px] h-9 bg-gray-50 border-gray-200 rounded-full text-xs font-bold text-gray-700">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Area: All</SelectItem>
-              <SelectItem value="Production">Production</SelectItem>
-              <SelectItem value="Quality">Quality</SelectItem>
-              <SelectItem value="Warehouse">Warehouse</SelectItem>
-              <SelectItem value="Procurement">Procurement</SelectItem>
-              <SelectItem value="HR">HR</SelectItem>
-              <SelectItem value="Admin">Admin</SelectItem>
-              <SelectItem value="Maintenance">Maintenance</SelectItem>
-              <SelectItem value="Finance">Finance</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Area</span>
+            <Select value={areaFilter} onValueChange={(val) => { setAreaFilter(val || "all"); setPage(1); }}>
+              <SelectTrigger className="w-[140px] h-9 bg-gray-50 border-gray-200 rounded-full text-xs font-bold text-gray-700">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Area: All</SelectItem>
+                <SelectItem value="Production">Production</SelectItem>
+                <SelectItem value="Quality">Quality</SelectItem>
+                <SelectItem value="Warehouse">Warehouse</SelectItem>
+                <SelectItem value="Procurement">Procurement</SelectItem>
+                <SelectItem value="HR">HR</SelectItem>
+                <SelectItem value="Admin">Admin</SelectItem>
+                <SelectItem value="Development">Development</SelectItem>
+                <SelectItem value="Maintenance">Maintenance</SelectItem>
+                <SelectItem value="Finance">Finance</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Select value={companyFilter} onValueChange={(val) => { setCompanyFilter(val || "all"); setPage(1); }}>
-            <SelectTrigger className="w-[140px] h-9 bg-gray-50 border-gray-200 rounded-full text-xs font-bold text-gray-700">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Company: All</SelectItem>
-              {companies.map((company) => (
-                <SelectItem key={company.id} value={company.id}>{company.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">Company</span>
+            <Select value={companyFilter} onValueChange={(val) => { setCompanyFilter(val || "all"); setPage(1); }}>
+              <SelectTrigger className="w-[140px] h-9 bg-gray-50 border-gray-200 rounded-full text-xs font-bold text-gray-700">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Company: All</SelectItem>
+                {companies.map((company) => (
+                  <SelectItem key={company.id} value={company.id}>{company.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {!filterAssigneeId && (

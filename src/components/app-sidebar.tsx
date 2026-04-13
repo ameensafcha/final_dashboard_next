@@ -50,6 +50,7 @@ const financeItems = [
 ];
 
 const taskItems = [
+  { label: "Daily Command", href: "/tasks/daily", icon: Sparkles },
   { label: "All Tasks", href: "/tasks", icon: ListTodo },
   { label: "Kanban Board", href: "/tasks/board", icon: LayoutGrid },
 ];

@@ -12,7 +12,7 @@ export async function GET() {
     const rawMaterials = await prisma.raw_materials.findMany({
       orderBy: { name: "asc" },
     });
-    return NextResponse.json({ data: rawMaterials });
+    return NextResponse.json(rawMaterials);
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch materials" }, { status: 500 });
   }

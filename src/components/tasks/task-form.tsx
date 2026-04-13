@@ -277,6 +277,7 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
                   <SelectItem value="Procurement">Procurement</SelectItem>
                   <SelectItem value="HR">HR</SelectItem>
                   <SelectItem value="Admin">Admin</SelectItem>
+                  <SelectItem value="Development">Development</SelectItem>
                   <SelectItem value="Maintenance">Maintenance</SelectItem>
                   <SelectItem value="Finance">Finance</SelectItem>
                 </SelectContent>

@@ -107,6 +107,7 @@ export function TasksTable({
   const [inlineEditingId, setInlineEditingId] = useState<string | null>(null);
   const [inlineField, setInlineField] = useState<"title" | "due_date" | null>(null);
   const [inlineValue, setInlineValue] = useState("");
+  const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
 
   // ── Add-row state ──────────────────────────────────────────────────────────
   const [showAddRow, setShowAddRow] = useState(false);
@@ -198,6 +199,12 @@ export function TasksTable({
       });
       if (!res.ok) throw new Error("Update failed");
       return res.json();
+    },
+    onMutate: (variables) => {
+      setUpdatingTaskId(variables.id);
+    },
+    onSettled: () => {
+      setUpdatingTaskId(null);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tasks"] }),
     onError: (err: Error) => addNotification({ type: "error", message: err.message }),
@@ -435,8 +442,11 @@ export function TasksTable({
                       className="w-full text-sm font-bold text-gray-900 bg-yellow-50/40 border-b-2 border-[#E8C547] outline-none rounded px-1 py-0.5"
                     />
                   ) : (
-                    <div className="cursor-text">
-                      <p className="font-bold text-sm text-gray-900 group-hover:text-[#E8C547] transition-colors">{task.title}</p>
+                    <div className="cursor-pointer">
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-sm text-gray-900 group-hover:text-[#E8C547] transition-colors">{task.title}</p>
+                        {updatingTaskId === task.id && <Loader2 className="w-3.5 h-3.5 animate-spin text-[#E8C547]" />}
+                      </div>
                       {task.description && (
                         <p className="text-xs text-gray-500 mt-1 line-clamp-1 max-w-[200px]">{task.description}</p>
                       )}
@@ -450,7 +460,7 @@ export function TasksTable({
                     value={task.company_id ?? "__none__"}
                     onValueChange={(val) => saveInlineField(task.id, { company_id: val === "__none__" ? null : val })}
                   >
-                    <SelectTrigger className="border-none shadow-none p-0 h-auto bg-transparent w-auto focus:ring-0 focus:outline-none focus:ring-offset-0 outline-none">
+                    <SelectTrigger className="border-none shadow-none p-0 h-auto bg-transparent w-auto focus:ring-0 focus:outline-none focus:ring-offset-0 outline-none cursor-pointer hover:opacity-80 transition-opacity">
                       {task.company
                         ? <span className="text-xs font-bold px-3 py-1 bg-[#E8C547]/10 text-[#E8C547] rounded-full uppercase tracking-tighter">{task.company.name}</span>
                         : <span className="text-sm text-gray-400">—</span>
@@ -469,7 +479,7 @@ export function TasksTable({
                     value={task.area ?? "__none__"}
                     onValueChange={(val) => saveInlineField(task.id, { area: val === "__none__" ? null : val })}
                   >
-                    <SelectTrigger className="border-none shadow-none p-0 h-auto bg-transparent w-auto focus:ring-0 focus:outline-none focus:ring-offset-0 outline-none">
+                    <SelectTrigger className="border-none shadow-none p-0 h-auto bg-transparent w-auto focus:ring-0 focus:outline-none focus:ring-offset-0 outline-none cursor-pointer hover:opacity-80 transition-opacity">
                       {task.area
                         ? <span className="text-xs font-bold px-3 py-1 bg-gray-100 text-gray-600 rounded-full">{task.area}</span>
                         : <span className="text-sm text-gray-400">—</span>
@@ -488,7 +498,7 @@ export function TasksTable({
                     value={task.status}
                     onValueChange={(val) => saveInlineField(task.id, { status: val })}
                   >
-                    <SelectTrigger className="border-none shadow-none p-0 h-auto bg-transparent w-auto focus:ring-0 focus:outline-none focus:ring-offset-0 outline-none">
+                    <SelectTrigger className="border-none shadow-none p-0 h-auto bg-transparent w-auto focus:ring-0 focus:outline-none focus:ring-offset-0 outline-none cursor-pointer hover:opacity-80 transition-opacity">
                       <StatusBadge status={task.status} />
                     </SelectTrigger>
                     <SelectContent>
@@ -506,7 +516,7 @@ export function TasksTable({
                     value={task.priority}
                     onValueChange={(val) => saveInlineField(task.id, { priority: val })}
                   >
-                    <SelectTrigger className="border-none shadow-none p-0 h-auto bg-transparent w-auto focus:ring-0 focus:outline-none focus:ring-offset-0 outline-none">
+                    <SelectTrigger className="border-none shadow-none p-0 h-auto bg-transparent w-auto focus:ring-0 focus:outline-none focus:ring-offset-0 outline-none cursor-pointer hover:opacity-80 transition-opacity">
                       <PriorityBadge priority={task.priority} />
                     </SelectTrigger>
                     <SelectContent>
@@ -525,7 +535,7 @@ export function TasksTable({
                       value={task.assignee_id ?? "__none__"}
                       onValueChange={(val) => saveInlineField(task.id, { assignee_id: val === "__none__" ? null : val })}
                     >
-                      <SelectTrigger className="border-none shadow-none p-0 h-auto bg-transparent w-auto focus:ring-0 focus:outline-none focus:ring-offset-0 outline-none">
+                      <SelectTrigger className="border-none shadow-none p-0 h-auto bg-transparent w-auto focus:ring-0 focus:outline-none focus:ring-offset-0 outline-none cursor-pointer hover:opacity-80 transition-opacity">
                         {task.assignee ? (
                           <div className="flex items-center gap-2.5">
                             <Avatar name={task.assignee.name} size="sm" />
@@ -564,7 +574,7 @@ export function TasksTable({
                       className="text-sm font-semibold text-gray-600 border-b-2 border-[#E8C547] outline-none bg-yellow-50/40 rounded px-1 py-0.5"
                     />
                   ) : (
-                    <span className="text-sm font-semibold text-gray-600 cursor-text hover:text-[#E8C547] transition-colors">
+                    <span className="text-sm font-semibold text-gray-600 cursor-pointer hover:text-[#E8C547] transition-colors">
                       {task.due_date
                         ? new Date(task.due_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })
                         : <span className="text-gray-400">—</span>
@@ -628,7 +638,7 @@ export function TasksTable({
                 </td>
                 {/* Company */}
                 <td className="py-3 px-6">
-                  <Select value={newTask.company_id || "__none__"} onValueChange={(v) => setNewTask(p => ({ ...p, company_id: v === "__none__" ? "" : v }))}>
+                  <Select value={newTask.company_id || "__none__"} onValueChange={(v) => setNewTask(p => ({ ...p, company_id: v === "__none__" ? "" : (v ?? "") }))}>
                     <SelectTrigger className="h-7 text-xs border-gray-200 rounded-full w-[120px] outline-none focus:ring-0 focus:ring-offset-0">
                       <SelectValue placeholder="Company" />
                     </SelectTrigger>
@@ -640,7 +650,7 @@ export function TasksTable({
                 </td>
                 {/* Area */}
                 <td className="py-3 px-6">
-                  <Select value={newTask.area || "__none__"} onValueChange={(v) => setNewTask(p => ({ ...p, area: v === "__none__" ? "" : v }))}>
+                  <Select value={newTask.area || "__none__"} onValueChange={(v) => setNewTask(p => ({ ...p, area: v === "__none__" ? "" : (v ?? "") }))}>
                     <SelectTrigger className="h-7 text-xs border-gray-200 rounded-full w-[120px] outline-none focus:ring-0 focus:ring-offset-0">
                       <SelectValue placeholder="Area" />
                     </SelectTrigger>
@@ -652,7 +662,7 @@ export function TasksTable({
                 </td>
                 {/* Status */}
                 <td className="py-3 px-6">
-                  <Select value={newTask.status} onValueChange={(v) => setNewTask(p => ({ ...p, status: v }))}>
+                  <Select value={newTask.status} onValueChange={(v) => setNewTask(p => ({ ...p, status: v ?? "" }))}>
                     <SelectTrigger className="h-7 text-xs border-gray-200 rounded-full w-[120px] outline-none focus:ring-0 focus:ring-offset-0">
                       <SelectValue />
                     </SelectTrigger>
@@ -666,7 +676,7 @@ export function TasksTable({
                 </td>
                 {/* Priority */}
                 <td className="py-3 px-6">
-                  <Select value={newTask.priority} onValueChange={(v) => setNewTask(p => ({ ...p, priority: v }))}>
+                  <Select value={newTask.priority} onValueChange={(v) => setNewTask(p => ({ ...p, priority: v ?? "" }))}>
                     <SelectTrigger className="h-7 text-xs border-gray-200 rounded-full w-[110px] outline-none focus:ring-0 focus:ring-offset-0">
                       <SelectValue />
                     </SelectTrigger>
@@ -681,7 +691,7 @@ export function TasksTable({
                 {/* Assignee */}
                 {!filterAssigneeId && (
                   <td className="py-3 px-6">
-                    <Select value={newTask.assignee_id || "__none__"} onValueChange={(v) => setNewTask(p => ({ ...p, assignee_id: v === "__none__" ? "" : v }))}>
+                    <Select value={newTask.assignee_id || "__none__"} onValueChange={(v) => setNewTask(p => ({ ...p, assignee_id: v === "__none__" ? "" : (v ?? "") }))}>
                       <SelectTrigger className="h-7 text-xs border-gray-200 rounded-full w-[130px] outline-none focus:ring-0 focus:ring-offset-0">
                         <SelectValue placeholder="Assignee" />
                       </SelectTrigger>

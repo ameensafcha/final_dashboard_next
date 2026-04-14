@@ -5,12 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Trophy, 
-  Target, 
-  Zap, 
-  AlertCircle, 
-  UserPlus, 
+import {
+  Trophy,
+  Target,
+  Zap,
+  AlertCircle,
+  UserPlus,
   ArrowRight,
   Clock,
   Loader2,
@@ -18,7 +18,8 @@ import {
   Lock,
   History,
   CheckCircle2,
-  XCircle
+  XCircle,
+  Plus
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -42,7 +43,7 @@ interface DailyPlan {
   id: string;
   score: number;
   items: DailyItem[];
-  tomorrow_notes: string[];
+  tomorrow_notes: string[] | null;
 }
 
 export default function DailyClient({ initialPlan }: { initialPlan: any }) {
@@ -54,6 +55,16 @@ export default function DailyClient({ initialPlan }: { initialPlan: any }) {
   const [isBlockerOpen, setIsBlockerOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [activeItem, setActiveItem] = useState<DailyItem | null>(null);
+
+  // Tomorrow Notes Edit State
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [editingNotes, setEditingNotes] = useState<string[]>([]);
+
+  // Quick-Add Task State
+  const [addingTier, setAddingTier] = useState<1 | 2 | null>(null);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskBiz, setNewTaskBiz] = useState<'S' | 'N'>('N');
+  const [isAddingItem, setIsAddingItem] = useState(false);
 
   useEffect(() => {
     fetchHistory();
@@ -170,6 +181,48 @@ export default function DailyClient({ initialPlan }: { initialPlan: any }) {
     } finally {
       setUpdatingItems(prev => prev.filter(id => id !== itemId));
       setActiveItem(null);
+    }
+  };
+
+  const handleAddItem = async (tier: 1 | 2) => {
+    if (!plan || !newTaskTitle.trim()) return;
+    setIsAddingItem(true);
+    try {
+      const res = await fetch('/api/daily-items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          daily_plan_id: plan.id,
+          title: newTaskTitle.trim(),
+          tier,
+          biz: newTaskBiz,
+        }),
+      });
+      const newItem = await res.json();
+      setPlan({ ...plan, items: [...plan.items, newItem] });
+      setNewTaskTitle('');
+      setNewTaskBiz('N');
+      setAddingTier(null);
+    } catch (error) {
+      console.error('Error adding item:', error);
+    } finally {
+      setIsAddingItem(false);
+    }
+  };
+
+  const handleSaveTomorrowNotes = async () => {
+    if (!plan) return;
+    try {
+      await fetch('/api/daily-plans/today', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tomorrow_notes: editingNotes }),
+      });
+      const saved = editingNotes.filter(n => n.trim() !== '');
+      setPlan({ ...plan, tomorrow_notes: saved });
+      setIsEditingNotes(false);
+    } catch (error) {
+      console.error('Error saving tomorrow notes:', error);
     }
   };
 
@@ -368,6 +421,42 @@ export default function DailyClient({ initialPlan }: { initialPlan: any }) {
                   )}
                 </tbody>
               </table>
+              {addingTier === 1 ? (
+                <div className="flex items-center gap-3 px-8 py-4 border-t border-gray-50">
+                  <input
+                    autoFocus
+                    type="text"
+                    value={newTaskTitle}
+                    onChange={(e) => setNewTaskTitle(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleAddItem(1); if (e.key === 'Escape') setAddingTier(null); }}
+                    placeholder="New task title..."
+                    className="flex-1 text-sm font-bold text-gray-800 bg-transparent border-none outline-none placeholder:text-gray-300"
+                  />
+                  <button
+                    onClick={() => setNewTaskBiz(prev => prev === 'S' ? 'N' : 'S')}
+                    className={cn(
+                      "text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest transition-colors",
+                      newTaskBiz === 'S' ? "bg-[#ffd54f]/20 text-[#735c00]" : "bg-gray-100 text-gray-500"
+                    )}
+                  >
+                    {newTaskBiz === 'S' ? 'Sales' : 'Ops'}
+                  </button>
+                  <Button size="sm" onClick={() => handleAddItem(1)} disabled={isAddingItem || !newTaskTitle.trim()} className="h-8 px-4 bg-[#735c00] hover:bg-[#735c00]/90 text-white font-black text-[10px] uppercase tracking-widest rounded-xl">
+                    {isAddingItem ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Add'}
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setAddingTier(null)} className="h-8 px-3 text-gray-300 hover:text-gray-500 font-bold text-[10px] rounded-xl">
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => { setAddingTier(1); setNewTaskTitle(''); setNewTaskBiz('N'); }}
+                  className="w-full flex items-center gap-2 px-8 py-4 border-t border-gray-50 text-gray-300 hover:text-[#735c00] hover:bg-[#fbfaf1]/30 transition-colors text-[11px] font-black uppercase tracking-widest"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Task
+                </button>
+              )}
             </div>
           </section>
 
@@ -397,6 +486,42 @@ export default function DailyClient({ initialPlan }: { initialPlan: any }) {
                   )}
                 </tbody>
               </table>
+              {addingTier === 2 ? (
+                <div className="flex items-center gap-3 px-8 py-4 border-t border-gray-50">
+                  <input
+                    autoFocus
+                    type="text"
+                    value={newTaskTitle}
+                    onChange={(e) => setNewTaskTitle(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleAddItem(2); if (e.key === 'Escape') setAddingTier(null); }}
+                    placeholder="New task title..."
+                    className="flex-1 text-sm font-bold text-gray-800 bg-transparent border-none outline-none placeholder:text-gray-300"
+                  />
+                  <button
+                    onClick={() => setNewTaskBiz(prev => prev === 'S' ? 'N' : 'S')}
+                    className={cn(
+                      "text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest transition-colors",
+                      newTaskBiz === 'S' ? "bg-[#ffd54f]/20 text-[#735c00]" : "bg-gray-100 text-gray-500"
+                    )}
+                  >
+                    {newTaskBiz === 'S' ? 'Sales' : 'Ops'}
+                  </button>
+                  <Button size="sm" onClick={() => handleAddItem(2)} disabled={isAddingItem || !newTaskTitle.trim()} className="h-8 px-4 bg-[#ffd54f] hover:bg-[#ffd54f]/90 text-[#735c00] font-black text-[10px] uppercase tracking-widest rounded-xl">
+                    {isAddingItem ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Add'}
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setAddingTier(null)} className="h-8 px-3 text-gray-300 hover:text-gray-500 font-bold text-[10px] rounded-xl">
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => { setAddingTier(2); setNewTaskTitle(''); setNewTaskBiz('N'); }}
+                  className="w-full flex items-center gap-2 px-8 py-4 border-t border-gray-50 text-gray-300 hover:text-[#735c00] hover:bg-[#ffd54f]/10 transition-colors text-[11px] font-black uppercase tracking-widest"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Task
+                </button>
+              )}
             </div>
           </section>
         </div>
@@ -489,17 +614,65 @@ export default function DailyClient({ initialPlan }: { initialPlan: any }) {
                   <ArrowRight className="w-5 h-5 text-emerald-600" />
                   <CardTitle className="text-[11px] font-black uppercase tracking-[0.3em] text-emerald-900">Next Horizon</CardTitle>
                 </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="w-8 h-8 rounded-full text-emerald-400 hover:text-emerald-700 hover:bg-emerald-50"
+                  onClick={() => {
+                    const existing = plan.tomorrow_notes ?? [];
+                    const slots = Math.max(existing.length + 1, 3);
+                    setEditingNotes([...existing, ...Array(slots - existing.length).fill('')].slice(0, slots));
+                    setIsEditingNotes(true);
+                  }}
+                >
+                  <Edit2 className="w-4 h-4" />
+                </Button>
               </div>
             </CardHeader>
             <CardContent className="p-8 space-y-4">
-              {plan.tomorrow_notes.map((note, idx) => (
-                <div key={idx} className="flex items-start gap-4 p-4 rounded-[1.5rem] bg-[#fbfaf1]/50 border border-emerald-100/30">
-                  <span className="w-6 h-6 rounded-lg bg-white shadow-sm flex items-center justify-center text-[10px] font-black text-emerald-600 flex-shrink-0">
-                    {idx + 1}
-                  </span>
-                  <p className="text-sm font-bold text-gray-600 leading-relaxed italic">{note}</p>
+              {isEditingNotes ? (
+                <div className="space-y-3">
+                  {editingNotes.map((note, idx) => (
+                    <textarea
+                      key={idx}
+                      value={note}
+                      onChange={(e) => {
+                        const updated = [...editingNotes];
+                        updated[idx] = e.target.value;
+                        setEditingNotes(updated);
+                      }}
+                      placeholder={`Priority #${idx + 1}`}
+                      className="w-full p-3 text-sm font-medium text-gray-700 bg-[#fbfaf1]/50 border border-emerald-100 rounded-2xl resize-none focus:outline-none focus:border-emerald-300 h-16"
+                    />
+                  ))}
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      size="sm"
+                      onClick={handleSaveTomorrowNotes}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] uppercase tracking-widest rounded-xl"
+                    >
+                      Save
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setIsEditingNotes(false)}
+                      className="text-gray-400 font-bold text-[10px] uppercase rounded-xl"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
                 </div>
-              ))}
+              ) : (
+                (plan.tomorrow_notes ?? []).map((note, idx) => (
+                  <div key={idx} className="flex items-start gap-4 p-4 rounded-[1.5rem] bg-[#fbfaf1]/50 border border-emerald-100/30">
+                    <span className="w-6 h-6 rounded-lg bg-white shadow-sm flex items-center justify-center text-[10px] font-black text-emerald-600 flex-shrink-0">
+                      {idx + 1}
+                    </span>
+                    <p className="text-sm font-bold text-gray-600 leading-relaxed italic">{note}</p>
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
         </div>

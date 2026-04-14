@@ -62,9 +62,9 @@ export async function GET() {
       return NextResponse.json({ plan: todayPlan, pendingHistory });
     }
 
-    return NextResponse.json({ 
-      plan: null, 
-      pendingHistory 
+    return NextResponse.json({
+      plan: null,
+      pendingHistory
     });
 
   } catch (error: any) {
@@ -83,12 +83,16 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { items, tomorrow_notes } = body;
 
+    const today = new Date();
+    const yesterday = startOfDay(subDays(today, 1));
+    const yesterdayEnd = endOfDay(subDays(today, 1));
+
     // Use a transaction to create the plan and its items
     const newPlan = await prisma.$transaction(async (tx) => {
       const plan = await tx.dailyPlan.create({
         data: {
           employee_id: user.id,
-          plan_date: new Date(),
+          plan_date: today,
           tomorrow_notes: tomorrow_notes || [],
           items: {
             create: items.map((item: any) => ({
@@ -105,12 +109,82 @@ export async function POST(request: Request) {
           items: true,
         },
       });
-      return plan;
+
+      // Auto-carryover: fetch yesterday's PENDING items
+      const previousPending = await tx.dailyItem.findMany({
+        where: {
+          daily_plan: {
+            employee_id: user.id,
+            plan_date: { gte: yesterday, lte: yesterdayEnd },
+          },
+          status: 'PENDING',
+        },
+      });
+
+      // Deduplicate: skip items the user already explicitly added (match by title)
+      const submittedTitles = new Set(items.map((i: any) => i.title.trim().toLowerCase()));
+      const toCarryover = previousPending.filter(
+        (p) => !submittedTitles.has(p.title.trim().toLowerCase())
+      );
+
+      if (toCarryover.length > 0) {
+        await tx.dailyItem.createMany({
+          data: toCarryover.map((p) => ({
+            daily_plan_id: plan.id,
+            title: p.title,
+            tier: p.tier,
+            biz: p.biz,
+            status: 'PENDING' as const,
+            notes: p.notes,
+            carryover_count: p.carryover_count + 1,
+          })),
+        });
+      }
+
+      // Re-fetch plan with all items (including auto-carried-over ones)
+      return tx.dailyPlan.findUnique({
+        where: { id: plan.id },
+        include: { items: true },
+      });
     });
 
     return NextResponse.json(newPlan);
   } catch (error: any) {
     console.error('Error creating daily plan:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { tomorrow_notes } = body;
+
+    if (!Array.isArray(tomorrow_notes)) {
+      return NextResponse.json({ error: 'tomorrow_notes must be an array' }, { status: 400 });
+    }
+
+    const start = startOfDay(new Date());
+    const end = endOfDay(new Date());
+
+    await prisma.dailyPlan.updateMany({
+      where: {
+        employee_id: user.id,
+        plan_date: { gte: start, lte: end },
+      },
+      data: {
+        tomorrow_notes: tomorrow_notes.filter((n: string) => typeof n === 'string' && n.trim() !== ''),
+      },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('Error updating tomorrow_notes:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

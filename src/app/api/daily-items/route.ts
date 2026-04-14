@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { createDailyItemSchema } from '@/lib/validations/task';
 
 export async function POST(request: Request) {
   try {
@@ -10,20 +11,22 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { daily_plan_id, title, tier, biz, carryover_count } = body;
-
-    if (!daily_plan_id || !title) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    const result = createDailyItemSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json({ error: result.error.flatten() }, { status: 400 });
     }
+
+    const { daily_plan_id, title, tier, biz, carryover_count, notes } = result.data;
 
     const newItem = await prisma.dailyItem.create({
       data: {
         daily_plan_id,
         title,
-        tier: tier || 1,
-        biz: biz || 'N',
+        tier,
+        biz,
         status: 'PENDING',
-        carryover_count: carryover_count || 0,
+        carryover_count,
+        notes,
       },
     });
 

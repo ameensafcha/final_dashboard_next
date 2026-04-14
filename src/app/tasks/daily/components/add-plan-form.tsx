@@ -104,33 +104,6 @@ export default function AddPlanForm({
         </div>
       </div>
 
-      {/* 3-Day History: Smart Context */}
-      {pendingHistory.length > 0 && (
-        <Card className="bg-white border-2 border-dashed border-amber-200 rounded-3xl overflow-hidden shadow-sm">
-          <CardHeader className="bg-amber-50/50 border-b border-amber-100 py-4">
-            <div className="flex items-center gap-2">
-              <History className="w-4 h-4 text-amber-600" />
-              <CardTitle className="text-xs font-black uppercase tracking-widest text-amber-700">Unfinished Missions (Last 3 Days)</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6 flex flex-wrap gap-3">
-            {pendingHistory.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => importFromHistory(item)}
-                className="group flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 hover:border-amber-500 hover:bg-amber-50 rounded-xl transition-all text-sm font-bold text-gray-700 shadow-sm"
-              >
-                <PlusCircle className="w-4 h-4 text-gray-400 group-hover:text-amber-600" />
-                {item.title}
-                <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-none px-1.5 h-5 text-[10px] font-black">
-                  {item.carryover_count + 1}D
-                </Badge>
-              </button>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
       {/* Tier 1 Builder: Move the Needle */}
       <div className="space-y-6">
         <div className="flex items-center justify-between px-2">
@@ -264,6 +237,32 @@ export default function AddPlanForm({
           ))}
         </div>
       </div>
+
+      {/* 3-Day History: Smart Context (Moved to Bottom) */}
+      {pendingHistory.length > 0 && (
+        <Card className="bg-white border-2 border-dashed border-amber-200 rounded-3xl overflow-hidden shadow-sm">
+          <CardHeader className="bg-amber-50/50 border-b border-amber-100 py-4">
+            <div className="flex items-center gap-2">
+              <History className="w-4 h-4 text-amber-600" />
+              <CardTitle className="text-xs font-black uppercase tracking-widest text-amber-700">Unfinished Missions (Last 3 Days)</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="p-6 flex flex-wrap gap-3">
+            {pendingHistory.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => importFromHistory(item)}
+                className="group flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 hover:border-amber-500 hover:bg-amber-50 rounded-xl transition-all text-sm font-bold text-gray-700 shadow-sm"
+              >
+                {item.title}
+                <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-none px-1.5 h-5 text-[10px] font-black">
+                  {item.carryover_count + 1}D
+                </Badge>
+              </button>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Sticky Action Footer */}
       <div className="fixed bottom-0 left-64 right-0 p-6 bg-white/80 backdrop-blur-xl border-t border-amber-100 flex justify-center z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">

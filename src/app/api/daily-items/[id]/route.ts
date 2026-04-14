@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { updateDailyItemSchema } from '@/lib/validations/task';
 
 export async function PUT(
   request: Request,
@@ -15,7 +16,13 @@ export async function PUT(
     const resolvedParams = await params;
     const { id } = resolvedParams;
     const body = await request.json();
-    const { status, notes, blocker_reason, action_owner, title, biz } = body;
+
+    const result = updateDailyItemSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json({ error: result.error.flatten() }, { status: 400 });
+    }
+
+    const { status, notes, blocker_reason, action_owner, title, biz } = result.data;
 
     // 1. Update the Item
     const updatedItem = await prisma.$transaction(async (tx) => {
@@ -47,11 +54,21 @@ export async function PUT(
             action_owner: action_owner,
           },
         });
+      } else if (status && status !== 'BLOCKED') {
+        // Item is being unblocked — resolve any open DailyBlocker records
+        await tx.dailyBlocker.updateMany({
+          where: {
+            daily_plan_id: item.daily_plan_id,
+            status: 'ACTIVE',
+          },
+          data: { status: 'RESOLVED' },
+        });
       }
 
-      // 3. Recalculate Score: (Completed / Total) * 10
-      const totalItems = item.daily_plan.items.length;
-      const completedItems = item.daily_plan.items.filter(i => i.status === 'COMPLETED').length;
+      // 3. Recalculate Score: (Completed / Active) * 10 — excludes ARCHIVED items
+      const activeItems = item.daily_plan.items.filter(i => i.status !== 'ARCHIVED');
+      const totalItems = activeItems.length;
+      const completedItems = activeItems.filter(i => i.status === 'COMPLETED').length;
       const newScore = totalItems > 0 ? Math.round((completedItems / totalItems) * 10) : 0;
 
       await tx.dailyPlan.update({

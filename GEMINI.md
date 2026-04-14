@@ -69,10 +69,22 @@ npm run lint
 
 ### 2. Architecture Patterns
 - **Routes:** Next.js App Router (`src/app`). Group logical modules (e.g., `/inventory`, `/tasks`, `/admin`).
+- **Modular Components:** For complex features, use a directory-based component structure (e.g., `src/components/tasks/tasks-table/`).
+  - `use-*.ts`: Custom hook containing all React Query logic, mutations, and filter states.
+  - `task-row.tsx`, `task-filters.tsx`, etc.: Small, focused UI components.
+  - `types.ts`: Local type definitions.
+- **Logic Separation:** Keep UI components focused on rendering. Data fetching, debouncing, and state orchestration must reside in custom hooks.
 - **Auth Guard:** Middleware handles session validation and redirects. Use `src/lib/auth.ts` for server-side user retrieval.
 - **Data Fetching:** Use React Query for client-side fetching to benefit from caching and loading states.
 - **API Design:** RESTful endpoints located in `src/app/api`. Ensure consistent error handling and Zod validation.
 - **Database:** Always update `prisma/schema.prisma` first and use `npx prisma db push` to sync.
+
+### 3. UI Design Mandate
+**Strict Adherence to `DESIGN.md` is mandatory.**
+- **Precedence:** `DESIGN.md` (Light theme, Organic Atelier) takes absolute precedence over any UI descriptions in `plan/plan.md` or other legacy files.
+- **Performance:** Always implement debouncing (min 300ms) for search inputs to prevent API spam.
+- **Feedback:** Every inline update or mutation must provide visual feedback (loading spinners, toast notifications).
+- **UX Consistency:** Maintain Notion-style inline editing for tables where applicable, ensuring one-click access to pickers (e.g., `showPicker()` for dates).
 
 ### 3. Task Logic (Daily Command Center)
 - **Tiers:** Tier 1 (Alpha) for mission-critical objectives; Tier 2 (Beta) for velocity gains.

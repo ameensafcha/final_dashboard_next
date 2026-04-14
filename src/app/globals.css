@@ -11,24 +11,36 @@
 }
 
 :root {
-  --background: #F5F4EE;
-  --foreground: #1A1A1A;
-  --primary: #E8C547;
-  --primary-foreground: #1A1A1A;
-  --secondary: #D4B84A;
-  --secondary-foreground: #1A1A1A;
-  --accent: #E8C547;
-  --accent-foreground: #1A1A1A;
-  --destructive: #DC2626;
-  --destructive-foreground: #FFFFFF;
-  --border: #E8E7E1;
-  --input: #E8E7E1;
-  --ring: #E8C547;
+  /* Base background - The "Foundational Desk" */
+  --background: #fbfaf1; 
+  --foreground: #1c1b1a; /* Deep charcoal for focus */
   
-  --popover: #FFFFFF;
-  --popover-foreground: #1A1A1A;
+  /* Primary & Accents - The "Tactile Glow" */
+  --primary: #735c00;
+  --primary-foreground: #ffffff;
+  --primary-container: #ffd54f;
+  --on-primary-container: #261e00;
+  
+  /* Secondary - Authority focus */
+  --secondary: #5f5e5e;
+  --secondary-foreground: #ffffff;
 
-  --radius: 0.75rem;
+  /* Surfaces - Tonal Layering */
+  --surface: #fbfaf1;
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #f5f4ed;
+  
+  /* Borders - Ghost fallback only */
+  --border: rgba(0,0,0,0.1);
+  --input: rgba(0,0,0,0.1);
+  --ring: #ffd54f;
+  
+  /* Popovers - Glassmorphism */
+  --popover: rgba(255, 255, 255, 0.8);
+  --popover-foreground: #1c1b1a;
+
+  /* Radii - The "Soft" aesthetic */
+  --radius: 2rem;
 }
 
 * {
@@ -38,4 +50,19 @@
 body {
   background-color: var(--background);
   color: var(--foreground);
+  font-family: 'Inter', sans-serif;
+}
+
+/* Manrope for Headlines */
+h1, h2, h3, .font-manrope {
+  font-family: 'Manrope', sans-serif;
+  letter-spacing: -0.02em;
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }

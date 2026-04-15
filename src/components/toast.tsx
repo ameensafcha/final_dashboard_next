@@ -23,34 +23,48 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
     info: <Info className="w-5 h-5" />,
   };
 
-  const colors = {
-    success: "bg-green-50 border-green-500 text-green-800",
-    error: "bg-red-50 border-red-500 text-red-800",
-    warning: "bg-amber-50 border-amber-500 text-amber-800",
-    info: "bg-blue-50 border-blue-500 text-blue-800",
+  // Enforcing strict CSS variable usage for backgrounds
+  const bgColors = {
+    success: "bg-[var(--success-bg)]",
+    error: "bg-[var(--error-bg)]",
+    warning: "bg-[var(--warning-bg)]",
+    info: "bg-[var(--info-bg)]",
   };
 
+  // Enforcing strict CSS variable usage for icon accents
   const iconColors = {
-    success: "text-green-500",
-    error: "text-red-500",
-    warning: "text-amber-500",
-    info: "text-blue-500",
+    success: "text-[var(--success)]",
+    error: "text-[var(--error)]",
+    warning: "text-[var(--warning)]",
+    info: "text-[var(--info)]",
   };
 
   return (
     <div
       className={cn(
-        "flex items-center gap-3 px-4 py-3 rounded-lg border-l-4 shadow-lg min-w-[300px] max-w-[400px] animate-in slide-in-from-right",
-        colors[toast.type]
+        "flex items-center gap-4 px-6 py-4 min-w-[300px] max-w-[400px]",
+        "border-none outline-none", // Strict enforcement of the No-Line Rule
+        "rounded-[var(--radius-md)]", // Enforcing minimum 24px roundness
+        "shadow-[var(--shadow-lg)]", // Using the warm, diffused ambient shadow
+        "animate-slide-up", // Utilizing the custom global.css animation
+        bgColors[toast.type]
       )}
     >
-      <span className={iconColors[toast.type]}>{icons[toast.type]}</span>
-      <p className="flex-1 text-sm font-medium">{toast.message}</p>
+      <span className={cn("shrink-0", iconColors[toast.type])}>
+        {icons[toast.type]}
+      </span>
+      <p className="flex-1 font-[family-name:var(--font-body)] text-[length:var(--text-body)] font-[number:var(--text-body-weight)] text-[var(--foreground)]">
+        {toast.message}
+      </p>
       <button
         onClick={() => onRemove(toast.id)}
-        className="p-1 hover:bg-black/5 rounded transition-colors cursor-pointer"
+        className={cn(
+          "p-1.5 rounded-full cursor-pointer outline-none",
+          "transition-all duration-[var(--transition-normal)]",
+          "hover:bg-[var(--surface-container-highest)] hover:[transform:var(--hover-scale)]" // Applying the required physical hover scale
+        )}
       >
-        <X className="w-4 h-4 opacity-60" />
+        <X className="w-4 h-4 opacity-60 text-[var(--foreground)]" />
       </button>
     </div>
   );
@@ -65,7 +79,7 @@ export function ToastContainer({ toasts, onRemove }: ToastContainerProps) {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+    <div className="fixed bottom-[var(--spacing-xl)] right-[var(--spacing-xl)] z-50 flex flex-col gap-[var(--spacing-md)]">
       {toasts.map((toast) => (
         <ToastItem key={toast.id} toast={toast} onRemove={onRemove} />
       ))}

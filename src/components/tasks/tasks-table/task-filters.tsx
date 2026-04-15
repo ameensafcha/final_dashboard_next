@@ -1,13 +1,31 @@
-import React from "react";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, ChevronDown } from "lucide-react";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  DropdownMenu,
+  DropdownMenuTriggerStyled,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+} from "@/components/ui/dropdown-menu";
 import { Company, AREA_OPTIONS } from "./types";
+import { cn } from "@/lib/utils";
+
+const statusColors: Record<string, string> = {
+  "": "",
+  all: "",
+  not_started: "text-[var(--muted)]",
+  in_progress: "text-[var(--primary)]",
+  review: "text-[var(--info)]",
+  completed: "text-[var(--success)]",
+};
+
+const priorityColors: Record<string, string> = {
+  "": "",
+  all: "",
+  low: "text-[var(--muted)]",
+  medium: "text-[var(--info)]",
+  high: "text-[var(--warning)]",
+  urgent: "text-[var(--error)]",
+};
 
 interface TaskFiltersProps {
   search: string;
@@ -36,92 +54,132 @@ export function TaskFilters({
   setAreaFilter,
   companyFilter,
   setCompanyFilter,
-  companies,
+  companies = [],
   onAddTask,
   showAddButton,
 }: TaskFiltersProps) {
+  
+  const formatStatus = (status?: string) => {
+    if (!status || status === "all") return "All Status";
+    return status.replace(/_/g, " ");
+  };
+
   return (
-    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 bg-white p-6 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.03)] border-none">
+    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 bg-[var(--surface-container-lowest)] p-6 rounded-[var(--radius-xl)] shadow-[0_20px_50px_rgba(0,0,0,0.03)] border-none">
       <div className="flex flex-wrap gap-4 items-center flex-1 w-full md:w-auto">
         <div className="flex flex-col gap-1.5 flex-1 min-w-[200px] max-w-xs">
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-2">Search</span>
+          <span className="text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em] px-2">Search</span>
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted)]" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search tasks..."
-              className="w-full pl-11 pr-4 py-3 bg-[#fbfaf1] border-none rounded-2xl text-sm font-semibold transition-all outline-none focus:ring-2 focus:ring-[#ffd54f]/50 placeholder:text-gray-300"
+              className="input-field w-full pl-11 pr-4 py-3 text-sm font-semibold"
             />
           </div>
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-2">Status</span>
-          <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val || "all")}>
-            <SelectTrigger className="w-[150px] h-11 bg-[#fbfaf1] border-none rounded-2xl text-xs font-black text-gray-700 focus:ring-2 focus:ring-[#ffd54f]/50">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-white/80 backdrop-blur-2xl border-none shadow-[0_20px_40px_rgba(0,0,0,0.1)] rounded-2xl">
-              <SelectItem value="all">Status: All</SelectItem>
-              <SelectItem value="not_started">Not Started</SelectItem>
-              <SelectItem value="in_progress">In Progress</SelectItem>
-              <SelectItem value="review">Review</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-            </SelectContent>
-          </Select>
+          <span className="text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em] px-2">Status</span>
+          <DropdownMenu>
+            <DropdownMenuTriggerStyled>
+              <span className={cn("truncate capitalize", statusColors[statusFilter] || "")}>
+                {formatStatus(statusFilter)}
+              </span>
+              <ChevronDown className="w-3.5 h-3.5 opacity-50 shrink-0" />
+            </DropdownMenuTriggerStyled>
+            <DropdownMenuContent>
+              <DropdownMenuRadioGroup 
+                value={statusFilter} 
+                onValueChange={(val) => setStatusFilter(val || "all")}
+              >
+                <DropdownMenuRadioItem value="all">All Status</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="not_started">Not Started</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="in_progress">In Progress</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="review">Review</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="completed">Completed</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <div className="flex flex-col gap-1.5">
           <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-2">Priority</span>
-          <Select value={priorityFilter} onValueChange={(val) => setPriorityFilter(val || "all")}>
-            <SelectTrigger className="w-[150px] h-11 bg-[#fbfaf1] border-none rounded-2xl text-xs font-black text-gray-700 focus:ring-2 focus:ring-[#ffd54f]/50">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-white/80 backdrop-blur-2xl border-none shadow-[0_20px_40px_rgba(0,0,0,0.1)] rounded-2xl">
-              <SelectItem value="all">Priority: All</SelectItem>
-              <SelectItem value="low">Low</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-              <SelectItem value="urgent">Urgent</SelectItem>
-            </SelectContent>
-          </Select>
+          <DropdownMenu>
+            <DropdownMenuTriggerStyled>
+              <span className={cn("truncate capitalize", priorityColors[priorityFilter] || "")}>
+                {priorityFilter === "all" || !priorityFilter ? "All Priority" : priorityFilter}
+              </span>
+              <ChevronDown className="w-3.5 h-3.5 opacity-50 shrink-0" />
+            </DropdownMenuTriggerStyled>
+            <DropdownMenuContent>
+              <DropdownMenuRadioGroup 
+                value={priorityFilter} 
+                onValueChange={(val) => setPriorityFilter(val || "all")}
+              >
+                <DropdownMenuRadioItem value="all">All Priority</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="low">Low</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="medium">Medium</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="high">High</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="urgent">Urgent</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <div className="flex flex-col gap-1.5">
           <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-2">Area</span>
-          <Select value={areaFilter} onValueChange={(val) => setAreaFilter(val || "all")}>
-            <SelectTrigger className="w-[150px] h-11 bg-[#fbfaf1] border-none rounded-2xl text-xs font-black text-gray-700 focus:ring-2 focus:ring-[#ffd54f]/50">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-white/80 backdrop-blur-2xl border-none shadow-[0_20px_40px_rgba(0,0,0,0.1)] rounded-2xl">
-              <SelectItem value="all">Area: All</SelectItem>
-              {AREA_OPTIONS.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <DropdownMenu>
+            <DropdownMenuTriggerStyled>
+              <span className="truncate">
+                {areaFilter === "all" || !areaFilter ? "All Areas" : areaFilter}
+              </span>
+              <ChevronDown className="w-3.5 h-3.5 opacity-50 shrink-0" />
+            </DropdownMenuTriggerStyled>
+            <DropdownMenuContent>
+              <DropdownMenuRadioGroup 
+                value={areaFilter} 
+                onValueChange={(val) => setAreaFilter(val || "all")}
+              >
+                <DropdownMenuRadioItem value="all">All Areas</DropdownMenuRadioItem>
+                {AREA_OPTIONS.map(a => <DropdownMenuRadioItem key={a} value={a}>{a}</DropdownMenuRadioItem>)}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <div className="flex flex-col gap-1.5">
           <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-2">Company</span>
-          <Select value={companyFilter} onValueChange={(val) => setCompanyFilter(val || "all")}>
-            <SelectTrigger className="w-[150px] h-11 bg-[#fbfaf1] border-none rounded-2xl text-xs font-black text-gray-700 focus:ring-2 focus:ring-[#ffd54f]/50">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-white/80 backdrop-blur-2xl border-none shadow-[0_20px_40px_rgba(0,0,0,0.1)] rounded-2xl">
-              <SelectItem value="all">Company: All</SelectItem>
-              {companies.map((company) => (
-                <SelectItem key={company.id} value={company.id}>{company.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <DropdownMenu>
+            <DropdownMenuTriggerStyled>
+              <span className="truncate">
+                {companyFilter === "all" || !companyFilter 
+                  ? "All Companies" 
+                  : companies?.find(c => c.id === companyFilter)?.name || "All Companies"}
+              </span>
+              <ChevronDown className="w-3.5 h-3.5 opacity-50 shrink-0" />
+            </DropdownMenuTriggerStyled>
+            <DropdownMenuContent>
+              <DropdownMenuRadioGroup 
+                value={companyFilter} 
+                onValueChange={(val) => setCompanyFilter(val || "all")}
+              >
+                <DropdownMenuRadioItem value="all">All Companies</DropdownMenuRadioItem>
+                {companies?.map((company) => (
+                  <DropdownMenuRadioItem key={company.id} value={company.id}>{company.name}</DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
       {showAddButton && (
         <button
           onClick={onAddTask}
-          className="w-full md:w-auto px-8 py-3 bg-[#1c1b1a] hover:bg-black text-white font-black rounded-full transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 text-sm shadow-xl shadow-black/10"
+          className="btn-primary w-full md:w-auto px-8 py-3 flex items-center justify-center gap-2 text-sm shadow-xl shadow-black/10"
         >
           <Plus className="w-5 h-5" />
           Add Task

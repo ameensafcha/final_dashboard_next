@@ -2,18 +2,17 @@
 
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUIStore } from "@/lib/stores";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronDown } from "lucide-react";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Task {
   id: string;
@@ -51,10 +50,41 @@ interface TaskFormProps {
   canChangeAssignee?: boolean;
 }
 
+function FormDropdown({
+  value,
+  displayValue,
+  onValueChange,
+  placeholder,
+  children,
+}: {
+  value: string;
+  displayValue?: string;
+  onValueChange: (val: string) => void;
+  placeholder: string;
+  children: React.ReactNode;
+}) {
+  const label = displayValue ?? value;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger className="h-12 w-full bg-[var(--surface)] border-none rounded-[var(--radius-lg)] px-5 text-sm font-bold focus:ring-2 focus:ring-[var(--accent)]/50 transition-all flex items-center justify-between outline-none">
+        <span className={label ? "text-[var(--foreground)]" : "text-[var(--muted)]"}>
+          {label || placeholder}
+        </span>
+        <ChevronDown className="w-4 h-4 text-[var(--muted)] shrink-0" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="bg-[var(--glass-bg)] backdrop-blur-2xl border-none shadow-[var(--shadow-xl)] rounded-[var(--radius-lg)]">
+        <DropdownMenuRadioGroup value={value} onValueChange={onValueChange}>
+          {children}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssignee = false }: TaskFormProps) {
   const queryClient = useQueryClient();
   const { addNotification } = useUIStore();
-  
+
   const [formData, setFormData] = useState<{
     title: string;
     description: string;
@@ -209,103 +239,88 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
 
   const isLoading = createMutation.isPending || updateMutation.isPending;
 
+  const selectedCompanyName = companies.find(c => c.id === formData.company_id)?.name || "";
+  const selectedAssigneeName = employees.find(e => e.id === formData.assignee_id)?.name || "";
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{task ? "Edit Task" : "Create Task"}</DialogTitle>
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto bg-[var(--glass-bg)] backdrop-blur-3xl border-none rounded-[var(--radius-xl)] shadow-[var(--shadow-xl)] p-10 scrollbar-hide">
+        <DialogHeader className="mb-8">
+          <DialogTitle className="text-3xl font-black font-display tracking-tight">{task ? "Edit Task" : "New Task"}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-8">
           <div>
-            <label className="block text-sm font-medium mb-1">Title *</label>
+            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)] mb-2 px-1">Title *</label>
             <Input
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="Task title"
+              placeholder="What needs to be done?"
               required
+              className="input-field h-12 px-5 text-sm font-bold"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Description</label>
+            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)] mb-2 px-1">Description</label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Task description"
-              className="w-full px-3 py-2 border rounded-lg text-sm"
+              placeholder="Provide more context..."
+              className="w-full p-5 bg-[var(--surface)] border-none rounded-[var(--radius-lg)] text-sm font-bold min-h-[120px] resize-none outline-none focus:ring-2 focus:ring-[var(--accent)]/50 transition-all placeholder:text-[var(--muted)]"
               rows={3}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Company</label>
-            <Select 
-              value={formData.company_id || "none"} 
-              onValueChange={(val) => setFormData({ ...formData, company_id: val === "none" ? "" : (val || "") })}
+            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)] mb-2 px-1">Company</label>
+            <FormDropdown
+              value={formData.company_id || "__none__"}
+              displayValue={selectedCompanyName}
+              onValueChange={(val) => setFormData({ ...formData, company_id: val === "__none__" ? "" : val })}
+              placeholder="Select Company"
             >
-              <SelectTrigger className="w-full text-sm">
-                <SelectValue placeholder="Select Company">
-                  {formData.company_id && formData.company_id !== "none"
-                    ? companies.find((c) => c.id === formData.company_id)?.name || "Select Company"
-                    : undefined}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None</SelectItem>
-                {companies.map((company) => (
-                  <SelectItem key={company.id} value={company.id}>{company.name}</SelectItem>
+              <DropdownMenuRadioItem value="__none__">None</DropdownMenuRadioItem>
+              {companies.map((company) => (
+                <DropdownMenuRadioItem key={company.id} value={company.id}>{company.name}</DropdownMenuRadioItem>
+              ))}
+            </FormDropdown>
+          </div>
+
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)] mb-2 px-1">Area</label>
+              <FormDropdown
+                value={formData.area || "__none__"}
+                displayValue={formData.area}
+                onValueChange={(val) => setFormData({ ...formData, area: val === "__none__" ? "" : val })}
+                placeholder="Select Area"
+              >
+                <DropdownMenuRadioItem value="__none__">None</DropdownMenuRadioItem>
+                {["Production", "Quality", "Warehouse", "Procurement", "HR", "Admin", "Development", "Maintenance", "Finance"].map((area) => (
+                  <DropdownMenuRadioItem key={area} value={area}>{area}</DropdownMenuRadioItem>
                 ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Area / Department</label>
-              <Select 
-                value={formData.area || "none"} 
-                onValueChange={(val) => setFormData({ ...formData, area: val === "none" ? "" : (val || "") })}
-              >
-                <SelectTrigger className="w-full text-sm">
-                  <SelectValue placeholder="Select Area" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  <SelectItem value="Production">Production</SelectItem>
-                  <SelectItem value="Quality">Quality</SelectItem>
-                  <SelectItem value="Warehouse">Warehouse</SelectItem>
-                  <SelectItem value="Procurement">Procurement</SelectItem>
-                  <SelectItem value="HR">HR</SelectItem>
-                  <SelectItem value="Admin">Admin</SelectItem>
-                  <SelectItem value="Development">Development</SelectItem>
-                  <SelectItem value="Maintenance">Maintenance</SelectItem>
-                  <SelectItem value="Finance">Finance</SelectItem>
-                </SelectContent>
-              </Select>
+              </FormDropdown>
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Priority</label>
-              <Select 
-                value={formData.priority} 
-                onValueChange={(val) => setFormData({ ...formData, priority: val || "" })}
+              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)] mb-2 px-1">Priority</label>
+              <FormDropdown
+                value={formData.priority}
+                displayValue={formData.priority ? formData.priority.charAt(0).toUpperCase() + formData.priority.slice(1) : ""}
+                onValueChange={(val) => setFormData({ ...formData, priority: val })}
+                placeholder="Select Priority"
               >
-                <SelectTrigger className="w-full text-sm">
-                  <SelectValue placeholder="Select Priority" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="urgent">Urgent</SelectItem>
-                </SelectContent>
-              </Select>
+                <DropdownMenuRadioItem value="low">Low</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="medium">Medium</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="high">High</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="urgent">Urgent</DropdownMenuRadioItem>
+              </FormDropdown>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium mb-1">Estimated Hours</label>
+              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)] mb-2 px-1">Estimated Hours</label>
               <Input
                 type="number"
                 step="0.5"
@@ -313,101 +328,95 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
                 value={formData.estimated_hours}
                 onChange={(e) => setFormData({ ...formData, estimated_hours: e.target.value })}
                 placeholder="e.g. 4.5"
-                className="text-sm"
+                className="input-field h-12 px-5 text-sm font-bold"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Recurrence</label>
-              <Select 
-                value={formData.recurrence || "none"} 
-                onValueChange={(val) => setFormData({ ...formData, recurrence: val === "none" ? "" : (val || "") })}
+              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)] mb-2 px-1">Recurrence</label>
+              <FormDropdown
+                value={formData.recurrence || "__none__"}
+                displayValue={formData.recurrence ? formData.recurrence.charAt(0).toUpperCase() + formData.recurrence.slice(1) : ""}
+                onValueChange={(val) => setFormData({ ...formData, recurrence: val === "__none__" ? "" : val })}
+                placeholder="None"
               >
-                <SelectTrigger className="w-full text-sm">
-                  <SelectValue placeholder="None" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  <SelectItem value="daily">Daily</SelectItem>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                  <SelectItem value="yearly">Yearly</SelectItem>
-                </SelectContent>
-              </Select>
+                <DropdownMenuRadioItem value="__none__">None</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="daily">Daily</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="weekly">Weekly</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="monthly">Monthly</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="yearly">Yearly</DropdownMenuRadioItem>
+              </FormDropdown>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Assignee</label>
+            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)] mb-2 px-1">Assignee</label>
             {canChangeAssignee ? (
-              <Select 
-                value={formData.assignee_id || "unassigned"} 
-                onValueChange={(val) => setFormData({ ...formData, assignee_id: val === "unassigned" ? "" : (val || "") })}
+              <FormDropdown
+                value={formData.assignee_id || "__unassigned__"}
+                displayValue={selectedAssigneeName}
+                onValueChange={(val) => setFormData({ ...formData, assignee_id: val === "__unassigned__" ? "" : val })}
+                placeholder="Unassigned"
               >
-                <SelectTrigger className="w-full text-sm">
-                  <SelectValue placeholder="Unassigned">
-                    {formData.assignee_id && formData.assignee_id !== "unassigned"
-                      ? employees.find((e) => e.id === formData.assignee_id)?.name || "Unassigned"
-                      : undefined}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unassigned">Unassigned</SelectItem>
-                  {employees.map((emp) => (
-                    <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <DropdownMenuRadioItem value="__unassigned__">Unassigned</DropdownMenuRadioItem>
+                {employees.map((emp) => (
+                  <DropdownMenuRadioItem key={emp.id} value={emp.id}>{emp.name}</DropdownMenuRadioItem>
+                ))}
+              </FormDropdown>
             ) : (
-              <input
-                value="You (auto-assigned)"
-                disabled
-                className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 text-gray-500 cursor-not-allowed"
-              />
+              <div className="h-12 bg-[var(--surface)] rounded-[var(--radius-lg)] px-5 flex items-center text-sm font-bold text-[var(--muted)] italic">
+                Self (Auto-assigned)
+              </div>
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium mb-1">Start Date</label>
+              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)] mb-2 px-1">Start Date</label>
               <Input
                 type="date"
                 value={formData.start_date}
                 onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                className="text-sm"
+                onFocus={(e) => { try { e.target.showPicker(); } catch (err) {} }}
+                className="input-field h-12 px-5 text-sm font-bold"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Due Date</label>
+              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)] mb-2 px-1">Deadline</label>
               <Input
                 type="date"
                 value={formData.due_date}
                 onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-                className="text-sm"
+                onFocus={(e) => { try { e.target.showPicker(); } catch (err) {} }}
+                className="input-field h-12 px-5 text-sm font-bold"
               />
             </div>
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
+          <DialogFooter className="pt-6 gap-4">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isLoading}
+              className="px-8 py-3 text-xs font-black uppercase tracking-widest text-[var(--muted)] hover:text-[var(--foreground)] transition-all"
+            >
               Cancel
-            </Button>
-            <Button
+            </button>
+            <button
               type="submit"
               disabled={isLoading}
-              style={{ backgroundColor: "#E8C547" }}
-              className="min-w-[100px]"
+              className="btn-primary px-10 py-3 text-[11px] flex items-center justify-center gap-3 shadow-xl shadow-black/10 min-w-[160px] disabled:opacity-50"
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Processing...
                 </>
               ) : (
-                task ? "Update Task" : "Create Task"
+                task ? "Update Task" : "Add Task"
               )}
-            </Button>
+            </button>
           </DialogFooter>
         </form>
       </DialogContent>

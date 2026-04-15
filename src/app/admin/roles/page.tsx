@@ -1,6 +1,5 @@
 import React from 'react';
 import { prisma } from '@/lib/prisma';
-import styles from './roles.module.css';
 import RoleTable from './RoleTable';
 import AddRoleButton from './AddRoleButton';
 
@@ -15,15 +14,17 @@ export default async function RolesPage() {
   });
 
   return (
-    <div className={styles.container}>
-      <header className={styles.header}>
+    <div className="p-8 min-h-screen bg-[var(--surface)]">
+      <header className="flex items-center justify-between mb-8">
         <div>
-          <h1 className={styles.title}>System Roles</h1>
-          <p style={{ color: '#6b7280', marginTop: '0.25rem' }}>
+          <h1 className="text-section font-display text-[var(--foreground)]">
+            System Roles
+          </h1>
+          <p className="text-body-light mt-1 text-[var(--muted-foreground)]">
             Manage system roles and view employee assignments
           </p>
         </div>
-        <div className={styles.actions}>
+        <div>
           <AddRoleButton />
         </div>
       </header>

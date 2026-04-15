@@ -30,26 +30,30 @@ export default function AdminPage() {
   ];
 
   return (
-    <div className="p-6">
+    <div className="p-8 min-h-screen bg-[var(--surface)]">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900">Admin Panel</h1>
-        <p className="text-slate-500">Manage your team and database-driven permissions</p>
+        <h1 className="text-section font-display text-[var(--foreground)]">
+          Admin Panel
+        </h1>
+        <p className="text-body-light mt-1 text-[var(--muted-foreground)]">
+          Manage your team and database-driven permissions
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {adminCards.map((card) => (
           <Link
             key={card.href}
             href={card.href}
-            className="p-6 bg-white border-2 border-slate-100 rounded-xl hover:border-amber-400 hover:bg-amber-50/30 transition-all group shadow-sm"
+            className="glass-card p-8 hover:scale-[1.02] transition-all group"
           >
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 bg-amber-100 rounded-lg group-hover:bg-amber-200 transition-colors">
-                <card.icon className="w-6 h-6 text-amber-700" />
+            <div className="flex items-center gap-4 mb-4">
+              <div className="p-3 rounded-[var(--radius-lg)] bg-[var(--primary-container)] transition-colors">
+                <card.icon className="w-6 h-6 text-[var(--primary)]" />
               </div>
-              <h2 className="text-lg font-bold text-slate-800">{card.title}</h2>
+              <h2 className="text-lg font-bold text-[var(--foreground)]">{card.title}</h2>
             </div>
-            <p className="text-slate-500 text-sm">{card.description}</p>
+            <p className="text-sm text-[var(--muted-foreground)]">{card.description}</p>
           </Link>
         ))}
       </div>

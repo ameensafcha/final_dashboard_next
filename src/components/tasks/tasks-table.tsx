@@ -95,11 +95,14 @@ export function TasksTable({
     );
   };
 
-  const saveInlineField = (id: string, data: Record<string, unknown>) => {
+  const saveInlineField = (id: string, data: Record<string, unknown>, onComplete?: () => void) => {
     setUpdatingTaskId(id);
     updateInlineMutation.mutate(
       { id, data },
-      { onSettled: () => setUpdatingTaskId(null) }
+      { onSettled: () => { 
+        setUpdatingTaskId(null);
+        onComplete?.();
+      } }
     );
   };
 
@@ -125,7 +128,7 @@ export function TasksTable({
   if (isLoading && tasks.length === 0) {
     return (
       <div className="text-center py-12 text-gray-400">
-        <Loader2 className="inline-block w-6 h-6 animate-spin mb-3 text-[#E8C547]" />
+        <Loader2 className="inline-block w-6 h-6 animate-spin mb-3 text-[var(--primary)]" />
         <p className="font-medium text-sm">Loading tasks...</p>
       </div>
     );
@@ -146,21 +149,21 @@ export function TasksTable({
         showAddButton={!filterAssigneeId}
       />
 
-      <div className="bg-white rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.03)] overflow-hidden overflow-x-auto border-none">
+      <div className="bg-[var(--surface-container-lowest)] rounded-[var(--radius-xl)] shadow-[0_20px_50px_rgba(0,0,0,0.03)] overflow-hidden overflow-x-auto border-none">
         <table className="w-full min-w-[1000px] border-collapse">
           <thead>
-            <tr className="bg-[#fbfaf1]/50 border-none">
-              <th className="text-left py-5 px-8 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Task</th>
-              <th className="text-left py-5 px-8 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Company</th>
-              <th className="text-left py-5 px-8 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Area</th>
-              <th className="text-left py-5 px-8 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Status</th>
-              <th className="text-left py-5 px-8 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Priority</th>
+            <tr className="bg-[var(--surface)]/50 border-none">
+              <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Task</th>
+              <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Company</th>
+              <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Area</th>
+              <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Status</th>
+              <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Priority</th>
               {!filterAssigneeId && (
-                <th className="text-left py-5 px-8 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Assignee</th>
+                <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Assignee</th>
               )}
-              <th className="text-left py-5 px-8 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Due</th>
-              <th className="text-left py-5 px-8 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Time Left</th>
-              <th className="text-right py-5 px-8 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Actions</th>
+              <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Due</th>
+              <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Time Left</th>
+              <th className="text-right py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Actions</th>
             </tr>
           </thead>
           <tbody className="border-none">
@@ -194,10 +197,6 @@ export function TasksTable({
                 onAdd={handleCreateInline}
                 onCancel={() => setShowAddRow(false)}
                 isPending={createInlineMutation.isPending}
-                companies={companies}
-                employees={employees}
-                showAssignee={!filterAssigneeId}
-                colCount={colCount}
               />
             )}
 
@@ -207,11 +206,11 @@ export function TasksTable({
                   setShowAddRow(true); 
                   setNewTask({ title: "", status: "not_started", priority: "medium", company_id: "", area: "", assignee_id: "", due_date: "" }); 
                 }}
-                className="cursor-pointer hover:bg-[#ffd54f]/5 transition-colors border-none"
+                className="cursor-pointer hover:bg-[var(--accent)]/5 transition-colors border-none"
               >
                 <td colSpan={colCount} className="py-5 px-8">
-                  <div className="flex items-center gap-3 text-gray-300 hover:text-[#735c00] transition-colors group/add">
-                    <div className="p-1 bg-gray-50 rounded-lg group-hover/add:bg-[#ffd54f]/20 transition-colors">
+                  <div className="flex items-center gap-3 text-[var(--muted)] hover:text-[var(--primary)] transition-colors group/add">
+                    <div className="p-1 bg-[var(--surface-container)] rounded-lg group-hover/add:bg-[var(--accent)]/20 transition-colors">
                       <Plus className="w-4 h-4" />
                     </div>
                     <span className="text-sm font-black uppercase tracking-widest">Add task...</span>
@@ -233,8 +232,8 @@ export function TasksTable({
 
       {pagination.totalPages > 1 && (
         <div className="flex items-center justify-between mt-8 px-6">
-          <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">
-            Mission <span className="text-gray-900">{(page - 1) * limit + 1}–{Math.min(page * limit, pagination.total)}</span> of <span className="text-gray-900">{pagination.total}</span>
+          <p className="text-[10px] text-[var(--muted)] font-black uppercase tracking-widest">
+            Mission <span className="text-[var(--foreground)]">{(page - 1) * limit + 1}–{Math.min(page * limit, pagination.total)}</span> of <span className="text-[var(--foreground)]">{pagination.total}</span>
           </p>
           <div className="flex gap-3">
             <Button 
@@ -242,16 +241,16 @@ export function TasksTable({
               size="sm" 
               disabled={page === 1} 
               onClick={() => setPage(p => p - 1)} 
-              className="rounded-full px-6 bg-white border-none shadow-sm hover:bg-[#fbfaf1] font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 disabled:opacity-30"
+              className="rounded-full px-6 bg-[var(--surface-container-lowest)] border-none shadow-[var(--shadow-sm)] hover:bg-[var(--surface)] font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 disabled:opacity-30"
             >
               <ChevronLeft className="w-4 h-4 mr-1" /> Previous
             </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              disabled={page === pagination.totalPages} 
-              onClick={() => setPage(p => p + 1)} 
-              className="rounded-full px-6 bg-white border-none shadow-sm hover:bg-[#fbfaf1] font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 disabled:opacity-30"
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page === pagination.totalPages}
+              onClick={() => setPage(p => p + 1)}
+              className="rounded-full px-6 bg-[var(--surface-container-lowest)] border-none shadow-[var(--shadow-sm)] hover:bg-[var(--surface)] font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 disabled:opacity-30"
             >
               Next <ChevronRight className="w-4 h-4 ml-1" />
             </Button>

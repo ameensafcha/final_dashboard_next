@@ -25,6 +25,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useUIStore } from "@/lib/stores";
 import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
 import { Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface Task {
   id: string;
@@ -61,10 +62,10 @@ interface Task {
 }
 
 const COLUMNS = [
-  { id: "not_started", title: "Not Started", color: "bg-gray-100" },
-  { id: "in_progress", title: "In Progress", color: "bg-blue-50" },
-  { id: "review", title: "Review", color: "bg-yellow-50" },
-  { id: "completed", title: "Completed", color: "bg-green-50" },
+  { id: "not_started", title: "Not Started" },
+  { id: "in_progress", title: "In Progress" },
+  { id: "review", title: "Review" },
+  { id: "completed", title: "Completed" },
 ];
 
 const COLUMN_IDS = new Set(COLUMNS.map((c) => c.id));
@@ -90,13 +91,18 @@ function KanbanColumn({
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-lg p-3 ${column.color} min-h-[300px] flex flex-col transition-all ${
-        isOver ? "ring-2 ring-amber-400 ring-inset brightness-95" : ""
-      }`}
+      className={cn(
+        "rounded-[var(--radius-xl)] p-4 flex flex-col transition-all duration-500 min-h-[500px]",
+        column.id === "not_started" && "bg-[var(--surface-container)]/50",
+        column.id === "in_progress" && "bg-[var(--accent)]/10",
+        column.id === "review" && "bg-[var(--info-bg)]/50",
+        column.id === "completed" && "bg-[var(--success-bg)]/50",
+        isOver && "ring-4 ring-[var(--accent)]/30 ring-inset brightness-95 scale-[0.98]"
+      )}
     >
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-gray-700 text-sm">{column.title}</h3>
-        <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded-full">
+      <div className="flex items-center justify-between mb-6 px-4">
+        <h3 className="text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.3em]">{column.title}</h3>
+        <span className="text-[10px] font-black text-[var(--primary)] bg-[var(--accent)]/30 px-3 py-1 rounded-full">
           {tasks.length}
         </span>
       </div>
@@ -105,13 +111,13 @@ function KanbanColumn({
         items={tasks.map((t) => t.id)}
         strategy={verticalListSortingStrategy}
       >
-        <div className="space-y-2 flex-1">
+        <div className="space-y-4 flex-1">
           {tasks.map((task) => (
             <TaskCard key={task.id} task={task} onClick={() => onTaskClick(task)} />
           ))}
           {tasks.length === 0 && (
-            <div className="flex items-center justify-center h-20 text-gray-400 text-sm border-2 border-dashed border-gray-200 rounded-lg">
-              Drop here
+            <div className="flex flex-col items-center justify-center h-32 text-[var(--muted)] bg-[var(--surface-container-lowest)]/50 rounded-[var(--radius-lg)] border-none shadow-inner animate-pulse">
+              <span className="text-[9px] font-black uppercase tracking-widest">Awaiting Mission</span>
             </div>
           )}
         </div>
@@ -259,9 +265,9 @@ export function TaskBoard({ initialData = [], currentUserId }: TaskBoardProps) {
     <div className="relative h-full">
       {updateTaskMutation.isPending && (
         <div className="absolute top-0 right-0 z-50 p-4">
-          <div className="bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-lg border border-gray-100 flex items-center gap-2">
-            <Loader2 className="w-4 h-4 animate-spin text-[#E8C547]" />
-            <span className="text-xs font-bold text-gray-600">Updating...</span>
+          <div className="bg-[var(--glass-bg)] backdrop-blur-xl px-5 py-2.5 rounded-full shadow-[var(--shadow-xl)] border-none flex items-center gap-3">
+            <Loader2 className="w-4 h-4 animate-spin text-[var(--primary)]" />
+            <span className="text-[10px] font-black text-[var(--foreground)] uppercase tracking-widest">Transmitting Updates...</span>
           </div>
         </div>
       )}
@@ -273,7 +279,7 @@ export function TaskBoard({ initialData = [], currentUserId }: TaskBoardProps) {
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <div className="grid grid-cols-4 gap-4 h-full">
+        <div className="grid grid-cols-4 gap-6 h-full">
           {COLUMNS.map((column) => (
             <KanbanColumn
               key={column.id}

@@ -1,19 +1,23 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Manrope, Inter } from "next/font/google";
 import { SidebarWrapper } from "@/components/sidebar-wrapper";
 import { Providers } from "@/components/providers";
 import { ToastContainer } from "@/components/toast-container";
 import { GlobalAuthWrapper } from "@/components/global-auth-wrapper";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const manrope = Manrope({
+  variable: "--font-manrope",
   subsets: ["latin"],
+  display: "swap",
+  preload: false,
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
+  display: "swap",
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -50,9 +54,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${manrope.variable} ${inter.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex">
+      <body className={`${manrope.variable} ${inter.variable} min-h-full flex font-sans antialiased`}>
         <Providers>
           <SidebarWrapper />
           <main className="flex-1 overflow-auto">

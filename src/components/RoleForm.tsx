@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import styles from '../app/admin/roles/roles.module.css';
+import { Loader2 } from 'lucide-react';
 
 interface RoleFormProps {
   initialData?: {
@@ -64,41 +64,42 @@ export default function RoleForm({ initialData, onSuccess, onCancel }: RoleFormP
   };
 
   return (
-    <form onSubmit={handleSubmit} className={styles.form}>
-      <div className={styles.formGroup}>
-        <label htmlFor="name" className={styles.label}>Role Name</label>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        <label htmlFor="name" className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Role Name</label>
         <input
           id="name"
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className={`${styles.input} ${validationError ? styles.inputError : ''}`}
+          className="input-field"
           placeholder="e.g. Administrator"
           disabled={isLoading}
         />
-        {validationError && <span className={styles.error}>{validationError}</span>}
+        {validationError && <span className="text-xs font-medium" style={{ color: 'var(--error)' }}>{validationError}</span>}
       </div>
 
-      <div className={styles.formGroup}>
-        <label htmlFor="description" className={styles.label}>Description</label>
+      <div className="flex flex-col gap-2">
+        <label htmlFor="description" className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Description</label>
         <textarea
           id="description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          className={`${styles.input} ${styles.textarea}`}
+          className="input-field min-h-[100px] resize-none"
           placeholder="Describe the role's responsibilities..."
           disabled={isLoading}
         />
       </div>
 
-      {error && <div className={styles.error}>{error}</div>}
+      {error && <div className="text-xs font-medium" style={{ color: 'var(--error)' }}>{error}</div>}
 
-      <div className={styles.formActions}>
+      <div className="flex justify-end gap-3 mt-2">
         {onCancel && (
           <button
             type="button"
             onClick={onCancel}
-            className={`${styles.button} ${styles.buttonSecondary}`}
+            className="px-6 py-3 rounded-full font-bold text-sm uppercase tracking-widest transition-all hover:scale-[1.02]"
+            style={{ backgroundColor: 'var(--surface)', color: 'var(--foreground)' }}
             disabled={isLoading}
           >
             Cancel
@@ -106,9 +107,10 @@ export default function RoleForm({ initialData, onSuccess, onCancel }: RoleFormP
         )}
         <button
           type="submit"
-          className={`${styles.button} ${styles.buttonPrimary}`}
+          className="btn-primary flex items-center gap-2"
           disabled={isLoading}
         >
+          {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
           {isLoading ? 'Saving...' : 'Save Role'}
         </button>
       </div>

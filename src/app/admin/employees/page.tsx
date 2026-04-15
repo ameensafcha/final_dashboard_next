@@ -5,7 +5,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { EmployeeForm } from "@/components/employee-form";
 import { useUIStore } from "@/lib/stores";
-import styles from "./employees.module.css";
+import { Loader2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Role {
   id: string;
@@ -34,20 +41,15 @@ export default function EmployeesPage() {
     onConfirm: () => void;
   }>({ open: false, title: "", message: "", onConfirm: () => {} });
 
-const { data: employees, isLoading } = useQuery<Employee[]>({
+  const { data: employees, isLoading } = useQuery<Employee[]>({
     queryKey: ["employees"],
     queryFn: async () => {
       const res = await fetch("/api/employees");
-
-      // FIX: Agar API chup-chaap login page pe redirect ho gayi hai, toh crash roko
       if (res.redirected) {
         window.location.href = "/login";
         return [];
       }
-
-      // FIX: Agar API fail ho jaye, toh crash roko
       if (!res.ok) throw new Error("Failed to fetch employees");
-
       const json = await res.json();
       if (json.error) throw new Error(json.error);
       return json.data || [];
@@ -94,7 +96,6 @@ const { data: employees, isLoading } = useQuery<Employee[]>({
     },
   });
 
-  // Task 1: Add roles query for dropdown
   const { data: roles } = useQuery<Role[]>({
     queryKey: ["roles"],
     queryFn: async () => {
@@ -105,7 +106,6 @@ const { data: employees, isLoading } = useQuery<Employee[]>({
     },
   });
 
-  // Task 2: Add role update mutation with permission cache invalidation (EMP-03)
   const updateRoleMutation = useMutation({
     mutationFn: async ({ employeeId, roleId }: { employeeId: string; roleId: string }) => {
       const res = await fetch("/api/auth/role", {
@@ -121,7 +121,6 @@ const { data: employees, isLoading } = useQuery<Employee[]>({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["employees"] });
-      // EMP-03: Invalidate permissions cache so new role takes effect immediately
       queryClient.invalidateQueries({ queryKey: ["permissions"] });
       addNotification({ type: "success", message: "Role updated successfully" });
     },
@@ -131,70 +130,88 @@ const { data: employees, isLoading } = useQuery<Employee[]>({
   });
 
   return (
-    <div className={styles.container}>
-      <div className={styles.navLinkContainer}>
-        <Link href="/admin/roles" className={styles.navLink}>
-          &larr; Manage Roles & Permissions
+    <div className="p-8 min-h-screen bg-[var(--surface)]">
+      <div className="mb-6">
+        <Link href="/admin/roles" className="text-label-sm hover:underline text-[var(--primary)]">
+          ← Manage Roles & Permissions
         </Link>
       </div>
 
-      <div className={styles.header}>
+      <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className={styles.title}>Employees</h1>
-          <p className={styles.subtitle}>Manage your team members</p>
+          <h1 className="text-section font-display text-[var(--foreground)]">
+            Employees
+          </h1>
+          <p className="text-body-light mt-1 text-[var(--muted-foreground)]">
+            Manage your team members
+          </p>
         </div>
         <button
           onClick={() => { setEditingEmployee(null); setShowForm(true); }}
-          className={styles.addButton}
+          className="btn-primary"
         >
           Add Employee
         </button>
       </div>
 
       {isLoading ? (
-        <div className={styles.spinnerContainer}>
-          <div className={styles.spinner}></div>
+        <div className="flex justify-center py-16">
+          <Loader2 className="w-10 h-10 animate-spin text-[var(--primary)]" />
         </div>
       ) : (
-        <div className={styles.tableContainer}>
-          <table className={styles.table}>
-            <thead className={styles.thead}>
+        <div className="glass-card overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-[var(--surface)]">
               <tr>
-                <th className={styles.th}>Name</th>
-                <th className={styles.th}>Email</th>
-                <th className={styles.th}>Role</th>
-                <th className={styles.th}>Status</th>
-                <th className={styles.th}>Actions</th>
+                <th className="text-label-sm py-5 px-6 text-left">Name</th>
+                <th className="text-label-sm py-5 px-6 text-left">Email</th>
+                <th className="text-label-sm py-5 px-6 text-left">Role</th>
+                <th className="text-label-sm py-5 px-6 text-left">Status</th>
+                <th className="text-label-sm py-5 px-6 text-left">Actions</th>
               </tr>
             </thead>
             <tbody>
               {employees?.map((emp) => (
-                <tr key={emp.id} className={styles.tr}>
-                  <td className={styles.td}><span className={styles.nameCell}>{emp.name}</span></td>
-                  <td className={styles.td}><span className={styles.emailCell}>{emp.email}</span></td>
-                  <td className={styles.td}>
-                    <select
-                      value={emp.role_id || ""}
-                      onChange={(e) => updateRoleMutation.mutate({ employeeId: emp.id, roleId: e.target.value })}
-                      disabled={updateRoleMutation.isPending}
-                      className={styles.select}
-                    >
-                      <option value="">No Role</option>
-                      {roles?.map((role) => (
-                        <option key={role.id} value={role.id}>{role.name}</option>
-                      ))}
-                    </select>
+                <tr key={emp.id} className="hover:bg-[var(--surface)] transition-colors">
+                  <td className="py-5 px-6">
+                    <span className="font-semibold text-[var(--foreground)]">{emp.name}</span>
                   </td>
-                  <td className={styles.td}>
-                    <span className={`${styles.badge} ${emp.is_active ? styles.badgeActive : styles.badgeInactive}`}>
+                  <td className="py-5 px-6 text-[var(--muted-foreground)]">{emp.email}</td>
+                  <td className="py-5 px-6">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        className="w-full px-3 py-2 rounded-[var(--radius-md)] text-sm font-medium flex items-center justify-between transition-colors bg-[var(--surface-container)]"
+                      >
+                        <span>{emp.role?.name || "No Role"}</span>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuRadioGroup 
+                          value={emp.role_id || ""} 
+                          onValueChange={(val) => updateRoleMutation.mutate({ employeeId: emp.id, roleId: val || "" })}
+                        >
+                          <DropdownMenuRadioItem value="">No Role</DropdownMenuRadioItem>
+                          {roles?.map((role) => (
+                            <DropdownMenuRadioItem key={role.id} value={role.id}>
+                              {role.name}
+                            </DropdownMenuRadioItem>
+                          ))}
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </td>
+                  <td className="py-5 px-6">
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${emp.is_active ? 'bg-[var(--success-bg)] text-[var(--success)]' : 'bg-[var(--error-bg)] text-[var(--error)]'}`}>
                       {emp.is_active ? "Active" : "Inactive"}
                     </span>
                   </td>
-                  <td className={styles.td}>
-                    <div className={styles.actions}>
+                  <td className="py-5 px-6">
+                    <div className="flex items-center gap-2">
                       <button
                         onClick={() => { setEditingEmployee(emp); setShowForm(true); }}
-                        className={`${styles.actionButton} ${styles.editAction}`}
+                        className="px-3 py-2 text-sm font-semibold transition-all hover:scale-[1.02] rounded-[var(--radius-md)] text-[var(--primary)] hover:bg-[var(--accent)]/20"
                       >
                         Edit
                       </button>
@@ -211,7 +228,7 @@ const { data: employees, isLoading } = useQuery<Employee[]>({
                               },
                             });
                           }}
-                          className={`${styles.actionButton} ${styles.deactivateAction}`}
+                          className="px-3 py-2 text-sm font-semibold transition-all hover:scale-[1.02] rounded-[var(--radius-md)] text-[var(--error)] hover:bg-[var(--error-bg)]"
                         >
                           Deactivate
                         </button>
@@ -228,7 +245,7 @@ const { data: employees, isLoading } = useQuery<Employee[]>({
                               },
                             });
                           }}
-                          className={`${styles.actionButton} ${styles.activateAction}`}
+                          className="px-3 py-2 text-sm font-semibold transition-all hover:scale-[1.02] rounded-[var(--radius-md)] text-[var(--success)] hover:bg-[var(--success-bg)]"
                         >
                           Activate
                         </button>
@@ -239,7 +256,7 @@ const { data: employees, isLoading } = useQuery<Employee[]>({
               ))}
               {(!employees || employees.length === 0) && (
                 <tr>
-                  <td colSpan={5} className={styles.emptyState}>
+                  <td colSpan={5} className="py-16 text-center text-[var(--muted)]">
                     No employees found
                   </td>
                 </tr>
@@ -258,30 +275,28 @@ const { data: employees, isLoading } = useQuery<Employee[]>({
       )}
 
       {confirmDialog.open && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modalContent}>
-            <div className={styles.modalHeader}>
-              <h3 className={styles.modalTitle}>{confirmDialog.title}</h3>
+        <div className="fixed inset-0 glass-card flex items-center justify-center z-50">
+          <div className="glass-card p-8 rounded-[var(--radius-xl)] max-w-md">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-sub font-display">{confirmDialog.title}</h3>
               <button
-                className={styles.modalClose}
                 onClick={() => setConfirmDialog(prev => ({ ...prev, open: false }))}
+                className="w-10 h-10 flex items-center justify-center rounded-[var(--radius-md)] transition-all text-[var(--muted-foreground)] hover:bg-[var(--surface-container)]"
               >
-                &times;
+                ✕
               </button>
             </div>
-            <div className={styles.modalBody}>
-              <p style={{ margin: 0, color: "#4B5563" }}>{confirmDialog.message}</p>
-            </div>
-            <div className={styles.modalFooter}>
+            <p className="mb-6 text-[var(--muted-foreground)]">{confirmDialog.message}</p>
+            <div className="flex justify-end gap-3">
               <button
-                className={`${styles.button} ${styles.buttonOutline}`}
                 onClick={() => setConfirmDialog(prev => ({ ...prev, open: false }))}
+                className="px-6 py-3 rounded-full font-bold text-sm uppercase tracking-widest transition-all hover:scale-[1.02] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-container)]"
               >
                 Cancel
               </button>
               <button
-                className={`${styles.button} ${styles.buttonPrimary}`}
                 onClick={confirmDialog.onConfirm}
+                className="btn-primary"
               >
                 Confirm
               </button>

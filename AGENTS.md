@@ -129,6 +129,15 @@ export async function GET() {
 - Use Tailwind v4 syntax, `cn()` for conditional classes
 - Mobile-first approach
 - **No-Line Rule**: Avoid 1px borders; use tonal shifts or space
+- **STRICT RULE**: Always use CSS variables from `global.css`. Never hardcode colors, fonts, or spacing.
+- All UI must follow DESIGN.md
+
+### UI Components (shadcn/ui)
+- Use shadcn/ui components from `@/components/ui/`
+- **For dropdowns/selects**: Use `DropdownMenu` instead of native `<select>` or `Select`
+
+### Typography
+- Use typography classes from `global.css`: `.text-section`, `.text-body-light`, `.text-code-label`, etc.
 
 ### Security
 - Never expose secrets in API responses

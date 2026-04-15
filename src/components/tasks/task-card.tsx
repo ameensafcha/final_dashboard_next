@@ -59,44 +59,41 @@ export function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
       {...listeners}
       onClick={onClick}
       className={cn(
-        "bg-white rounded-lg border p-3 cursor-pointer hover:shadow-md transition-all",
-        "border-l-4",
-        combinedDragging && "opacity-50 shadow-lg ring-2 ring-amber-400",
-        task.priority === "urgent" && "border-l-red-500",
-        task.priority === "high" && "border-l-orange-500",
-        task.priority === "medium" && "border-l-amber-400",
-        task.priority === "low" && "border-l-gray-400"
+        "bg-[var(--surface-container-lowest)] rounded-[var(--radius-lg)] p-5 cursor-pointer hover:shadow-[var(--shadow-xl)] hover:scale-[1.02] transition-all border-none shadow-[var(--shadow-sm)] flex flex-col gap-4",
+        combinedDragging && "opacity-50 shadow-[var(--shadow-xl)] ring-4 ring-[var(--accent)]/50 rotate-2 scale-105 z-50",
       )}
     >
-      <div className="flex justify-between items-start gap-2 mb-1">
-        <h4 className="font-bold text-sm text-gray-900 line-clamp-2 leading-snug">
+      <div className="flex justify-between items-start gap-3">
+        <h4 className="font-black text-[14px] text-[var(--foreground)] line-clamp-2 leading-snug tracking-tight">
           {task.title}
         </h4>
         {task.company && (
-          <span className="shrink-0 text-[9px] font-black uppercase tracking-tighter bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">
+          <span className="shrink-0 text-[9px] font-black uppercase tracking-widest bg-[var(--surface)] text-[var(--primary)] px-2 py-1 rounded-md shadow-inner">
             {task.company.name}
           </span>
         )}
       </div>
       
       {task.description && (
-        <p className="text-xs text-gray-500 mt-1 line-clamp-2 font-medium">
+        <p className="text-[12px] text-[var(--muted)] line-clamp-2 font-bold leading-relaxed">
           {task.description}
         </p>
       )}
 
-      <div className="flex items-center gap-2 mt-3 flex-wrap">
-        <PriorityBadge priority={task.priority} />
-        
-        {task.assignee && (
-          <div className="flex items-center gap-1.5">
-            <Avatar name={task.assignee.name} size="sm" />
-            <span className="text-[10px] font-bold text-gray-500">{task.assignee.name.split(' ')[0]}</span>
-          </div>
-        )}
+      <div className="flex items-center justify-between mt-auto pt-2">
+        <div className="flex items-center gap-3">
+          <PriorityBadge priority={task.priority} />
+          
+          {task.assignee && (
+            <div className="flex items-center gap-2 bg-[var(--surface)] px-2 py-1 rounded-full">
+              <Avatar name={task.assignee.name} size="sm" className="w-4 h-4" />
+              <span className="text-[9px] font-black uppercase tracking-widest text-[var(--muted)]">{task.assignee.name.split(' ')[0]}</span>
+            </div>
+          )}
+        </div>
 
         {task.due_date && (
-          <span className="text-[10px] font-bold text-gray-400 ml-auto uppercase">
+          <span className="text-[9px] font-black text-[var(--muted)] uppercase tracking-widest bg-[var(--surface-container)] px-2 py-1 rounded-md">
             {new Date(task.due_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
           </span>
         )}

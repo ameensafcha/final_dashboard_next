@@ -11,7 +11,7 @@ const DropdownMenuGroup = MenuPrimitive.Group
 const DropdownMenuSub = MenuPrimitive.SubmenuRoot
 
 const DropdownMenuTrigger = React.forwardRef<
-  React.ComponentRef<typeof MenuPrimitive.Trigger>,
+  HTMLButtonElement,
   MenuPrimitive.Trigger.Props
 >((props, ref) => (
   <MenuPrimitive.Trigger ref={ref} data-slot="dropdown-menu-trigger" {...props} />
@@ -19,7 +19,7 @@ const DropdownMenuTrigger = React.forwardRef<
 DropdownMenuTrigger.displayName = "DropdownMenuTrigger"
 
 const DropdownMenuTriggerStyled = React.forwardRef<
-  React.ComponentRef<typeof MenuPrimitive.Trigger>,
+  HTMLButtonElement,
   MenuPrimitive.Trigger.Props
 >(({ className, children, ...props }, ref) => (
   <MenuPrimitive.Trigger

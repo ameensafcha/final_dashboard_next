@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useId } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
@@ -24,10 +24,10 @@ export function useRealtimeSubscription({
   const channelRef = useRef<RealtimeChannel | null>(null);
   const onMessageRef = useRef(onMessage);
 
-  // Create unique instance ID to prevent channel name collisions
-  // When NotificationCenter renders in multiple places or in React Strict Mode,
-  // each instance needs its own channel to avoid one cleanup destroying another's channel
-  const instanceId = useRef(Math.random().toString(36).substring(2, 9)).current;
+  // Create unique instance ID to prevent channel name collisions.
+  // useId() is pure and stable — safe in Strict Mode and concurrent renders.
+  const rawId = useId();
+  const instanceId = rawId.replace(/[^a-z0-9]/gi, '');
 
   // Keep onMessage ref updated without causing re-renders
   onMessageRef.current = onMessage;

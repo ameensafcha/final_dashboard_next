@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import styles from './roles.module.css';
 import RoleForm from '@/components/RoleForm';
 
 interface Role {
@@ -48,50 +47,40 @@ export default function RoleTable({ roles }: RoleTableProps) {
   };
 
   return (
-    <div className={styles.tableContainer}>
-      <table className={styles.table}>
-        <thead>
+    <div className="glass-card overflow-hidden">
+      <table className="w-full">
+        <thead className="bg-[var(--surface)]">
           <tr>
-            <th className={styles.th}>Role Name</th>
-            <th className={styles.th}>Description</th>
-            <th className={styles.th}>Employees</th>
-            <th className={styles.th}>Actions</th>
+            <th className="text-label-sm py-5 px-6 text-left">Role Name</th>
+            <th className="text-label-sm py-5 px-6 text-left">Description</th>
+            <th className="text-label-sm py-5 px-6 text-left">Employees</th>
+            <th className="text-label-sm py-5 px-6 text-left">Actions</th>
           </tr>
         </thead>
         <tbody>
           {roles.map((role) => (
-            <tr key={role.id} className={styles.row}>
-              <td className={styles.td}>
-                <span style={{ fontWeight: 600, textTransform: 'uppercase' }}>{role.name}</span>
+            <tr key={role.id} className="hover:bg-[var(--surface)] transition-colors">
+              <td className="py-5 px-6">
+                <span className="font-semibold uppercase text-[var(--foreground)]">{role.name}</span>
               </td>
-              <td className={styles.td}>{role.description || 'N/A'}</td>
-              <td className={styles.td}>
-                <span style={{ 
-                  display: 'inline-flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  width: '2rem', 
-                  height: '2rem', 
-                  borderRadius: '50%', 
-                  backgroundColor: '#f3f4f6',
-                  fontSize: '0.875rem',
-                  fontWeight: 500
-                }}>
+              <td className="py-5 px-6 text-[var(--muted-foreground)]">{role.description || 'N/A'}</td>
+              <td className="py-5 px-6">
+                <span className="inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium bg-[var(--surface-container)] text-[var(--foreground)]">
                   {role._count?.employees || 0}
                 </span>
               </td>
-              <td className={styles.td}>
-                <div className={styles.actions}>
+              <td className="py-5 px-6">
+                <div className="flex items-center gap-2">
                   <button
                     onClick={() => setEditingRole(role)}
-                    className={`${styles.button} ${styles.buttonSecondary}`}
+                    className="px-4 py-2 text-sm font-semibold rounded-[var(--radius-md)] transition-all hover:scale-[1.02] text-[var(--primary)] hover:bg-[var(--accent)]/20"
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => handleDelete(role.id, role.name)}
-                    className={`${styles.button} ${styles.buttonDanger}`}
                     disabled={isDeleting === role.id}
+                    className="px-4 py-2 text-sm font-semibold rounded-[var(--radius-md)] transition-all hover:scale-[1.02] disabled:opacity-50 text-[var(--error)] hover:bg-[var(--error-bg)]"
                   >
                     {isDeleting === role.id ? '...' : 'Delete'}
                   </button>
@@ -101,7 +90,7 @@ export default function RoleTable({ roles }: RoleTableProps) {
           ))}
           {roles.length === 0 && (
             <tr>
-              <td colSpan={4} className={styles.td} style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
+              <td colSpan={4} className="py-16 text-center font-semibold text-[var(--muted)]">
                 No roles found.
               </td>
             </tr>
@@ -110,13 +99,18 @@ export default function RoleTable({ roles }: RoleTableProps) {
       </table>
 
       {editingRole && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modalContent}>
-            <div className={styles.modalHeader}>
-              <h3 className={styles.modalTitle}>Edit Role</h3>
-              <button className={styles.modalClose} onClick={() => setEditingRole(null)}>&times;</button>
+        <div className="fixed inset-0 bg-[var(--foreground)]/20 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="glass-card p-8 rounded-[var(--radius-xl)] max-w-md w-full">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-sub font-display text-[var(--foreground)]">Edit Role</h3>
+              <button
+                onClick={() => setEditingRole(null)}
+                className="w-10 h-10 flex items-center justify-center rounded-[var(--radius-md)] transition-all text-[var(--muted-foreground)] hover:bg-[var(--surface-container)]"
+              >
+                ✕
+              </button>
             </div>
-            <div className={styles.modalBody}>
+            <div className="py-8">
               <RoleForm
                 initialData={editingRole}
                 onSuccess={() => {

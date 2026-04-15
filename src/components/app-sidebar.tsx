@@ -50,6 +50,7 @@ const financeItems = [
 ];
 
 const taskItems = [
+  { label: "Daily Command", href: "/tasks/daily", icon: Sparkles },
   { label: "All Tasks", href: "/tasks", icon: ListTodo },
   { label: "Kanban Board", href: "/tasks/board", icon: LayoutGrid },
 ];
@@ -103,13 +104,13 @@ export function AppSidebar() {
     <Link
       href={href}
       className={cn(
-        "flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 group",
-        active 
-          ? "bg-amber-100 text-amber-900 font-bold border-l-4 border-amber-500 rounded-l-none" 
-          : "text-gray-600 hover:bg-amber-50 hover:text-amber-900"
+        "flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-lg)] transition-all duration-200 group hover:scale-[1.02]",
+        active
+          ? "bg-[var(--accent)]/20 text-[var(--primary)] font-bold"
+          : "text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--primary)]"
       )}
     >
-      <Icon className={cn("w-5 h-5", active ? "text-amber-600" : "text-gray-400 group-hover:text-amber-500")} />
+      <Icon className={cn("w-5 h-5", active ? "text-[var(--primary)]" : "text-[var(--muted)] group-hover:text-[var(--primary)]")} />
       <span className="text-sm">{label}</span>
     </Link>
   );
@@ -118,27 +119,26 @@ export function AppSidebar() {
     <Link
       href={href}
       className={cn(
-        "flex items-center gap-3 px-3 py-1.5 rounded-lg transition-all duration-200 group ml-4",
-        active 
-          ? "text-amber-700 font-bold bg-white shadow-sm" 
-          : "text-gray-500 hover:text-amber-600 hover:bg-white/50"
+        "flex items-center gap-3 px-3 py-2 rounded-[var(--radius-md)] transition-all duration-200 group ml-4 hover:scale-[1.02]",
+        active
+          ? "text-[var(--primary)] font-bold bg-[var(--accent)]/10"
+          : "text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--surface)]"
       )}
     >
-      <Icon className={cn("w-4 h-4", active ? "text-amber-500" : "text-gray-300 group-hover:text-amber-400")} />
+      <Icon className={cn("w-4 h-4", active ? "text-[var(--primary)]" : "text-[var(--muted)] group-hover:text-[var(--primary)]")} />
       <span className="text-[13px]">{label}</span>
     </Link>
   );
 
   return (
     <aside
-      className="h-screen w-64 flex flex-col border-r bg-[#F9F8F3] sticky top-0"
-      style={{ borderColor: "#E8C54720" }}
+      className="h-screen w-64 flex flex-col bg-[var(--surface)]/80 backdrop-blur-md sticky top-0"
     >
-      <div className="p-6 border-b flex items-center gap-3" style={{ borderColor: "#E8C54720" }}>
-        <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center shadow-lg shadow-amber-500/20">
-          <Package className="w-5 h-5 text-white" />
+      <div className="p-6 flex items-center gap-3 bg-[var(--glass-bg)]">
+        <div className="w-10 h-10 bg-[var(--primary)] rounded-[var(--radius-lg)] flex items-center justify-center shadow-lg shadow-[var(--primary)]/20">
+          <Package className="w-5 h-5 text-[var(--primary-foreground)]" />
         </div>
-        <h1 className="text-xl font-black tracking-tight text-gray-900">SAFCHA</h1>
+        <h1 className="text-xl font-black tracking-tight text-[var(--foreground)] font-display">SAFCHA</h1>
       </div>
 
       <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto scrollbar-hide">
@@ -150,19 +150,19 @@ export function AppSidebar() {
         />
 
         <div className="pt-4 pb-2">
-          <p className="px-3 text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Management</p>
+          <p className="px-3 text-[10px] font-black uppercase tracking-widest text-[var(--muted)] mb-2">Management</p>
           
           <div className="space-y-1">
             <button
               onClick={() => setInventoryOpen(!inventoryOpen)}
               className={cn(
-                "w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all group",
-                isParentActive(inventoryPaths) ? "text-amber-900 font-bold" : "text-gray-600 hover:bg-amber-50"
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all group hover:scale-[1.02]",
+                isParentActive(inventoryPaths) ? "text-[var(--primary)] font-bold bg-[var(--accent)]/20" : "text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--primary)]"
               )}
             >
-              <Package className={cn("w-5 h-5", isParentActive(inventoryPaths) ? "text-amber-600" : "text-gray-400 group-hover:text-amber-500")} />
+              <Package className={cn("w-5 h-5", isParentActive(inventoryPaths) ? "text-[var(--primary)]" : "text-[var(--muted)] group-hover:text-[var(--primary)]")} />
               <span className="flex-1 text-left text-sm">Inventory</span>
-              <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", !inventoryOpen && "-rotate-90 text-gray-300")} />
+              <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", !inventoryOpen && "-rotate-90 text-[var(--muted)]")} />
             </button>
             {inventoryOpen && (
               <div className="space-y-1 py-1">
@@ -177,13 +177,13 @@ export function AppSidebar() {
             <button
               onClick={() => setProductsOpen(!productsOpen)}
               className={cn(
-                "w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all group",
-                isParentActive(productsPaths) ? "text-amber-900 font-bold" : "text-gray-600 hover:bg-amber-50"
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all group hover:scale-[1.02]",
+                isParentActive(productsPaths) ? "text-[var(--primary)] font-bold bg-[var(--accent)]/20" : "text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--primary)]"
               )}
             >
-              <ShoppingBag className={cn("w-5 h-5", isParentActive(productsPaths) ? "text-amber-600" : "text-gray-400 group-hover:text-amber-500")} />
+              <ShoppingBag className={cn("w-5 h-5", isParentActive(productsPaths) ? "text-[var(--primary)]" : "text-[var(--muted)] group-hover:text-[var(--primary)]")} />
               <span className="flex-1 text-left text-sm">Products</span>
-              <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", !productsOpen && "-rotate-90 text-gray-300")} />
+              <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", !productsOpen && "-rotate-90 text-[var(--muted)]")} />
             </button>
             {productsOpen && (
               <div className="space-y-1 py-1">
@@ -198,13 +198,13 @@ export function AppSidebar() {
             <button
               onClick={() => setProductionOpen(!productionOpen)}
               className={cn(
-                "w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all group",
-                isParentActive(productionPaths) ? "text-amber-900 font-bold" : "text-gray-600 hover:bg-amber-50"
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all group hover:scale-[1.02]",
+                isParentActive(productionPaths) ? "text-[var(--primary)] font-bold bg-[var(--accent)]/20" : "text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--primary)]"
               )}
             >
-              <Factory className={cn("w-5 h-5", isParentActive(productionPaths) ? "text-amber-600" : "text-gray-400 group-hover:text-amber-500")} />
+              <Factory className={cn("w-5 h-5", isParentActive(productionPaths) ? "text-[var(--primary)]" : "text-[var(--muted)] group-hover:text-[var(--primary)]")} />
               <span className="flex-1 text-left text-sm">Production</span>
-              <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", !productionOpen && "-rotate-90 text-gray-300")} />
+              <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", !productionOpen && "-rotate-90 text-[var(--muted)]")} />
             </button>
             {productionOpen && (
               <div className="space-y-1 py-1">
@@ -217,19 +217,19 @@ export function AppSidebar() {
         </div>
 
         <div className="pt-2 pb-2">
-          <p className="px-3 text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Operations</p>
+          <p className="px-3 text-[10px] font-black uppercase tracking-widest text-[var(--muted)] mb-2">Operations</p>
           
           <div className="space-y-1">
             <button
               onClick={() => setTaskOpen(!taskOpen)}
               className={cn(
-                "w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all group",
-                isParentActive(taskPaths) ? "text-amber-900 font-bold" : "text-gray-600 hover:bg-amber-50"
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all group hover:scale-[1.02]",
+                isParentActive(taskPaths) ? "text-[var(--primary)] font-bold bg-[var(--accent)]/20" : "text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--primary)]"
               )}
             >
-              <ListTodo className={cn("w-5 h-5", isParentActive(taskPaths) ? "text-amber-600" : "text-gray-400 group-hover:text-amber-500")} />
+              <ListTodo className={cn("w-5 h-5", isParentActive(taskPaths) ? "text-[var(--primary)]" : "text-[var(--muted)] group-hover:text-[var(--primary)]")} />
               <span className="flex-1 text-left text-sm">Tasks</span>
-              <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", !taskOpen && "-rotate-90 text-gray-300")} />
+              <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", !taskOpen && "-rotate-90 text-[var(--muted)]")} />
             </button>
             {taskOpen && (
               <div className="space-y-1 py-1">
@@ -244,13 +244,13 @@ export function AppSidebar() {
             <button
               onClick={() => setFinanceOpen(!financeOpen)}
               className={cn(
-                "w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all group",
-                isParentActive(financePaths) ? "text-amber-900 font-bold" : "text-gray-600 hover:bg-amber-50"
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all group hover:scale-[1.02]",
+                isParentActive(financePaths) ? "text-[var(--primary)] font-bold bg-[var(--accent)]/20" : "text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--primary)]"
               )}
             >
-              <DollarSign className={cn("w-5 h-5", isParentActive(financePaths) ? "text-amber-600" : "text-gray-400 group-hover:text-amber-500")} />
+              <DollarSign className={cn("w-5 h-5", isParentActive(financePaths) ? "text-[var(--primary)]" : "text-[var(--muted)] group-hover:text-[var(--primary)]")} />
               <span className="flex-1 text-left text-sm">Finance</span>
-              <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", !financeOpen && "-rotate-90 text-gray-300")} />
+              <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", !financeOpen && "-rotate-90 text-[var(--muted)]")} />
             </button>
             {financeOpen && (
               <div className="space-y-1 py-1">
@@ -265,7 +265,7 @@ export function AppSidebar() {
         {/* Admin Panel Link */}
         {isLoggedIn && isAdmin && (
           <div className="pt-2">
-            <p className="px-3 text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Settings</p>
+            <p className="px-3 text-[10px] font-black uppercase tracking-widest text-[var(--muted)] mb-2">Settings</p>
             <NavItem 
               href="/admin" 
               label="Admin Panel" 
@@ -278,27 +278,27 @@ export function AppSidebar() {
 
       {/* Modern Footer */}
       {isLoggedIn && (
-        <div className="p-4 bg-white/50 border-t mx-2 mb-2 rounded-2xl border-amber-100 shadow-sm">
+        <div className="p-4 bg-[var(--glass-bg)] backdrop-blur-sm mx-2 mb-2 rounded-[var(--radius-xl)] shadow-inner">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 bg-amber-100 rounded-xl flex items-center justify-center text-amber-700 font-bold text-xs shrink-0 border border-amber-200">
+              <div className="w-10 h-10 bg-[var(--accent)] rounded-[var(--radius-lg)] flex items-center justify-center text-[var(--primary)] font-bold text-xs shrink-0">
                 {employee?.email?.substring(0, 2).toUpperCase() || "US"}
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-bold text-gray-900 truncate">
+                <p className="text-sm font-bold text-[var(--foreground)] truncate">
                   {employee?.email?.split('@')[0] || "User"}
                 </p>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--primary)]">
                   {isAdmin ? "admin" : "member"}
                 </p>
               </div>
             </div>
             <NotificationCenter />
           </div>
-          
+
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gray-50 hover:bg-red-50 text-gray-500 hover:text-red-600 transition-all duration-200 group border border-gray-100 hover:border-red-100"
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-[var(--radius-lg)] bg-[var(--surface)] hover:bg-[var(--error-bg)] text-[var(--muted-foreground)] hover:text-[var(--error)] transition-all duration-200 group hover:scale-[1.02]"
           >
             <LogOut className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
             <span className="text-xs font-bold uppercase tracking-widest">Sign Out</span>

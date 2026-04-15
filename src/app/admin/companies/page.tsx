@@ -86,62 +86,64 @@ export default function CompaniesAdminPage() {
   });
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
+    <div className="p-8 max-w-4xl mx-auto min-h-screen bg-[var(--surface)]">
       <header className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-black text-gray-900 flex items-center gap-3">
-            <Building2 className="w-6 h-6 text-[#E8C547]" />
+          <h1 className="text-section font-display text-[var(--foreground)] flex items-center gap-3">
+            <Building2 className="w-6 h-6 text-[var(--primary)]" />
             Company Management
           </h1>
-          <p className="text-gray-500 text-sm mt-1 font-medium">Manage companies for task association</p>
+          <p className="text-body-light mt-1 text-[var(--muted-foreground)]">
+            Manage companies for task association
+          </p>
         </div>
         <button
           onClick={() => setIsAdding(true)}
-          className="bg-[#1A1A1A] text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-black transition-all"
+          className="btn-primary flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
           Add Company
         </button>
       </header>
 
-      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="glass-card overflow-hidden">
         {isLoading ? (
           <div className="p-12 flex justify-center">
-            <Loader2 className="w-8 h-8 animate-spin text-[#E8C547]" />
+            <Loader2 className="w-8 h-8 animate-spin text-[var(--primary)]" />
           </div>
         ) : (
           <table className="w-full text-left">
-            <thead className="bg-gray-50 border-b border-gray-50">
+            <thead className="bg-[var(--surface)]">
               <tr>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Company Name</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 text-right">Actions</th>
+                <th className="text-label-sm px-6 py-4 text-left">Company Name</th>
+                <th className="text-label-sm px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody>
               {isAdding && (
-                <tr className="bg-amber-50/30">
+                <tr className="bg-[var(--accent)]/10">
                   <td className="px-6 py-4">
                     <input
                       autoFocus
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
                       placeholder="Enter company name..."
-                      className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-[#E8C547]/20 focus:border-[#E8C547]"
+                      className="input-field"
                       onKeyDown={(e) => e.key === "Enter" && createMutation.mutate(newName)}
                     />
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2">
-                      <button 
+                      <button
                         onClick={() => createMutation.mutate(newName)}
                         disabled={createMutation.isPending || !newName.trim()}
-                        className="p-2 text-green-600 hover:bg-green-50 rounded-lg"
+                        className="p-2 rounded-[var(--radius-md)] transition-all hover:scale-[1.02] text-[var(--success)] hover:bg-[var(--success-bg)]"
                       >
                         <Check className="w-4 h-4" />
                       </button>
-                      <button 
+                      <button
                         onClick={() => setIsAdding(false)}
-                        className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg"
+                        className="p-2 rounded-[var(--radius-md)] transition-all hover:scale-[1.02] text-[var(--muted-foreground)] hover:bg-[var(--surface-container)]"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -150,48 +152,48 @@ export default function CompaniesAdminPage() {
                 </tr>
               )}
               {companiesList.map((company) => (
-                <tr key={company.id} className="group hover:bg-gray-50/50 transition-colors">
+                <tr key={company.id} className="group hover:bg-[var(--surface)] transition-colors">
                   <td className="px-6 py-4">
                     {editingId === company.id ? (
                       <input
                         autoFocus
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
-                        className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-[#E8C547]/20"
+                        className="input-field"
                         onKeyDown={(e) => e.key === "Enter" && updateMutation.mutate({ id: company.id, name: editName })}
                       />
                     ) : (
-                      <span className="text-sm font-bold text-gray-700">{company.name}</span>
+                      <span className="text-sm font-bold text-[var(--foreground)]">{company.name}</span>
                     )}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex justify-end gap-1">
                       {editingId === company.id ? (
                         <>
-                          <button 
+                          <button
                             onClick={() => updateMutation.mutate({ id: company.id, name: editName })}
-                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg"
+                            className="p-2 rounded-[var(--radius-md)] transition-all hover:scale-[1.02] text-[var(--success)] hover:bg-[var(--success-bg)]"
                           >
                             <Check className="w-4 h-4" />
                           </button>
-                          <button 
+                          <button
                             onClick={() => setEditingId(null)}
-                            className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg"
+                            className="p-2 rounded-[var(--radius-md)] transition-all hover:scale-[1.02] text-[var(--muted-foreground)] hover:bg-[var(--surface-container)]"
                           >
                             <X className="w-4 h-4" />
                           </button>
                         </>
                       ) : (
                         <>
-                          <button 
+                          <button
                             onClick={() => { setEditingId(company.id); setEditName(company.name); }}
-                            className="p-2 text-gray-400 hover:text-[#E8C547] hover:bg-[#E8C547]/10 rounded-lg transition-colors"
+                            className="p-2 rounded-[var(--radius-md)] transition-all hover:scale-[1.02] text-[var(--primary)] hover:bg-[var(--accent)]/20"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
-                          <button 
+                          <button
                             onClick={() => { if(confirm("Are you sure?")) deleteMutation.mutate(company.id); }}
-                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            className="p-2 rounded-[var(--radius-md)] transition-all hover:scale-[1.02] text-[var(--error)] hover:bg-[var(--error-bg)]"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -203,7 +205,7 @@ export default function CompaniesAdminPage() {
               ))}
               {companiesList.length === 0 && !isAdding && (
                 <tr>
-                  <td colSpan={2} className="px-6 py-12 text-center text-gray-400 text-sm font-medium">
+                  <td colSpan={2} className="px-6 py-12 text-center text-sm font-medium text-[var(--muted)]">
                     No companies found. Add your first one!
                   </td>
                 </tr>

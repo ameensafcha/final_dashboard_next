@@ -41,6 +41,7 @@ model Employee {
   batches                batches[]
   transactions           transactions[]
   task_attachments       task_attachments[]
+  daily_plans            DailyPlan[]      @relation("employee_daily_plans")
 
   @@index([email])
   @@index([role_id])
@@ -407,36 +408,54 @@ model task_time_logs {
 
 model DailyPlan {
   id             String         @id @default(uuid())
-  plan_date      DateTime       @unique @default(now())
-  final_score    Int            @default(0)
+  employee_id    String
+  plan_date      DateTime       @default(now())
+  score          Int            @default(0) // Out of 10
   
-  tomorrow_notes TomorrowNotes?
+  employee       Employee       @relation("employee_daily_plans", fields: [employee_id], references: [id])
   items          DailyItem[]
   blockers       DailyBlocker[]
+  tomorrow_notes String[]       // Simple list for next day's prep
+  
+  created_at     DateTime       @default(now())
+  updated_at     DateTime       @updatedAt
+
+  @@unique([plan_date, employee_id])
+  @@index([employee_id])
+  @@index([plan_date])
+  @@map("daily_plans")
 }
 
 model DailyItem {
   id              String    @id @default(uuid())
   daily_plan_id   String
   title           String
-  tier            Int
-  biz             String
-  status          String    @default("Pending")
+  tier            Int       // 1 = Move the Needle, 2 = Quick Wins
+  biz             String    // 'S' = Sales, 'N' = Non-Sales
+  status          String    @default("PENDING") // PENDING, COMPLETED, BLOCKED, ARCHIVED
+  notes           String?   
+  
+  // Specific to Blocker/Carryover logic
+  blocker_reason  String?   
+  action_owner    String?   
   carryover_count Int       @default(0)
+  
   daily_plan      DailyPlan @relation(fields: [daily_plan_id], references: [id], onDelete: Cascade)
+
+  @@index([daily_plan_id])
+  @@index([status])
+  @@map("daily_items")
 }
 
 model DailyBlocker {
   id             String    @id @default(uuid())
   daily_plan_id  String
   blocker_text   String
-  action_owner   String?
+  action_owner   String?   // Who needs to act
+  status         String    @default("ACTIVE") // ACTIVE, RESOLVED
+  
   daily_plan     DailyPlan @relation(fields: [daily_plan_id], references: [id], onDelete: Cascade)
-}
 
-model TomorrowNotes {
-  id  String @id @default(uuid())
-  notes String[]
-  daily_plan_id String    @unique
-  daily_plan DailyPlan @relation(fields:[daily_plan_id],references:[id],onDelete:Cascade)
+  @@index([daily_plan_id])
+  @@map("daily_blockers")
 }

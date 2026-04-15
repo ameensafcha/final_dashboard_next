@@ -9,6 +9,7 @@ export const taskAreaSchema = z.enum([
   "Procurement",
   "HR",
   "Admin",
+  "Development",
   "Maintenance",
   "Finance",
 ]);
@@ -69,3 +70,30 @@ export const taskQuerySchema = z.object({
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
 export type TaskQueryInput = z.infer<typeof taskQuerySchema>;
+
+// --- Daily Command Center Schemas ---
+
+export const dailyItemStatusSchema = z.enum(['PENDING', 'IN_PROGRESS', 'COMPLETED', 'BLOCKED', 'ARCHIVED']);
+export const dailyItemTierSchema = z.union([z.literal(1), z.literal(2)]);
+export const dailyItemBizSchema = z.enum(['S', 'N']);
+
+export const createDailyItemSchema = z.object({
+  daily_plan_id: z.string().min(1),
+  title: z.string().min(1, 'Title is required').max(500),
+  tier: dailyItemTierSchema.default(1),
+  biz: dailyItemBizSchema.default('N'),
+  carryover_count: z.number().int().min(0).default(0),
+  notes: z.string().nullable().optional(),
+});
+
+export const updateDailyItemSchema = z.object({
+  status: dailyItemStatusSchema.optional(),
+  title: z.string().min(1).max(500).optional(),
+  biz: dailyItemBizSchema.optional(),
+  notes: z.string().nullable().optional(),
+  blocker_reason: z.string().nullable().optional(),
+  action_owner: z.string().nullable().optional(),
+});
+
+export type CreateDailyItemInput = z.infer<typeof createDailyItemSchema>;
+export type UpdateDailyItemInput = z.infer<typeof updateDailyItemSchema>;

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Paperclip, X, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useUIStore } from "@/lib/stores";
+import { cn } from "@/lib/utils";
 
 interface TaskAttachmentUploaderProps {
   taskId: string;
@@ -69,15 +70,27 @@ export function TaskAttachmentUploader({ taskId, onSuccess }: TaskAttachmentUplo
   };
 
   return (
-    <div className="mt-4">
-      <label className="cursor-pointer">
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-gray-300 hover:border-amber-500 hover:bg-amber-50 transition-all text-sm text-gray-600">
-          {isUploading ? (
-            <Loader2 className="w-4 h-4 animate-spin text-amber-600" />
-          ) : (
-            <Paperclip className="w-4 h-4 text-amber-600" />
-          )}
-          <span>{isUploading ? "Uploading..." : "Attach File (Max 5MB)"}</span>
+    <div className="h-full">
+      <label className="cursor-pointer h-full block">
+        <div className="flex flex-col items-center justify-center gap-4 h-full px-6 py-10 rounded-[var(--radius-xl)] bg-[var(--surface)] border-none shadow-inner group transition-all hover:bg-[var(--surface-container-lowest)] hover:shadow-[var(--shadow-xl)] hover:scale-[1.02]">
+          <div className={cn(
+            "w-14 h-14 rounded-[var(--radius-lg)] flex items-center justify-center transition-all",
+            isUploading ? "bg-[var(--surface-container)]" : "bg-[var(--surface-container-lowest)] shadow-[var(--shadow-sm)] group-hover:bg-[var(--accent)]/20"
+          )}>
+            {isUploading ? (
+              <Loader2 className="w-6 h-6 animate-spin text-[var(--primary)]" />
+            ) : (
+              <Paperclip className="w-6 h-6 text-[var(--primary)]" />
+            )}
+          </div>
+          <div className="text-center">
+            <span className="block text-[10px] font-black uppercase tracking-[0.3em] text-[var(--primary)]">
+              {isUploading ? "Transmitting..." : "Attach Intelligence"}
+            </span>
+            <span className="block text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-1">
+              Max 5MB • All Sectors
+            </span>
+          </div>
         </div>
         <input
           type="file"

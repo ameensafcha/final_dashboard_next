@@ -8,10 +8,14 @@ export default async function TasksPage() {
   if (!user) return null;
 
   return (
-    <div className="p-8">
+    <div className="p-8 bg-[var(--surface)] min-h-screen">
       <header className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight">Task Management</h1>
-        <p className="text-gray-500">View and manage system-wide tasks</p>
+        <h1 className="text-sub font-display text-[var(--foreground)]">
+          Task Management
+        </h1>
+        <p className="text-body-light text-[var(--muted)] mt-1">
+          View and manage system-wide tasks
+        </p>
       </header>
       <TasksTable currentUserId={user.id} />
     </div>

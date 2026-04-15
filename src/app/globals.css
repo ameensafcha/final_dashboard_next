@@ -1,35 +1,169 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* Hide scrollbar but allow scrolling */
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
+/* ========================================
+   DESIGN SYSTEM: The Luminous Dashboard
+   All UI must use CSS variables from this file
+   ======================================== */
 
 :root {
-  --background: #F5F4EE;
-  --foreground: #1A1A1A;
-  --primary: #E8C547;
-  --primary-foreground: #1A1A1A;
-  --secondary: #D4B84A;
-  --secondary-foreground: #1A1A1A;
-  --accent: #E8C547;
-  --accent-foreground: #1A1A1A;
-  --destructive: #DC2626;
-  --destructive-foreground: #FFFFFF;
-  --border: #E8E7E1;
-  --input: #E8E7E1;
-  --ring: #E8C547;
+  /* ========================================
+     1. COLORS - Warm-on-Warm Strategy
+     ======================================== */
   
-  --popover: #FFFFFF;
-  --popover-foreground: #1A1A1A;
-
-  --radius: 0.75rem;
+  /* Primary - Gold/Brown (#735c00) */
+  --primary: #735c00;
+  --primary-foreground: #ffffff;
+  
+  /* Primary Container - Warm Yellow (#ffd54f) */
+  --primary-container: #ffd54f;
+  --on-primary-container: #261e00;
+  
+  /* Secondary - Charcoal (#5f5e5e) */
+  --secondary: #5f5e5e;
+  --secondary-foreground: #ffffff;
+  
+  /* Base Layer - Surface (#fbfaf1) */
+  --background: #fbfaf1;
+  --foreground: #1c1b1a;
+  --surface: #fbfaf1;
+  
+  /* Surface Hierarchy - Tonal Layering */
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #f5f4ed;
+  --surface-container: #f0efe9;
+  --surface-container-high: #e8e6df;
+  --surface-container-highest: #dedbd2;
+  
+  /* Accent Colors */
+  --accent: #ffd54f;
+  --accent-foreground: #735c00;
+  
+  /* Muted */
+  --muted: #9ca3af;
+  --muted-foreground: #6b7280;
+  
+  /* Status Colors */
+  --success: #16a34a;
+  --success-bg: #dcfce7;
+  --warning: #d97706;
+  --warning-bg: #fef3c7;
+  --error: #dc2626;
+  --error-bg: #fee2e2;
+  --info: #2563eb;
+  --info-bg: #dbeafe;
+  
+  /* ========================================
+     2. TYPOGRAPHY - Dual Font Strategy
+     ======================================== */
+  
+  /* Font Families */
+  --font-display: 'Manrope', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'Source Code Pro', monospace;
+  
+  /* Display / Hero - Manrope (96px) */
+  --text-display: 6rem;        /* 96px */
+  --text-display-weight: 400;
+  --text-display-line: 1.20;
+  
+  /* Section Heading - Manrope (36px) */
+  --text-section: 2.25rem;     /* 36px */
+  --text-section-weight: 500;
+  --text-section-line: 1.33;
+  
+  /* Sub-heading - Manrope (24px) */
+  --text-sub: 1.5rem;         /* 24px */
+  --text-sub-weight: 500;
+  --text-sub-line: 1.33;
+  
+  /* Body Light - Inter (16px, 300 weight) */
+  --text-body-light: 1rem;   /* 16px */
+  --text-body-light-weight: 300;
+  --text-body-light-line: 1.50;
+  
+  /* Body - Inter (16px, 400 weight) */
+  --text-body: 1rem;          /* 16px */
+  --text-body-weight: 400;
+  --text-body-line: 1.50;
+  
+  /* Code Label - Source Code Pro (14px, uppercase) */
+  --text-code-label: 0.875rem; /* 14px */
+  --text-code-label-weight: 400;
+  --text-code-label-spacing: 0.125rem; /* +2px */
+  --text-code-label-case: uppercase;
+  
+  /* Code Body - Source Code Pro (16px) */
+  --text-code: 1rem;          /* 16px */
+  --text-code-weight: 400;
+  
+  /* Code Micro - Source Code Pro (9px, uppercase) */
+  --text-code-micro: 0.5625rem; /* 9px */
+  --text-code-micro-weight: 600;
+  --text-code-micro-spacing: 0.15625rem; /* +2.5px */
+  --text-code-micro-case: uppercase;
+  
+  /* Label Small */
+  --text-label-sm: 0.75rem;   /* 12px */
+  --text-label-sm-weight: 700;
+  --text-label-sm-spacing: 0.1em;
+  --text-label-sm-case: uppercase;
+  
+  /* ========================================
+     3. SPACING SYSTEM
+     ======================================== */
+  --spacing-xs: 0.25rem;   /* 4px */
+  --spacing-sm: 0.5rem;    /* 8px */
+  --spacing-md: 1rem;     /* 16px */
+  --spacing-lg: 1.5rem;  /* 24px */
+  --spacing-xl: 2rem;     /* 32px */
+  --spacing-2xl: 3rem;    /* 48px */
+  --spacing-3xl: 4rem;    /* 64px */
+  
+  /* ========================================
+     4. BORDER RADIUS - Maximize Roundness
+     ======================================== */
+  --radius-sm: 0.5rem;     /* 8px */
+  --radius-md: 1.5rem;     /* 24px - minimum per DESIGN.md */
+  --radius-lg: 2rem;       /* 32px */
+  --radius-xl: 2.5rem;      /* 40px */
+  --radius-full: 9999px;
+  
+  /* ========================================
+     5. SHADOWS - Warm & Diffused
+     ======================================== */
+  /* Ambient shadows for floating elements */
+  --shadow-sm: 0 2px 10px rgba(115, 92, 0, 0.04);
+  --shadow-md: 0 4px 20px rgba(115, 92, 0, 0.05);
+  --shadow-lg: 0 4px 40px rgba(115, 92, 0, 0.06);
+  --shadow-xl: 0 20px 40px rgba(115, 92, 0, 0.06);
+  
+  /* Popover/Dropdown shadows */
+  --shadow-popover: 0 20px 40px rgba(115, 92, 0, 0.06);
+  
+  /* ========================================
+     6. GLASSMORPHISM
+     ======================================== */
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-bg-hover: rgba(255, 255, 255, 0.9);
+  --glass-blur: blur(20px);
+  --glass-border: rgba(255, 255, 255, 0.3);
+  
+  /* ========================================
+     7. TRANSITIONS
+     ======================================== */
+  --transition-fast: 150ms ease;
+  --transition-normal: 200ms ease;
+  --transition-slow: 300ms ease;
+  
+  /* Hover scale - 1.02x per DESIGN.md */
+  --hover-scale: scale(1.02);
+  --hover-scale-sm: scale(1.01);
 }
+
+/* ========================================
+   BASE STYLES
+   ======================================== */
 
 * {
   border-color: var(--border);
@@ -38,4 +172,208 @@
 body {
   background-color: var(--background);
   color: var(--foreground);
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  font-weight: var(--text-body-weight);
+  line-height: var(--text-body-line);
+}
+
+/* ========================================
+   TYPOGRAPHY CLASSES
+   Using CSS variables for consistency
+   ======================================== */
+
+/* Display - Hero text */
+.text-display {
+  font-family: var(--font-display);
+  font-size: var(--text-display);
+  font-weight: var(--text-display-weight);
+  line-height: var(--text-display-line);
+  letter-spacing: -0.02em;
+}
+
+/* Section Heading */
+.text-section {
+  font-family: var(--font-display);
+  font-size: var(--text-section);
+  font-weight: var(--text-section-weight);
+  line-height: var(--text-section-line);
+  letter-spacing: -0.02em;
+}
+
+/* Sub-heading */
+.text-sub {
+  font-family: var(--font-display);
+  font-size: var(--text-sub);
+  font-weight: var(--text-sub-weight);
+  line-height: var(--text-sub-line);
+  letter-spacing: -0.02em;
+}
+
+/* Body Light */
+.text-body-light {
+  font-family: var(--font-body);
+  font-size: var(--text-body-light);
+  font-weight: var(--text-body-light-weight);
+  line-height: var(--text-body-light-line);
+}
+
+/* Label Small - Uppercase */
+.text-label-sm {
+  font-family: var(--font-body);
+  font-size: var(--text-label-sm);
+  font-weight: var(--text-label-sm-weight);
+  letter-spacing: var(--text-label-sm-spacing);
+  text-transform: var(--text-label-sm-case);
+}
+
+/* Code Label */
+.text-code-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-code-label);
+  font-weight: var(--text-code-label-weight);
+  letter-spacing: var(--text-code-label-spacing);
+  text-transform: var(--text-code-label-case);
+}
+
+/* Code Body */
+.text-code {
+  font-family: var(--font-mono);
+  font-size: var(--text-code);
+  font-weight: var(--text-code-weight);
+}
+
+/* Code Micro */
+.text-code-micro {
+  font-family: var(--font-mono);
+  font-size: var(--text-code-micro);
+  font-weight: var(--text-code-micro-weight);
+  letter-spacing: var(--text-code-micro-spacing);
+  text-transform: var(--text-code-micro-case);
+}
+
+/* Manrope for Headlines */
+.font-display,
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+/* Glassmorphism Card */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Glassmorphism */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+}
+
+/* Surface Card */
+.surface-card {
+  background: var(--surface-container-lowest);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+}
+
+/* Primary Button */
+.btn-primary {
+  background-color: var(--secondary);
+  color: var(--secondary-foreground);
+  border-radius: var(--radius-full);
+  padding: 0.75rem 1.5rem;
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  transition: all var(--transition-normal);
+}
+
+.btn-primary:hover {
+  background-color: #4a4949;
+  transform: var(--hover-scale);
+}
+
+/* Secondary Button */
+.btn-secondary {
+  background-color: var(--primary-container);
+  color: var(--primary);
+  border-radius: var(--radius-full);
+  padding: 0.75rem 1.5rem;
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  transition: all var(--transition-normal);
+}
+
+.btn-secondary:hover {
+  transform: var(--hover-scale);
+}
+
+/* Input Field */
+.input-field {
+  background-color: var(--surface-container-low);
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--foreground);
+  transition: all var(--transition-normal);
+}
+
+.input-field:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255, 213, 79, 0.5);
+}
+
+.input-field::placeholder {
+  color: var(--muted);
+}
+
+/* ========================================
+   SCROLLBAR UTILITIES
+   ======================================== */
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* ========================================
+   ANIMATIONS
+   ======================================== */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fadeIn var(--transition-normal) ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUp var(--transition-normal) ease-out;
 }

@@ -20,8 +20,8 @@ export default function AdminLayout({
 
   if (isLoading || !user || !isAdmin) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-[#F5F4EE]">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-amber-500 border-t-transparent"></div>
+      <div className="flex h-screen w-full items-center justify-center bg-[var(--surface)]">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-t-transparent border-[var(--primary-container)]"></div>
       </div>
     );
   }

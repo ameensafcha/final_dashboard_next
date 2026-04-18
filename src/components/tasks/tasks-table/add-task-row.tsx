@@ -3,7 +3,7 @@ import { Loader2 } from "lucide-react";
 
 interface AddTaskRowProps {
   newTask: { title: string };
-  setNewTask: (val: any) => void;
+  setNewTask: (val: { title: string }) => void;
   onAdd: () => void;
   onCancel: () => void;
   isPending: boolean;
@@ -21,13 +21,13 @@ export function AddTaskRow({
   return (
     <tr className="bg-[var(--accent)]/5 border-none">
       {/* Title - spans all columns */}
-      <td className="py-4 px-8" colSpan={7}>
+      <td className="py-4 px-8" colSpan={8}>
         <div className="flex items-center gap-3">
           <input
             autoFocus
             type="text"
             value={newTask.title}
-            onChange={(e) => setNewTask((p: any) => ({ ...p, title: e.target.value }))}
+            onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
             onKeyDown={(e) => {
               if (e.key === "Enter" && newTask.title.trim()) onAdd();
               if (e.key === "Escape") onCancel();

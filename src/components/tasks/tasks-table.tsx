@@ -60,7 +60,7 @@ export function TasksTable({
   const [showAddRow, setShowAddRow] = useState(false);
   const [newTask, setNewTask] = useState({
     title: "", status: "not_started", priority: "medium",
-    company_id: "", area: "", assignee_id: "", due_date: ""
+    company_id: "", area: "", assignee_id: "", due_date: "", start_date: ""
   });
 
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
@@ -111,7 +111,7 @@ export function TasksTable({
     createInlineMutation.mutate(newTask, {
       onSuccess: () => {
         setShowAddRow(false);
-        setNewTask({ title: "", status: "not_started", priority: "medium", company_id: "", area: "", assignee_id: "", due_date: "" });
+        setNewTask({ title: "", status: "not_started", priority: "medium", company_id: "", area: "", assignee_id: "", due_date: "", start_date: "" });
       }
     });
   };
@@ -127,14 +127,14 @@ export function TasksTable({
 
   if (isLoading && tasks.length === 0) {
     return (
-      <div className="text-center py-12 text-gray-400">
+      <div className="text-center py-12 text-[var(--muted)]">
         <Loader2 className="inline-block w-6 h-6 animate-spin mb-3 text-[var(--primary)]" />
         <p className="font-medium text-sm">Loading tasks...</p>
       </div>
     );
   }
 
-  const colCount = filterAssigneeId ? 8 : 9;
+  const colCount = filterAssigneeId ? 9 : 10;
 
   return (
     <div className="w-full">
@@ -161,6 +161,7 @@ export function TasksTable({
               {!filterAssigneeId && (
                 <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Assignee</th>
               )}
+              <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Start Date</th>
               <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Due</th>
               <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Time Left</th>
               <th className="text-right py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Actions</th>
@@ -193,7 +194,7 @@ export function TasksTable({
             {showAddRow && (
               <AddTaskRow 
                 newTask={newTask}
-                setNewTask={setNewTask}
+                setNewTask={(val) => setNewTask(prev => ({ ...prev, ...val }))}
                 onAdd={handleCreateInline}
                 onCancel={() => setShowAddRow(false)}
                 isPending={createInlineMutation.isPending}
@@ -204,7 +205,7 @@ export function TasksTable({
               <tr
                 onClick={() => { 
                   setShowAddRow(true); 
-                  setNewTask({ title: "", status: "not_started", priority: "medium", company_id: "", area: "", assignee_id: "", due_date: "" }); 
+                  setNewTask({ title: "", status: "not_started", priority: "medium", company_id: "", area: "", assignee_id: "", due_date: "", start_date: "" }); 
                 }}
                 className="cursor-pointer hover:bg-[var(--accent)]/5 transition-colors border-none"
               >
@@ -221,7 +222,7 @@ export function TasksTable({
 
             {tasks.length === 0 && !showAddRow && (
               <tr>
-                <td colSpan={colCount} className="py-20 text-center text-gray-300">
+                <td colSpan={colCount} className="py-20 text-center text-[var(--muted)]">
                   <p className="font-black uppercase tracking-[0.3em] text-[10px]">No missions found</p>
                 </td>
               </tr>

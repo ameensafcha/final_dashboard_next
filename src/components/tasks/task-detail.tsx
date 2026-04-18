@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import React, { useState, useEffect, useMemo } from "react";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUIStore } from "@/lib/stores";
 import { cn } from "@/lib/utils";
@@ -9,12 +9,12 @@ import { Check, Clock, MessageSquare, Plus, Trash2, User, Calendar, Flag, Activi
 import { TaskAttachmentUploader } from "./task-attachment-uploader";
 import { Avatar } from "@/components/ui/avatar";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 interface Task {
   id: string;
   title: string;
@@ -149,7 +149,7 @@ export function TaskDetail({ task, open, onClose }: TaskDetailProps) {
 
   const currentTask = localTask || task;
 
-  const { data: subtasks = [], isLoading: loadingSubtasks } = useQuery<Subtask[]>({
+  const { data: subtasks = [] } = useQuery<Subtask[]>({
     queryKey: ["subtasks", currentTask?.id],
     queryFn: async () => {
       if (!currentTask) return [];
@@ -159,7 +159,7 @@ export function TaskDetail({ task, open, onClose }: TaskDetailProps) {
     enabled: !!currentTask && open,
   });
 
-  const { data: comments = [], isLoading: loadingComments } = useQuery<Comment[]>({
+  const { data: comments = [] } = useQuery<Comment[]>({
     queryKey: ["comments", currentTask?.id],
     queryFn: async () => {
       if (!currentTask) return [];
@@ -240,7 +240,7 @@ export function TaskDetail({ task, open, onClose }: TaskDetailProps) {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      setLocalTask(prev => prev ? { ...prev, ...(variables as any) } : null);
+      setLocalTask(prev => prev ? { ...prev, ...variables } : null);
     },
   });
 
@@ -258,9 +258,8 @@ export function TaskDetail({ task, open, onClose }: TaskDetailProps) {
     },
   });
 
-  const completedSubtasks = subtasks.filter((s) => s.is_completed).length;
-  const progress = subtasks.length > 0 ? (completedSubtasks / subtasks.length) * 100 : 0;
-  const totalHours = timeLogs.reduce((sum, log) => sum + log.hours, 0);
+  const completedSubtasks = useMemo(() => subtasks.filter((s) => s.is_completed).length, [subtasks]);
+  const totalHours = useMemo(() => timeLogs.reduce((sum, log) => sum + log.hours, 0), [timeLogs]);
 
   if (!currentTask) return null;
 
@@ -297,31 +296,37 @@ export function TaskDetail({ task, open, onClose }: TaskDetailProps) {
                 {/* Properties Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-2">
                   <PropertyRow icon={Activity} label="Status">
-                    <Select 
-                      value={currentTask.status} 
-                      disabled={updateTaskMutation.isPending}
-                      onValueChange={(val) => updateTaskMutation.mutate({ status: val } as any)}
-                    >
-                      <SelectTrigger className={cn(
-                        "w-fit h-8 px-4 py-0 rounded-full text-[10px] font-black uppercase tracking-widest border-none hover:scale-105 transition-all shadow-sm",
-                        statusColors[currentTask.status as keyof typeof statusColors] || "bg-gray-100 text-gray-600"
-                      )}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-[var(--glass-bg)] backdrop-blur-2xl border-none shadow-[var(--shadow-xl)] rounded-[var(--radius-lg)]">
-                        {statusOptions.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value} className="text-[10px] font-black uppercase tracking-widest">
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        disabled={updateTaskMutation.isPending}
+                        className={cn(
+                          "h-8 px-4 rounded-full text-[10px] font-black uppercase tracking-widest border-none hover:scale-105 transition-all shadow-sm outline-none flex items-center gap-2",
+                          statusColors[currentTask.status as keyof typeof statusColors] || "bg-[var(--surface-container)] text-[var(--muted)]"
+                        )}
+                      >
+                        {updateTaskMutation.isPending
+                          ? <Loader2 className="w-3 h-3 animate-spin" />
+                          : statusOptions.find(o => o.value === currentTask.status)?.label ?? currentTask.status}
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="bg-[var(--glass-bg)] backdrop-blur-2xl border-none shadow-[var(--shadow-xl)] rounded-[var(--radius-lg)]">
+                        <DropdownMenuRadioGroup
+                          value={currentTask.status}
+                          onValueChange={(val) => val && updateTaskMutation.mutate({ status: val })}
+                        >
+                          {statusOptions.map((opt) => (
+                            <DropdownMenuRadioItem key={opt.value} value={opt.value} className="text-[10px] font-black uppercase tracking-widest">
+                              {opt.label}
+                            </DropdownMenuRadioItem>
+                          ))}
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </PropertyRow>
 
                   <PropertyRow icon={Flag} label="Priority">
                     <span className={cn(
                       "px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm",
-                      priorityColors[currentTask.priority as keyof typeof priorityColors] || "bg-gray-100 text-gray-600"
+                      priorityColors[currentTask.priority as keyof typeof priorityColors] || "bg-[var(--surface-container)] text-[var(--muted)]"
                     )}>
                       {currentTask.priority}
                     </span>
@@ -332,7 +337,7 @@ export function TaskDetail({ task, open, onClose }: TaskDetailProps) {
                       <div className="bg-[var(--surface)] px-4 py-1.5 rounded-full w-fit shadow-sm">
                         <span className="text-[var(--foreground)] text-[12px] font-bold">{currentTask.company.name}</span>
                       </div>
-                    ) : <span className="text-gray-300 italic font-medium">No Company</span>}
+                    ) : <span className="text-[var(--muted)] italic font-medium">No Company</span>}
                   </PropertyRow>
 
                   <PropertyRow icon={User} label="Assignee">
@@ -341,15 +346,15 @@ export function TaskDetail({ task, open, onClose }: TaskDetailProps) {
                         <Avatar name={currentTask.assignee.name} size="sm" className="ring-2 ring-[var(--surface-container-lowest)] w-5 h-5" />
                         <span className="text-[var(--foreground)] text-[12px] font-bold">{currentTask.assignee.name}</span>
                       </div>
-                    ) : <span className="text-gray-300 italic font-medium">Unassigned</span>}
+                    ) : <span className="text-[var(--muted)] italic font-medium">Unassigned</span>}
                   </PropertyRow>
 
                   <PropertyRow icon={Clock} label="Estimate">
-                    <span className="px-1 text-[14px]">{currentTask.estimated_hours ? `${currentTask.estimated_hours}h` : <span className="text-gray-300 italic font-medium">No Estimate</span>}</span>
+                    <span className="px-1 text-[14px]">{currentTask.estimated_hours ? `${currentTask.estimated_hours}h` : <span className="text-[var(--muted)] italic font-medium">No Estimate</span>}</span>
                   </PropertyRow>
 
                   <PropertyRow icon={Activity} label="Actual Logged" loading={loadingLogs}>
-                    <span className={cn("px-1 text-[14px]", currentTask.estimated_hours && totalHours > currentTask.estimated_hours ? "text-red-600 font-black" : "text-gray-900")}>
+                    <span className={cn("px-1 text-[14px]", currentTask.estimated_hours && totalHours > currentTask.estimated_hours ? "text-[var(--error)] font-black" : "text-[var(--foreground)]")}>
                       {totalHours}h
                     </span>
                   </PropertyRow>
@@ -368,11 +373,11 @@ export function TaskDetail({ task, open, onClose }: TaskDetailProps) {
                   <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--muted)] px-2">Mission Intelligence</h3>
                   <div className="p-8 bg-[var(--surface)] rounded-[var(--radius-lg)] border-none shadow-inner min-h-[200px]">
                     {currentTask.description ? (
-                      <p className="text-[15px] text-gray-700 leading-relaxed whitespace-pre-wrap font-medium">
+                      <p className="text-[15px] text-[var(--foreground)] leading-relaxed whitespace-pre-wrap font-medium">
                         {currentTask.description}
                       </p>
                     ) : (
-                      <p className="text-sm text-gray-300 italic">No detailed intelligence provided for this mission.</p>
+                      <p className="text-sm text-[var(--muted)] italic">No detailed intelligence provided for this mission.</p>
                     )}
                   </div>
                 </div>
@@ -403,7 +408,7 @@ export function TaskDetail({ task, open, onClose }: TaskDetailProps) {
                       </button>
                       <span className={cn(
                         "flex-1 text-[15px] font-bold transition-all",
-                        subtask.is_completed ? "line-through text-gray-300" : "text-gray-700"
+                        subtask.is_completed ? "line-through text-[var(--muted)]" : "text-[var(--foreground)]"
                       )}>
                         {subtask.title}
                       </span>
@@ -418,13 +423,13 @@ export function TaskDetail({ task, open, onClose }: TaskDetailProps) {
                   ))}
                   
                   <div className="flex items-center gap-5 px-6 py-4 bg-[var(--surface)] rounded-[var(--radius-lg)] shadow-inner mt-6">
-                    <Plus className="w-5 h-5 text-gray-300" />
+                    <Plus className="w-5 h-5 text-[var(--muted)]" />
                     <input
                       type="text"
                       value={newSubtask}
                       onChange={(e) => setNewSubtask(e.target.value)}
                       placeholder="Add a new tactical objective..."
-                      className="flex-1 bg-transparent border-none text-[15px] font-bold placeholder:text-gray-300 focus:outline-none"
+                      className="flex-1 bg-transparent border-none text-[15px] font-bold placeholder:text-[var(--muted)] focus:outline-none"
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && newSubtask.trim()) createSubtaskMutation.mutate(newSubtask.trim());
                       }}
@@ -509,7 +514,7 @@ export function TaskDetail({ task, open, onClose }: TaskDetailProps) {
                             <div className="px-4 py-1.5 bg-[var(--accent)]/20 text-[var(--primary)] rounded-xl text-xs font-black shadow-sm">{log.hours}h</div>
                             <div>
                               <p className="text-sm font-black text-[var(--foreground)]">{log.employee.name}</p>
-                              {log.notes && <p className="text-[12px] text-gray-400 font-medium mt-0.5">{log.notes}</p>}
+                              {log.notes && <p className="text-[12px] text-[var(--muted)] font-medium mt-0.5">{log.notes}</p>}
                             </div>
                           </div>
                           <span className="text-[10px] font-black text-[var(--muted)] uppercase tracking-widest">{new Date(log.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
@@ -536,7 +541,7 @@ export function TaskDetail({ task, open, onClose }: TaskDetailProps) {
                               </span>
                             </div>
                             <div className="bg-[var(--surface)] p-6 rounded-[var(--radius-xl)] rounded-tl-none shadow-inner border-none">
-                              <p className="text-[15px] text-gray-700 leading-relaxed font-medium">{comment.content}</p>
+                              <p className="text-[15px] text-[var(--foreground)] leading-relaxed font-medium">{comment.content}</p>
                             </div>
                           </div>
                         </div>

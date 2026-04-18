@@ -86,8 +86,3 @@ npm run lint
 - **Feedback:** Every inline update or mutation must provide visual feedback (loading spinners, toast notifications).
 - **UX Consistency:** Maintain Notion-style inline editing for tables where applicable, ensuring one-click access to pickers (e.g., `showPicker()` for dates).
 
-### 3. Task Logic (Daily Command Center)
-- **Tiers:** Tier 1 (Alpha) for mission-critical objectives; Tier 2 (Beta) for velocity gains.
-- **Status:** Support for `PENDING`, `COMPLETED`, `BLOCKED`, and `ARCHIVED`.
-- **Carryover:** Unfinished tasks are automatically identified and offered for "Re-Deployment" on the next day's plan.
-- **Blockers:** Marking a task as `BLOCKED` requires a reason and action owner. Resolving a blocker or marking a blocked task as `DONE` must clear blocker metadata.

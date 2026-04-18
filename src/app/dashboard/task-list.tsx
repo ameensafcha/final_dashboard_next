@@ -28,18 +28,22 @@ const priorityIndicatorColors: Record<string, string> = {
   low: "bg-gray-300",
 };
 
+function parseLocalDate(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('T')[0].split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
 function formatDueDate(dateStr: string | null): string {
   if (!dateStr) return "No date";
-  
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
   const nextWeek = new Date(today);
   nextWeek.setDate(nextWeek.getDate() + 7);
-  const dueDate = new Date(dateStr);
-  dueDate.setHours(0, 0, 0, 0);
-  
+  const dueDate = parseLocalDate(dateStr);
+
   if (dueDate.getTime() === today.getTime()) {
     return "Today";
   } else if (dueDate.getTime() === tomorrow.getTime()) {
@@ -66,7 +70,7 @@ export function TaskList({ tasks: initialTasks, onTaskClick }: TaskListProps) {
     const nextWeek = new Date(today);
     nextWeek.setDate(nextWeek.getDate() + 7);
     
-    const dueDate = task.due_date ? new Date(task.due_date) : null;
+    const dueDate = task.due_date ? parseLocalDate(task.due_date) : null;
     
     if (filter === "today") {
       return dueDate && dueDate >= today && dueDate < tomorrow;
@@ -126,7 +130,7 @@ export function TaskList({ tasks: initialTasks, onTaskClick }: TaskListProps) {
           filteredTasks.map((task) => {
             const indicatorColor = priorityIndicatorColors[task.priority] || priorityIndicatorColors.low;
             const isCompleted = task.status === "completed";
-            const isOverdue = task.due_date && new Date(task.due_date) < new Date() && !isCompleted;
+            const isOverdue = task.due_date && parseLocalDate(task.due_date) < (() => { const t = new Date(); t.setHours(0,0,0,0); return t; })() && !isCompleted;
             
             return (
               <div

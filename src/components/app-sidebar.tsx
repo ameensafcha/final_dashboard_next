@@ -6,7 +6,6 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Package,
   ChevronDown,
-  ChevronRight,
   LayoutDashboard,
   ArrowDownLeft,
   ShoppingBag,
@@ -17,9 +16,9 @@ import {
   Factory,
   Archive,
   BarChart3,
-  Users,
   LogOut,
   ListTodo,
+
   LayoutGrid,
   ShieldCheck
 } from "lucide-react";
@@ -61,6 +60,38 @@ const productionPaths = ["/production"];
 const financePaths = ["/finance"];
 const taskPaths = ["/tasks"];
 
+const NavItem = React.memo(({ href, label, icon: Icon, active }: { href: string; label: string; icon: React.ElementType; active: boolean }) => (
+  <Link
+    href={href}
+    className={cn(
+      "flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-lg)] transition-all duration-200 group hover:scale-[1.02]",
+      active
+        ? "bg-[var(--accent)]/20 text-[var(--primary)] font-bold"
+        : "text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--primary)]"
+    )}
+  >
+    <Icon className={cn("w-5 h-5", active ? "text-[var(--primary)]" : "text-[var(--muted)] group-hover:text-[var(--primary)]")} />
+    <span className="text-sm">{label}</span>
+  </Link>
+));
+NavItem.displayName = "NavItem";
+
+const SubItem = React.memo(({ href, label, icon: Icon, active }: { href: string; label: string; icon: React.ElementType; active: boolean }) => (
+  <Link
+    href={href}
+    className={cn(
+      "flex items-center gap-3 px-3 py-2 rounded-[var(--radius-md)] transition-all duration-200 group ml-4 hover:scale-[1.02]",
+      active
+        ? "text-[var(--primary)] font-bold bg-[var(--accent)]/10"
+        : "text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--surface)]"
+    )}
+  >
+    <Icon className={cn("w-4 h-4", active ? "text-[var(--primary)]" : "text-[var(--muted)] group-hover:text-[var(--primary)]")} />
+    <span className="text-[13px]">{label}</span>
+  </Link>
+));
+SubItem.displayName = "SubItem";
+
 export function AppSidebar() {
   const pathname = usePathname() || "";
   const router = useRouter();
@@ -100,35 +131,6 @@ export function AppSidebar() {
 
   const isLoggedIn = !isLoading && user;
 
-  const NavItem = ({ href, label, icon: Icon, active }: { href: string, label: string, icon: any, active: boolean }) => (
-    <Link
-      href={href}
-      className={cn(
-        "flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-lg)] transition-all duration-200 group hover:scale-[1.02]",
-        active
-          ? "bg-[var(--accent)]/20 text-[var(--primary)] font-bold"
-          : "text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--primary)]"
-      )}
-    >
-      <Icon className={cn("w-5 h-5", active ? "text-[var(--primary)]" : "text-[var(--muted)] group-hover:text-[var(--primary)]")} />
-      <span className="text-sm">{label}</span>
-    </Link>
-  );
-
-  const SubItem = ({ href, label, icon: Icon, active }: { href: string, label: string, icon: any, active: boolean }) => (
-    <Link
-      href={href}
-      className={cn(
-        "flex items-center gap-3 px-3 py-2 rounded-[var(--radius-md)] transition-all duration-200 group ml-4 hover:scale-[1.02]",
-        active
-          ? "text-[var(--primary)] font-bold bg-[var(--accent)]/10"
-          : "text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--surface)]"
-      )}
-    >
-      <Icon className={cn("w-4 h-4", active ? "text-[var(--primary)]" : "text-[var(--muted)] group-hover:text-[var(--primary)]")} />
-      <span className="text-[13px]">{label}</span>
-    </Link>
-  );
 
   return (
     <aside
@@ -156,7 +158,7 @@ export function AppSidebar() {
             <button
               onClick={() => setInventoryOpen(!inventoryOpen)}
               className={cn(
-                "w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all group hover:scale-[1.02]",
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-lg)] transition-all group hover:scale-[1.02]",
                 isParentActive(inventoryPaths) ? "text-[var(--primary)] font-bold bg-[var(--accent)]/20" : "text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--primary)]"
               )}
             >
@@ -177,7 +179,7 @@ export function AppSidebar() {
             <button
               onClick={() => setProductsOpen(!productsOpen)}
               className={cn(
-                "w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all group hover:scale-[1.02]",
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-lg)] transition-all group hover:scale-[1.02]",
                 isParentActive(productsPaths) ? "text-[var(--primary)] font-bold bg-[var(--accent)]/20" : "text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--primary)]"
               )}
             >
@@ -198,7 +200,7 @@ export function AppSidebar() {
             <button
               onClick={() => setProductionOpen(!productionOpen)}
               className={cn(
-                "w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all group hover:scale-[1.02]",
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-lg)] transition-all group hover:scale-[1.02]",
                 isParentActive(productionPaths) ? "text-[var(--primary)] font-bold bg-[var(--accent)]/20" : "text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--primary)]"
               )}
             >
@@ -223,7 +225,7 @@ export function AppSidebar() {
             <button
               onClick={() => setTaskOpen(!taskOpen)}
               className={cn(
-                "w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all group hover:scale-[1.02]",
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-lg)] transition-all group hover:scale-[1.02]",
                 isParentActive(taskPaths) ? "text-[var(--primary)] font-bold bg-[var(--accent)]/20" : "text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--primary)]"
               )}
             >
@@ -244,7 +246,7 @@ export function AppSidebar() {
             <button
               onClick={() => setFinanceOpen(!financeOpen)}
               className={cn(
-                "w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all group hover:scale-[1.02]",
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-lg)] transition-all group hover:scale-[1.02]",
                 isParentActive(financePaths) ? "text-[var(--primary)] font-bold bg-[var(--accent)]/20" : "text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--primary)]"
               )}
             >

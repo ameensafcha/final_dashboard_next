@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -258,8 +258,13 @@ export function TaskBoard({ initialData = [], currentUserId }: TaskBoardProps) {
     setOverColumnId(null);
   };
 
-  const getTasksByStatus = (status: string) =>
-    visibleTasks.filter((task) => task.status === status);
+  const tasksByStatus = useMemo(() => {
+    const map: Record<string, Task[]> = Object.fromEntries(COLUMNS.map((c) => [c.id, []]));
+    for (const task of visibleTasks) {
+      if (map[task.status]) map[task.status].push(task);
+    }
+    return map;
+  }, [visibleTasks]);
 
   return (
     <div className="relative h-full">
@@ -284,7 +289,7 @@ export function TaskBoard({ initialData = [], currentUserId }: TaskBoardProps) {
             <KanbanColumn
               key={column.id}
               column={column}
-              tasks={getTasksByStatus(column.id)}
+              tasks={tasksByStatus[column.id] ?? []}
               isOver={overColumnId === column.id}
               onTaskClick={setSelectedTask}
             />

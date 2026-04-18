@@ -22,23 +22,23 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    template: "%s | Inventory App",
-    default: "Inventory App",
+    template: "%s | DASHBOARD",
+    default: "DASHBOARD",
   },
-  description: "Raw materials inventory management system for tracking materials, production, and stock",
+  description: "DASHBOARD - Raw materials inventory management system for tracking materials, production, and stock",
   keywords: ["inventory", "raw materials", "stock management", "production"],
-  authors: [{ name: "Inventory Team" }],
+  authors: [{ name: "DASHBOARD Team" }],
   openGraph: {
-    title: "Inventory App",
-    description: "Raw materials inventory management system",
+    title: "DASHBOARD",
+    description: "DASHBOARD - Raw materials inventory management system",
     type: "website",
     locale: "en_US",
-    siteName: "Inventory App",
+    siteName: "DASHBOARD",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Inventory App",
-    description: "Raw materials inventory management system",
+    title: "DASHBOARD",
+    description: "DASHBOARD - Raw materials inventory management system",
   },
   robots: {
     index: true,

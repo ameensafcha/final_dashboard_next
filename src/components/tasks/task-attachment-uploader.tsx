@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Paperclip, X, Loader2 } from "lucide-react";
+import { Paperclip, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useUIStore } from "@/lib/stores";
 import { cn } from "@/lib/utils";
@@ -33,7 +32,7 @@ export function TaskAttachmentUploader({ taskId, onSuccess }: TaskAttachmentUplo
       const filePath = `attachments/${fileName}`;
 
       // 1. Upload to Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('task-attachments')
         .upload(filePath, file);
 
@@ -60,8 +59,9 @@ export function TaskAttachmentUploader({ taskId, onSuccess }: TaskAttachmentUplo
 
       addNotification({ type: "success", message: "File uploaded successfully" });
       onSuccess();
-    } catch (error: any) {
-      addNotification({ type: "error", message: error.message || "Upload failed" });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Upload failed";
+      addNotification({ type: "error", message });
     } finally {
       setIsUploading(false);
       // Reset input
@@ -87,7 +87,7 @@ export function TaskAttachmentUploader({ taskId, onSuccess }: TaskAttachmentUplo
             <span className="block text-[10px] font-black uppercase tracking-[0.3em] text-[var(--primary)]">
               {isUploading ? "Transmitting..." : "Attach Intelligence"}
             </span>
-            <span className="block text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-1">
+            <span className="block text-[9px] text-[var(--muted)] font-bold uppercase tracking-widest mt-1">
               Max 5MB • All Sectors
             </span>
           </div>

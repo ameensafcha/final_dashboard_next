@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+
+const AREA_OPTIONS = ["Production", "Quality", "Warehouse", "Procurement", "HR", "Admin", "Development", "Maintenance", "Finance"] as const;
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -239,8 +241,8 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
 
   const isLoading = createMutation.isPending || updateMutation.isPending;
 
-  const selectedCompanyName = companies.find(c => c.id === formData.company_id)?.name || "";
-  const selectedAssigneeName = employees.find(e => e.id === formData.assignee_id)?.name || "";
+  const selectedCompanyName = useMemo(() => companies.find(c => c.id === formData.company_id)?.name || "", [companies, formData.company_id]);
+  const selectedAssigneeName = useMemo(() => employees.find(e => e.id === formData.assignee_id)?.name || "", [employees, formData.assignee_id]);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -296,7 +298,7 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
                 placeholder="Select Area"
               >
                 <DropdownMenuRadioItem value="__none__">None</DropdownMenuRadioItem>
-                {["Production", "Quality", "Warehouse", "Procurement", "HR", "Admin", "Development", "Maintenance", "Finance"].map((area) => (
+                {AREA_OPTIONS.map((area) => (
                   <DropdownMenuRadioItem key={area} value={area}>{area}</DropdownMenuRadioItem>
                 ))}
               </FormDropdown>
@@ -377,7 +379,7 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
                 type="date"
                 value={formData.start_date}
                 onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                onFocus={(e) => { try { e.target.showPicker(); } catch (err) {} }}
+                onFocus={(e) => { try { e.target.showPicker(); } catch {} }}
                 className="input-field h-12 px-5 text-sm font-bold"
               />
             </div>
@@ -388,7 +390,7 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
                 type="date"
                 value={formData.due_date}
                 onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-                onFocus={(e) => { try { e.target.showPicker(); } catch (err) {} }}
+                onFocus={(e) => { try { e.target.showPicker(); } catch {} }}
                 className="input-field h-12 px-5 text-sm font-bold"
               />
             </div>

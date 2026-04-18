@@ -106,7 +106,7 @@ export function TaskFilters({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-2">Priority</span>
+          <span className="text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em] px-2">Priority</span>
           <DropdownMenu>
             <DropdownMenuTriggerStyled>
               <span className={cn("truncate capitalize", priorityColors[priorityFilter] || "")}>
@@ -130,7 +130,7 @@ export function TaskFilters({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-2">Area</span>
+          <span className="text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em] px-2">Area</span>
           <DropdownMenu>
             <DropdownMenuTriggerStyled>
               <span className="truncate">
@@ -151,7 +151,7 @@ export function TaskFilters({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-2">Company</span>
+          <span className="text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em] px-2">Company</span>
           <DropdownMenu>
             <DropdownMenuTriggerStyled>
               <span className="truncate">

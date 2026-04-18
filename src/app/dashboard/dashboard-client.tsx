@@ -58,6 +58,11 @@ interface SerializedTask {
   attachments?: any[];
 }
 
+function parseLocalDate(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('T')[0].split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
 function calcKpis(tasks: SerializedTask[]): KPIData {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -65,7 +70,7 @@ function calcKpis(tasks: SerializedTask[]): KPIData {
     total: tasks.length,
     completed: tasks.filter(t => t.status === "completed").length,
     pending: tasks.filter(t => t.status !== "completed").length,
-    overdue: tasks.filter(t => t.due_date && new Date(t.due_date) < today && t.status !== "completed").length,
+    overdue: tasks.filter(t => t.due_date && parseLocalDate(t.due_date) < today && t.status !== "completed").length,
   };
 }
 

@@ -1,4 +1,7 @@
+"use client";
+
 import { useState, useCallback, useEffect } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useUIStore } from "@/lib/stores";
 import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
@@ -7,27 +10,56 @@ import { Task, Company, Employee, CreateTaskInput } from "./types";
 export function useTasks(currentUserId?: string, filterAssigneeId?: string) {
   const queryClient = useQueryClient();
   const { addNotification } = useUIStore();
-
-  // ── Filter / pagination state ──────────────────────────────────────────────
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [priorityFilter, setPriorityFilter] = useState("all");
-  const [areaFilter, setAreaFilter] = useState("all");
-  const [companyFilter, setCompanyFilter] = useState("all");
-  const [page, setPage] = useState(1);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const limit = 20;
 
-  // Debounce search
+  // Local state for the search input — debounced before writing to URL
+  const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
+
+  // All other filters read directly from URL (persisted across refreshes)
+  const statusFilter  = searchParams.get("status")   ?? "all";
+  const priorityFilter = searchParams.get("priority") ?? "all";
+  const areaFilter    = searchParams.get("area")      ?? "all";
+  const companyFilter = searchParams.get("company")   ?? "all";
+  const page          = Number(searchParams.get("page") ?? "1");
+
+  // ── URL helper ─────────────────────────────────────────────────────────────
+  // "all", "", "1" are defaults — remove them to keep URL clean
+  const setParams = useCallback((updates: Record<string, string>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    for (const [key, value] of Object.entries(updates)) {
+      if (!value || value === "all" || value === "1") {
+        params.delete(key);
+      } else {
+        params.set(key, value);
+      }
+    }
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams.toString(), router, pathname]);
+
+  // Debounce search → URL, reset to page 1
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    const timer = setTimeout(() => setParams({ q: search, page: "1" }), 300);
     return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
-  // Reset page on filter change
-  useEffect(() => {
-    setPage(1);
-  }, [debouncedSearch, statusFilter, priorityFilter, areaFilter, companyFilter]);
+  // Setters for filter dropdowns (all reset page to 1)
+  const setStatusFilter   = useCallback((val: string) => setParams({ status: val,   page: "1" }), [setParams]);
+  const setPriorityFilter = useCallback((val: string) => setParams({ priority: val, page: "1" }), [setParams]);
+  const setAreaFilter     = useCallback((val: string) => setParams({ area: val,     page: "1" }), [setParams]);
+  const setCompanyFilter  = useCallback((val: string) => setParams({ company: val,  page: "1" }), [setParams]);
+  const setPage = useCallback((updater: number | ((prev: number) => number)) => {
+    const next = typeof updater === "function" ? updater(page) : updater;
+    setParams({ page: next.toString() });
+  }, [page, setParams]);
+
+  // debouncedSearch = what's actually in the URL (updated after 300 ms)
+  const debouncedSearch = searchParams.get("q") ?? "";
 
   // ── Data queries ───────────────────────────────────────────────────────────
   const { data: companies = [] } = useQuery<Company[]>({
@@ -120,6 +152,7 @@ export function useTasks(currentUserId?: string, filterAssigneeId?: string) {
           area: data.area || null,
           assignee_id: data.assignee_id || null,
           due_date: data.due_date || null,
+          start_date: data.start_date || null,
         }),
       });
       if (!res.ok) throw new Error("Create failed");

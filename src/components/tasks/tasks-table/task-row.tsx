@@ -59,8 +59,12 @@ const TimeLeftDisplay = React.memo(function TimeLeftDisplay({
 }) {
   if (!dueDate) return <span className="text-xs font-bold text-[var(--muted)] hover:text-[var(--primary)] transition-colors cursor-pointer">-</span>;
   
-  const now = new Date().getTime();
-  const daysLeft = Math.ceil((new Date(dueDate).getTime() - now) / (1000 * 60 * 60 * 24));
+  // Parse as local midnight to avoid UTC timezone shift
+  const [year, month, day] = dueDate.split('T')[0].split('-').map(Number);
+  const due = new Date(year, month - 1, day);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const daysLeft = Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
   return (
     <span className={cn(
@@ -96,11 +100,13 @@ export const TaskRow = React.memo(function TaskRow({
 }: TaskRowProps) {
   const [updatingCell, setUpdatingCell] = useState<string | null>(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [startDatePickerOpen, setStartDatePickerOpen] = useState(false);
 
   useEffect(() => {
     if (updatingTaskId !== task.id) {
       setUpdatingCell(null);
       setDatePickerOpen(false);
+      setStartDatePickerOpen(false);
     }
   }, [updatingTaskId, task.id]);
 
@@ -110,6 +116,7 @@ export const TaskRow = React.memo(function TaskRow({
   const isUpdatingStatus = updatingTaskId === task.id && updatingCell === "status";
   const isUpdatingPriority = updatingTaskId === task.id && updatingCell === "priority";
   const isUpdatingAssignee = updatingTaskId === task.id && updatingCell === "assignee";
+  const isUpdatingStartDate = updatingTaskId === task.id && updatingCell === "start_date";
   const isUpdatingDueDate = updatingTaskId === task.id && updatingCell === "due_date";
 
   return (
@@ -309,6 +316,47 @@ export const TaskRow = React.memo(function TaskRow({
           </DropdownMenu>
         </td>
       )}
+
+      {/* Start Date */}
+      <td className="py-5 px-8">
+        <Popover open={startDatePickerOpen} onOpenChange={setStartDatePickerOpen}>
+          <PopoverTrigger
+            onClick={() => {
+              setUpdatingCell("start_date");
+              setStartDatePickerOpen(true);
+            }}
+            className={cn(
+              "flex items-center gap-2 cursor-pointer hover:text-[var(--primary)] transition-colors outline-none bg-transparent border-none text-left min-w-[120px]",
+              isUpdatingStartDate && "opacity-50 pointer-events-none"
+            )}
+          >
+            {isUpdatingStartDate ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--primary)] shrink-0" />
+            ) : (
+              <span className="text-xs font-bold text-[var(--muted)] flex items-center gap-2">
+                <CalendarIcon className="w-3.5 h-3.5 opacity-50" />
+                {task.start_date ? (
+                  format(new Date(task.start_date), "MMM d, yyyy")
+                ) : (
+                  <span className="text-xs font-bold text-[var(--muted)] hover:text-[var(--primary)] transition-colors cursor-pointer">Set start</span>
+                )}
+              </span>
+            )}
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0 z-50" align="start">
+            <Calendar
+              mode="single"
+              selected={task.start_date ? new Date(task.start_date) : undefined}
+              onSelect={(date) => {
+                saveInlineField(task.id, { start_date: date ? format(date, "yyyy-MM-dd") : null }, () => {
+                  setStartDatePickerOpen(false);
+                });
+              }}
+              initialFocus
+            />
+          </PopoverContent>
+        </Popover>
+      </td>
 
       {/* Due Date (Using Shadcn Popover + Calendar) */}
       <td className="py-5 px-8">

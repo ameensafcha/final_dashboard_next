@@ -64,7 +64,7 @@ export const taskQuerySchema = z.object({
   created_by: z.preprocess((v) => (v === "" || v === undefined || v === null ? undefined : v), z.string().optional()),
   
   sortBy: z.enum(["created_at", "due_date", "priority"]).default("created_at"),
-  sortOrder: z.enum(["asc", "desc"]).default("desc"),
+  sortOrder: z.enum(["asc", "desc"]).default("asc"),
 });
 
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;

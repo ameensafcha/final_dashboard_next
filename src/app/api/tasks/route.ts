@@ -50,8 +50,18 @@ export async function POST(request: Request) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
-    const validatedData = createTaskSchema.parse(body);
 
+    // Bulk create — array diya gaya
+    if (Array.isArray(body)) {
+      if (body.length === 0) return NextResponse.json({ error: "Empty array" }, { status: 400 });
+      if (body.length > 50) return NextResponse.json({ error: "Max 50 tasks ek baar mein" }, { status: 400 });
+      const validated = body.map(item => createTaskSchema.parse(item));
+      const results = await TaskService.bulkCreateTasks(validated, user.id);
+      return NextResponse.json({ data: results }, { status: 201 });
+    }
+
+    // Single create
+    const validatedData = createTaskSchema.parse(body);
     const task = await TaskService.createTask(validatedData, user.id);
     return NextResponse.json({ data: task }, { status: 201 });
   } catch (error) {
@@ -90,13 +100,24 @@ export async function DELETE(request: Request) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(request.url);
+    const isAdmin = await checkIsAdmin(user);
+
+    // Bulk delete — ?ids=id1,id2,id3
+    const ids = searchParams.get("ids");
+    if (ids) {
+      const idArray = ids.split(",").map(s => s.trim()).filter(Boolean);
+      if (idArray.length === 0) return NextResponse.json({ error: "IDs required" }, { status: 400 });
+      if (idArray.length > 50) return NextResponse.json({ error: "Max 50 tasks ek baar mein" }, { status: 400 });
+      const result = await TaskService.bulkDeleteTasks(idArray, user.id, !!isAdmin);
+      return NextResponse.json({ success: true, deleted: result.deleted });
+    }
+
+    // Single delete — ?id=xxx
     const id = searchParams.get("id");
     if (!id) return NextResponse.json({ error: "Task ID is required" }, { status: 400 });
-
-    const isAdmin = await checkIsAdmin(user);
     await TaskService.deleteTask(id, user.id, !!isAdmin);
-
     return NextResponse.json({ success: true });
+
   } catch (error) {
     const status = error instanceof Error && error.message.includes("Unauthorized") ? 403 : 500;
     return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to delete task" }, { status });

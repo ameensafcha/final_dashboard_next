@@ -58,5 +58,6 @@ export interface CreateTaskInput {
   area: string;
   assignee_id: string;
   due_date: string;
+  start_date: string;
 }
 

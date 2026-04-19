@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { TaskForm } from "./task-form";
 import { TaskDetail } from "./task-detail";
 import { DeleteTaskDialog } from "./delete-task-dialog";
@@ -42,6 +42,7 @@ export function TasksTable({
     setPage,
     limit,
     deleteMutation,
+    bulkDeleteMutation,
     updateInlineMutation,
     createInlineMutation,
   } = useTasks(currentUserId, filterAssigneeId);
@@ -52,6 +53,30 @@ export function TasksTable({
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // ── Bulk selection state ───────────────────────────────────────────────────
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+
+  const toggleSelect = (id: string) => setSelectedIds(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+
+  const toggleSelectAll = () => {
+    setSelectedIds(selectedIds.size === tasks.length && tasks.length > 0
+      ? new Set()
+      : new Set(tasks.map((t: Task) => t.id))
+    );
+  };
+
+  const handleBulkDelete = () => {
+    const ids = Array.from(selectedIds);
+    bulkDeleteMutation.mutate(ids, {
+      onSuccess: () => { setSelectedIds(new Set()); setShowBulkDeleteConfirm(false); }
+    });
+  };
 
   // ── Inline editing state ───────────────────────────────────────────────────
   const [inlineEditingId, setInlineEditingId] = useState<string | null>(null);
@@ -134,10 +159,35 @@ export function TasksTable({
     );
   }
 
-  const colCount = filterAssigneeId ? 9 : 10;
+  const colCount = filterAssigneeId ? 10 : 11;
 
   return (
     <div className="w-full">
+      {/* Bulk action bar */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-4 mb-4 px-5 py-3 bg-[var(--error-bg)] border border-[var(--error)]/20 rounded-xl">
+          <span className="text-sm font-black text-[var(--error)] uppercase tracking-widest">
+            {selectedIds.size} task{selectedIds.size > 1 ? "s" : ""} selected
+          </span>
+          <button
+            onClick={() => setShowBulkDeleteConfirm(true)}
+            disabled={bulkDeleteMutation.isPending}
+            className="flex items-center gap-2 px-4 py-1.5 bg-[var(--error)] text-white text-xs font-black uppercase tracking-widest rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 active:scale-95"
+          >
+            {bulkDeleteMutation.isPending
+              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              : <Trash2 className="w-3.5 h-3.5" />}
+            Delete Selected
+          </button>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="text-xs font-black text-[var(--muted)] hover:text-[var(--foreground)] uppercase tracking-widest transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
       <TaskFilters 
         search={search} setSearch={setSearch}
         statusFilter={statusFilter} setStatusFilter={setStatusFilter}
@@ -153,6 +203,15 @@ export function TasksTable({
         <table className="w-full min-w-[1000px] border-collapse">
           <thead>
             <tr className="bg-[var(--surface)]/50 border-none">
+              <th className="py-5 pl-4 pr-0 w-10">
+                <input
+                  type="checkbox"
+                  checked={tasks.length > 0 && selectedIds.size === tasks.length}
+                  ref={el => { if (el) el.indeterminate = selectedIds.size > 0 && selectedIds.size < tasks.length; }}
+                  onChange={toggleSelectAll}
+                  className="w-4 h-4 rounded accent-[var(--primary)] cursor-pointer"
+                />
+              </th>
               <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Task</th>
               <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Company</th>
               <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Area</th>
@@ -169,7 +228,7 @@ export function TasksTable({
           </thead>
           <tbody className="border-none">
             {tasks.map((task: Task) => (
-              <TaskRow 
+              <TaskRow
                 key={task.id}
                 task={task}
                 inlineEditingId={inlineEditingId}
@@ -188,6 +247,8 @@ export function TasksTable({
                 companies={companies}
                 employees={employees}
                 showAssignee={!filterAssigneeId}
+                isSelected={selectedIds.has(task.id)}
+                onToggleSelect={toggleSelect}
               />
             ))}
 
@@ -277,6 +338,38 @@ export function TasksTable({
         isLoading={deleteMutation.isPending}
         taskTitle={taskToDelete?.title}
       />
+
+      {/* Bulk delete confirm */}
+      {showBulkDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-[var(--surface-container-lowest)] rounded-2xl p-8 shadow-2xl max-w-sm w-full mx-4">
+            <h3 className="text-base font-black text-[var(--foreground)] mb-2">
+              {selectedIds.size} Tasks Delete Karni Hain?
+            </h3>
+            <p className="text-sm text-[var(--muted)] mb-6">
+              Yeh action permanent hai — wapas nahi ho sakta.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowBulkDeleteConfirm(false)}
+                className="flex-1 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest bg-[var(--surface)] text-[var(--muted)] hover:bg-[var(--surface-container)] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                disabled={bulkDeleteMutation.isPending}
+                className="flex-1 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest bg-[var(--error)] text-white hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {bulkDeleteMutation.isPending
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  : <Trash2 className="w-3.5 h-3.5" />}
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

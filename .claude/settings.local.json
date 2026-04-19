@@ -8,7 +8,26 @@
       "Bash(cmd /c \"netstat -ano | findstr :3000\")",
       "Bash(cmd /c \"taskkill /PID 8672 /F\")",
       "Bash(cmd /c \"taskkill /IM node.exe /F\")",
-      "Bash(cmd /c \"netstat -ano | findstr LISTEN | findstr :3000\")"
+      "Bash(cmd /c \"netstat -ano | findstr LISTEN | findstr :3000\")",
+      "Bash(npm install *)",
+      "Bash(npx prisma *)",
+      "Bash(npm run *)",
+      "Bash(node dist/index.js)",
+      "Bash(cmd /c \"type %APPDATA%\\\\Claude\\\\claude_desktop_config.json 2>nul || echo NOT_FOUND\")",
+      "Bash(cmd /c \"if not exist \\\\\"%APPDATA%\\\\Claude\\\\\" mkdir \\\\\"%APPDATA%\\\\Claude\\\\\" && echo created\")",
+      "Bash(cmd /c \"type \\\\\"%APPDATA%\\\\Claude\\\\claude_desktop_config.json\\\\\" 2>nul || echo {}\")",
+      "Bash(cmd /c \"echo { \\\\\"mcpServers\\\\\": { \\\\\"task-manager\\\\\": { \\\\\"command\\\\\": \\\\\"node\\\\\", \\\\\"args\\\\\": [\\\\\"C:/Users/User/Desktop/claude2/mcp-server/dist/index.js\\\\\"] } } } > \\\\\"%APPDATA%\\\\Claude\\\\claude_desktop_config.json\\\\\" && echo done\")",
+      "Bash(node -e \"const fs=require\\('fs'\\);const p=process.env.APPDATA+'\\\\\\\\\\\\\\\\Claude\\\\\\\\\\\\\\\\claude_desktop_config.json';const cfg={mcpServers:{'task-manager':{command:'node',args:['C:/Users/User/Desktop/claude2/mcp-server/dist/index.js']}}};fs.mkdirSync\\(require\\('path'\\).dirname\\(p\\),{recursive:true}\\);fs.writeFileSync\\(p,JSON.stringify\\(cfg,null,2\\)\\);console.log\\('Saved to',p\\);\")",
+      "Bash(node -e \"const fs=require\\('fs'\\);const p=process.env.APPDATA+'\\\\\\\\\\\\\\\\Claude\\\\\\\\\\\\\\\\claude_desktop_config.json';const cfg={mcpServers:{'task-manager':{command:'node',args:['C:/Users/User/Desktop/claude2/mcp-server/dist/index.js']}}};fs.mkdirSync\\(require\\('path'\\).dirname\\(p\\),{recursive:true}\\);fs.writeFileSync\\(p,JSON.stringify\\(cfg,null,2\\)\\);console.log\\('Saved:',fs.readFileSync\\(p,'utf8'\\)\\);\")",
+      "mcp__task-manager__task_summary",
+      "mcp__task-manager__list_tasks",
+      "mcp__task-manager__create_task",
+      "mcp__task-manager__update_task",
+      "mcp__task-manager__delete_task",
+      "mcp__task-manager__bulk_create_tasks",
+      "mcp__task-manager__bulk_delete_tasks",
+      "mcp__task-manager__list_employees",
+      "WebSearch"
     ]
   }
 }

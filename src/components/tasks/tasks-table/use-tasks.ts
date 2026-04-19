@@ -98,6 +98,8 @@ export function useTasks(currentUserId?: string, filterAssigneeId?: string) {
       return res.json();
     },
     placeholderData: (previousData) => previousData,
+    refetchInterval: 15000,          // MCP fallback — 15s, sirf jab realtime miss ho
+    refetchIntervalInBackground: false, // Tab switch pe band, tab focus pe hi chale
   });
 
   const tasks = data?.data || [];
@@ -165,6 +167,22 @@ export function useTasks(currentUserId?: string, filterAssigneeId?: string) {
     onError: (err: Error) => addNotification({ type: "error", message: err.message }),
   });
 
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const res = await fetch(`/api/tasks?ids=${ids.join(",")}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Bulk delete failed");
+      }
+      return res.json();
+    },
+    onSuccess: (_, ids) => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      addNotification({ type: "success", message: `${ids.length} tasks delete ho gayi` });
+    },
+    onError: (err: Error) => addNotification({ type: "error", message: err.message }),
+  });
+
   return {
     tasks,
     isLoading,
@@ -185,6 +203,7 @@ export function useTasks(currentUserId?: string, filterAssigneeId?: string) {
     setPage,
     limit,
     deleteMutation,
+    bulkDeleteMutation,
     updateInlineMutation,
     createInlineMutation,
   };

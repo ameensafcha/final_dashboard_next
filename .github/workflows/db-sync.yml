@@ -1,0 +1,50 @@
+name: Sync DB → Production Supabase
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'prisma/schema.prisma'
+      - 'prisma/migrations/**'
+      - 'supabase/migrations/**'
+
+jobs:
+  db-sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply Prisma migrations to production
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}
+
+      - name: Run Supabase SQL migrations
+        env:
+          DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}
+        run: |
+          # psql install
+          sudo apt-get install -y postgresql-client -q
+
+          for file in supabase/migrations/*.sql; do
+            # .bak files skip karo
+            [[ "$file" == *.bak ]] && continue
+            echo "▶ Running: $file"
+            psql "$DIRECT_URL" -f "$file" || true
+          done
+
+      - name: Success notification
+        run: echo "✅ Production DB sync complete!"

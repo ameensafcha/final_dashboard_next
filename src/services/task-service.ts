@@ -221,6 +221,81 @@ export class TaskService {
     return await prisma.tasks.delete({ where: { id } });
   }
 
+  static async bulkDeleteTasks(ids: string[], userId: string, isAdmin: boolean) {
+    if (!ids.length) throw new Error("Koi IDs nahi di");
+
+    const tasks = await prisma.tasks.findMany({
+      where: { id: { in: ids } },
+      include: { attachments: true },
+    });
+
+    // Permission check — har task ke liye
+    for (const task of tasks) {
+      if (!isAdmin && task.created_by !== userId) {
+        throw new Error(`Unauthorized: "${task.title}" delete nahi kar sakte`);
+      }
+    }
+
+    // Attachments Supabase Storage se hata do
+    const allPaths: string[] = tasks.flatMap(t =>
+      t.attachments
+        .map(att => {
+          const parts = att.file_url.split('/task-attachments/');
+          return parts.length > 1 ? parts[1] : null;
+        })
+        .filter(Boolean) as string[]
+    );
+
+    if (allPaths.length > 0) {
+      try {
+        const { getSupabaseAdmin } = await import("@/lib/supabase");
+        await getSupabaseAdmin().storage.from('task-attachments').remove(allPaths);
+      } catch (err) {
+        console.error("Bulk delete: storage cleanup failed", err);
+      }
+    }
+
+    // Sab tasks ek sath delete (transaction)
+    await prisma.tasks.deleteMany({ where: { id: { in: ids } } });
+    return { deleted: ids.length };
+  }
+
+  static async bulkCreateTasks(dataArray: any[], userId: string) {
+    const results: { success: boolean; title: string; error?: string }[] = [];
+
+    // Sequentially create to avoid DB overload
+    for (const data of dataArray) {
+      try {
+        await prisma.$transaction(async (tx) => {
+          const task = await tx.tasks.create({
+            data: {
+              ...data,
+              status: "not_started",
+              created_by: userId,
+              due_date: data.due_date ? new Date(data.due_date) : null,
+              start_date: data.start_date ? new Date(data.start_date) : null,
+            },
+          });
+          if (data.assignee_id) {
+            await tx.notifications.create({
+              data: {
+                recipient_id: data.assignee_id,
+                actor_id: userId,
+                action_type: "task_assigned",
+                task_id: task.id,
+                task_title: task.title,
+              },
+            });
+          }
+        });
+        results.push({ success: true, title: data.title });
+      } catch (err) {
+        results.push({ success: false, title: data.title, error: err instanceof Error ? err.message : "Unknown error" });
+      }
+    }
+    return results;
+  }
+
   private static async handleRecurrence(tx: Prisma.TransactionClient, task: any) {
     const nextStartDate = task.start_date ? new Date(task.start_date) : null;
     const nextDueDate = task.due_date ? new Date(task.due_date) : null;

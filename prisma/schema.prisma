@@ -459,3 +459,9 @@ model DailyBlocker {
   @@index([daily_plan_id])
   @@map("daily_blockers")
 }
+
+model test_table {
+  id         String   @id @default(uuid())
+  name       String
+  created_at DateTime @default(now())
+}

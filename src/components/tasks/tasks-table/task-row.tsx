@@ -50,6 +50,8 @@ interface TaskRowProps {
   companies: Company[];
   employees: Employee[];
   showAssignee: boolean;
+  isSelected: boolean;
+  onToggleSelect: (id: string) => void;
 }
 
 const TimeLeftDisplay = React.memo(function TimeLeftDisplay({
@@ -97,6 +99,8 @@ export const TaskRow = React.memo(function TaskRow({
   companies,
   employees,
   showAssignee,
+  isSelected,
+  onToggleSelect,
 }: TaskRowProps) {
   const [updatingCell, setUpdatingCell] = useState<string | null>(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
@@ -120,7 +124,16 @@ export const TaskRow = React.memo(function TaskRow({
   const isUpdatingDueDate = updatingTaskId === task.id && updatingCell === "due_date";
 
   return (
-    <tr className="hover:bg-[var(--surface)] transition-colors group border-none">
+    <tr className={cn("hover:bg-[var(--surface)] transition-colors group border-none", isSelected && "bg-[var(--accent)]/10")}>
+      {/* Checkbox */}
+      <td className="py-5 pl-4 pr-0 w-10" onClick={e => e.stopPropagation()}>
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={() => onToggleSelect(task.id)}
+          className="w-4 h-4 rounded accent-[var(--primary)] cursor-pointer"
+        />
+      </td>
       {/* Title */}
       <td
         className="py-5 px-8 min-w-[250px]"

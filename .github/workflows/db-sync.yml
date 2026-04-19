@@ -1,6 +1,7 @@
 name: Sync DB → Production Supabase
 
 on:
+  workflow_dispatch: # manual trigger bhi kar sako
   push:
     branches: [main]
     paths:

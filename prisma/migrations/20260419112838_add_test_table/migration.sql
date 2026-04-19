@@ -6,11 +6,11 @@
   - You are about to drop the `route_permissions` table. If the table is not empty, all the data it contains will be lost.
 
 */
--- DropForeignKey
-ALTER TABLE "role_permissions" DROP CONSTRAINT "role_permissions_permission_id_fkey";
+-- DropForeignKey (IF EXISTS — production me already nahi hain)
+ALTER TABLE IF EXISTS "role_permissions" DROP CONSTRAINT IF EXISTS "role_permissions_permission_id_fkey";
 
 -- DropForeignKey
-ALTER TABLE "role_permissions" DROP CONSTRAINT "role_permissions_role_id_fkey";
+ALTER TABLE IF EXISTS "role_permissions" DROP CONSTRAINT IF EXISTS "role_permissions_role_id_fkey";
 
 -- AlterTable
 ALTER TABLE "tasks" ADD COLUMN     "company_id" TEXT,
@@ -18,14 +18,10 @@ ADD COLUMN     "estimated_hours" DOUBLE PRECISION,
 ADD COLUMN     "has_spawned_recurrence" BOOLEAN NOT NULL DEFAULT false,
 ADD COLUMN     "recurrence" TEXT;
 
--- DropTable
-DROP TABLE "permissions";
-
--- DropTable
-DROP TABLE "role_permissions";
-
--- DropTable
-DROP TABLE "route_permissions";
+-- DropTable (IF EXISTS — production me already nahi hain)
+DROP TABLE IF EXISTS "permissions";
+DROP TABLE IF EXISTS "role_permissions";
+DROP TABLE IF EXISTS "route_permissions";
 
 -- CreateTable
 CREATE TABLE "companies" (

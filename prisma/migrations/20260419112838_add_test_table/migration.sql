@@ -12,11 +12,11 @@ ALTER TABLE IF EXISTS "role_permissions" DROP CONSTRAINT IF EXISTS "role_permiss
 -- DropForeignKey
 ALTER TABLE IF EXISTS "role_permissions" DROP CONSTRAINT IF EXISTS "role_permissions_role_id_fkey";
 
--- AlterTable
-ALTER TABLE "tasks" ADD COLUMN     "company_id" TEXT,
-ADD COLUMN     "estimated_hours" DOUBLE PRECISION,
-ADD COLUMN     "has_spawned_recurrence" BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN     "recurrence" TEXT;
+-- AlterTable (IF NOT EXISTS — production me already hain)
+ALTER TABLE "tasks" ADD COLUMN IF NOT EXISTS "company_id" TEXT;
+ALTER TABLE "tasks" ADD COLUMN IF NOT EXISTS "estimated_hours" DOUBLE PRECISION;
+ALTER TABLE "tasks" ADD COLUMN IF NOT EXISTS "has_spawned_recurrence" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "tasks" ADD COLUMN IF NOT EXISTS "recurrence" TEXT;
 
 -- DropTable (IF EXISTS — production me already nahi hain)
 DROP TABLE IF EXISTS "permissions";

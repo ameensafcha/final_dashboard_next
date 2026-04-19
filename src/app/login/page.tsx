@@ -18,7 +18,7 @@ function LoginForm() {
     }
   }, [user, isLoading, router]);
   const [formData, setFormData] = useState({
-    email: "admin@mail.com",
+    email: "ameen1@mail.com",
     password: "12345678",
   });
   const [error, setError] = useState("");

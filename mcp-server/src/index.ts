@@ -134,18 +134,18 @@ server.tool(
     if (!task) return { content: [{ type: "text", text: `Task ID "${task_id}" nahi mili.` }] };
 
     const subtaskLines = task.subtasks.length
-      ? task.subtasks.map((s) => `   ${s.is_completed ? "✅" : "⬜"} ${s.title} [${s.id}]`).join("\n")
+      ? task.subtasks.map((s: { id: string; title: string; is_completed: boolean }) => `   ${s.is_completed ? "✅" : "⬜"} ${s.title} [${s.id}]`).join("\n")
       : "   Koi subtask nahi";
 
     const commentLines = task.comments.length
-      ? task.comments.map((c) => `   💬 ${c.employee.name}: ${c.content}`).join("\n")
+      ? task.comments.map((c: { employee: { name: string }; content: string }) => `   💬 ${c.employee.name}: ${c.content}`).join("\n")
       : "   Koi comment nahi";
 
     const timeLines = task.time_logs.length
-      ? task.time_logs.map((l) => `   ⏱ ${l.employee.name}: ${l.hours}h${l.notes ? ` — ${l.notes}` : ""}`).join("\n")
+      ? task.time_logs.map((l: { employee: { name: string }; hours: number; notes: string | null }) => `   ⏱ ${l.employee.name}: ${l.hours}h${l.notes ? ` — ${l.notes}` : ""}`).join("\n")
       : "   Koi time log nahi";
 
-    const totalHours = task.time_logs.reduce((sum, l) => sum + l.hours, 0);
+    const totalHours = task.time_logs.reduce((sum: number, l: { hours: number }) => sum + l.hours, 0);
 
     const text = [
       formatTask(task),
@@ -370,7 +370,7 @@ server.tool(
 
     if (employees.length === 0) return { content: [{ type: "text", text: "Koi employee nahi mila." }] };
 
-    const text = employees.map((e) => `👤 ${e.name} [${e.id}]${e.role ? ` — ${e.role.name}` : ""}`).join("\n");
+    const text = employees.map((e: { name: string; id: string; role?: { name: string } | null }) => `👤 ${e.name} [${e.id}]${e.role ? ` — ${e.role.name}` : ""}`).join("\n");
     return { content: [{ type: "text", text: `${employees.length} employee(s):\n\n${text}` }] };
   }
 );
@@ -390,7 +390,7 @@ server.tool(
 
     if (companies.length === 0) return { content: [{ type: "text", text: "Koi company nahi mili." }] };
 
-    const text = companies.map((c) => `🏢 ${c.name} [${c.id}]`).join("\n");
+    const text = companies.map((c: { name: string; id: string }) => `🏢 ${c.name} [${c.id}]`).join("\n");
     return { content: [{ type: "text", text: `${companies.length} compan(y/ies):\n\n${text}` }] };
   }
 );
@@ -447,7 +447,7 @@ server.tool(
 
     await prisma.tasks.deleteMany({ where: { id: { in: task_ids } } });
 
-    const lines = tasks.map(t => `   🗑️ "${t.title}"`).join("\n");
+    const lines = tasks.map((t: { title: string }) => `   🗑️ "${t.title}"`).join("\n");
     return { content: [{ type: "text", text: `✅ ${tasks.length} tasks delete ho gayi:\n${lines}` }] };
   }
 );

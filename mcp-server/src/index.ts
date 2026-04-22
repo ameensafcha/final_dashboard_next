@@ -330,6 +330,7 @@ server.tool(
     due_date:      z.string().optional().describe("Format: YYYY-MM-DD, ya 'null' hatane ke liye"),
     start_date:    z.string().optional().describe("Format: YYYY-MM-DD, ya 'null' hatane ke liye"),
     assignee_name: z.string().optional().describe("Nayi assignee ka naam"),
+    company_name:  z.string().optional().describe("Company ka naam — update ya change karne ke liye"),
     estimated_hours: z.number().optional(),
   },
   async (args) => {
@@ -357,6 +358,15 @@ server.tool(
       updateData.due_date = args.due_date === "null" ? null : new Date(args.due_date);
     if (args.start_date !== undefined)
       updateData.start_date = args.start_date === "null" ? null : new Date(args.start_date);
+
+    // Company update
+    if (args.company_name) {
+      const company = await prisma.companies.findFirst({
+        where: { name: { contains: args.company_name, mode: "insensitive" } },
+      });
+      if (!company) return { content: [{ type: "text", text: `Company "${args.company_name}" nahi mili.` }] };
+      updateData.company_id = company.id;
+    }
 
     // Assignee update
     if (args.assignee_name) {

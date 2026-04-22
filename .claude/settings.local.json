@@ -29,7 +29,10 @@
       "mcp__task-manager__list_employees",
       "WebSearch",
       "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\('@prisma/client:', p.dependencies['@prisma/client']\\); console.log\\('@prisma/adapter-pg:', p.dependencies['@prisma/adapter-pg']\\); console.log\\('pg:', p.dependencies['pg']\\);\")",
-      "Bash(copy \"C:\\\\Users\\\\User\\\\Desktop\\\\claude2\\\\prisma\\\\schema.prisma\" \"C:\\\\Users\\\\User\\\\Desktop\\\\claude2\\\\mcp-server\\\\prisma\\\\schema.prisma\")"
+      "Bash(copy \"C:\\\\Users\\\\User\\\\Desktop\\\\claude2\\\\prisma\\\\schema.prisma\" \"C:\\\\Users\\\\User\\\\Desktop\\\\claude2\\\\mcp-server\\\\prisma\\\\schema.prisma\")",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
     ]
   }
 }

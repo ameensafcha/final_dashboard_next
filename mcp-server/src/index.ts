@@ -530,7 +530,28 @@ server.tool(
 );
 
 // ─────────────────────────────────────────────
-// START SERVER
+// START SERVER — HTTP (Render) ya stdio (local)
 // ─────────────────────────────────────────────
-const transport = new StdioServerTransport();
-await server.connect(transport);
+if (process.env.PORT) {
+  // Online mode — Render pe HTTP
+  const { default: express } = await import("express");
+  const { StreamableHTTPServerTransport } = await import("@modelcontextprotocol/sdk/server/streamableHttp.js");
+
+  const app = express();
+  app.use(express.json());
+
+  app.post("/mcp", async (req, res) => {
+    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+    await server.connect(transport);
+    await transport.handleRequest(req, res, req.body);
+  });
+
+  app.get("/health", (_, res) => res.json({ status: "ok" }));
+
+  const port = Number(process.env.PORT) || 3001;
+  app.listen(port, () => console.log(`MCP server running on port ${port}`));
+} else {
+  // Local mode — Claude Desktop ke liye stdio
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+}

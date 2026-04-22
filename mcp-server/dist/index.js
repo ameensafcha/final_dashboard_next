@@ -365,7 +365,7 @@ server.tool("bulk_delete_tasks", "Ek sath kai tasks delete karo — IDs ki list 
     if (tasks.length === 0)
         return { content: [{ type: "text", text: "Koi task nahi mili in IDs se." }] };
     await prisma.tasks.deleteMany({ where: { id: { in: task_ids } } });
-    const lines = tasks.map(t => `   🗑️ "${t.title}"`).join("\n");
+    const lines = tasks.map((t) => `   🗑️ "${t.title}"`).join("\n");
     return { content: [{ type: "text", text: `✅ ${tasks.length} tasks delete ho gayi:\n${lines}` }] };
 });
 // ─────────────────────────────────────────────
@@ -445,7 +445,25 @@ server.tool("bulk_create_tasks", "Ek sath kai tasks banao — list of tasks do",
     return { content: [{ type: "text", text: summary }] };
 });
 // ─────────────────────────────────────────────
-// START SERVER
+// START SERVER — HTTP (Render) ya stdio (local)
 // ─────────────────────────────────────────────
-const transport = new StdioServerTransport();
-await server.connect(transport);
+if (process.env.PORT) {
+    // Online mode — Render pe HTTP
+    const { default: express } = await import("express");
+    const { StreamableHTTPServerTransport } = await import("@modelcontextprotocol/sdk/server/streamableHttp.js");
+    const app = express();
+    app.use(express.json());
+    app.post("/mcp", async (req, res) => {
+        const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+        await server.connect(transport);
+        await transport.handleRequest(req, res, req.body);
+    });
+    app.get("/health", (_, res) => res.json({ status: "ok" }));
+    const port = Number(process.env.PORT) || 3001;
+    app.listen(port, () => console.log(`MCP server running on port ${port}`));
+}
+else {
+    // Local mode — Claude Desktop ke liye stdio
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+}

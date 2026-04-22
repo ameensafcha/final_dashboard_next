@@ -21,6 +21,7 @@ const { Pool } = pg;
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter } as any);
+function createServer() {
 const server = new McpServer({
   name: "task-manager",
   version: "1.0.0",
@@ -529,6 +530,9 @@ server.tool(
   }
 );
 
+  return server;
+} // end createServer()
+
 // ─────────────────────────────────────────────
 // START SERVER — HTTP (Render) ya stdio (local)
 // ─────────────────────────────────────────────
@@ -542,7 +546,8 @@ if (process.env.PORT) {
 
   app.post("/mcp", async (req, res) => {
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
-    await server.connect(transport);
+    const s = createServer();
+    await s.connect(transport);
     await transport.handleRequest(req, res, req.body);
   });
 
@@ -553,5 +558,5 @@ if (process.env.PORT) {
 } else {
   // Local mode — Claude Desktop ke liye stdio
   const transport = new StdioServerTransport();
-  await server.connect(transport);
+  await createServer().connect(transport);
 }

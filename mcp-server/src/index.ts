@@ -22,22 +22,6 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter } as any);
 
-const CATEGORIES = [
-  "Safcha — Product & SFDA",
-  "Packaging & Design",
-  "B2B & Wholesale",
-  "Nawafith — Operations",
-  "Nawafith — Marketing & Sales",
-  "Safcha — Marketing & Content",
-  "E-commerce & Online",
-  "Office & Operations",
-  "Hiring & Employees",
-  "Inventory & Production",
-  "Events, Expo & Export",
-  "Misc / Leads",
-  "all"
-] as const;
-
 const TIERS = [
   "T1 Strategic",
   "T2 Quick Win",
@@ -45,6 +29,14 @@ const TIERS = [
   "Recurring",
   "Long-term",
   "None"
+] as const;
+
+const RECURRENCE_TYPES = [
+  "daily",
+  "weekly",
+  "monthly",
+  "yearly",
+  "none"
 ] as const;
 
 const STATUSES = [
@@ -76,6 +68,7 @@ function formatTask(t: any): string {
     `   Status   : ${t.status}`,
     `   Priority : ${t.priority}`,
     t.tier        ? `   Tier     : ${t.tier}` : null,
+    t.recurrence  ? `   Recurs   : ${t.recurrence}` : null,
     t.area        ? `   Category : ${t.area.name}` : null,
     t.company     ? `   Company  : ${t.company.name}` : null,
     t.assignee    ? `   Assignee : ${t.assignee.name}` : null,
@@ -97,7 +90,7 @@ server.tool(
     search:   z.string().optional().describe("Title ya description mein search"),
     status:   z.enum(STATUSES).optional().describe("Task ka status"),
     priority: z.enum(["low", "medium", "high", "urgent", "all"]).optional().describe("Priority level"),
-    category: z.enum(CATEGORIES).optional().describe("Task category (Area)"),
+    category: z.string().optional().describe("Task category (Area) ka naam — Area ka naam hi Category hai"),
     tier:     z.enum(TIERS).optional().describe("Task tier"),
     assignee_name: z.string().optional().describe("Assignee ka naam (partial bhi chalega)"),
     overdue_only: z.boolean().optional().describe("Sirf overdue tasks"),
@@ -151,6 +144,26 @@ server.tool(
 
     const text = `${tasks.length} task(s) mili:\n\n` + tasks.map(formatTask).join("\n\n");
     return { content: [{ type: "text", text }] };
+  }
+);
+
+// ─────────────────────────────────────────────
+// TOOL: list_areas
+// ─────────────────────────────────────────────
+server.tool(
+  "list_areas",
+  "Saare available categories (Areas) ki list dikhao",
+  {},
+  async () => {
+    const areas = await prisma.area.findMany({
+      where: { is_active: true },
+      orderBy: { name: "asc" },
+    });
+
+    if (areas.length === 0) return { content: [{ type: "text", text: "Koi category (Area) nahi mili." }] };
+
+    const text = areas.map((a: { name: string; id: string; color: string }) => `🏷️ ${a.name} [${a.id}]`).join("\n");
+    return { content: [{ type: "text", text: `${areas.length} category(ies):\n\n${text}` }] };
   }
 );
 
@@ -224,8 +237,9 @@ server.tool(
     description:     z.string().optional().describe("Task ki description"),
     priority:        z.enum(["low", "medium", "high", "urgent"]).optional().default("medium"),
     status:          z.enum(STATUSES).optional().default("not_started"),
-    category:        z.enum(CATEGORIES).optional().describe("Task category (Area)"),
+    category: z.string().optional().describe("Task category (Area) ka naam — Area ka naam hi Category hai"),
     tier:            z.enum(TIERS).optional().describe("Task tier"),
+    recurrence:      z.enum(RECURRENCE_TYPES).optional().describe("Recurrence type"),
     due_date:        z.string().optional().describe("Due date — format: YYYY-MM-DD"),
     start_date:      z.string().optional().describe("Start date — format: YYYY-MM-DD"),
     assignee_name:   z.string().optional().describe("Assignee ka naam — partial bhi chalega"),
@@ -276,6 +290,7 @@ server.tool(
         priority:        args.priority ?? "medium",
         status:          args.status === "all" ? "not_started" : (args.status ?? "not_started"),
         tier:            args.tier === "None" ? null : (args.tier ?? null),
+        recurrence:      args.recurrence === "none" ? null : (args.recurrence ?? null),
         area_id:         area_id,
         created_by:      creator.id,
         assignee_id,
@@ -309,8 +324,9 @@ server.tool(
     description:   z.string().optional(),
     status:        z.enum(STATUSES).optional(),
     priority:      z.enum(["low", "medium", "high", "urgent"]).optional(),
-    category:      z.enum(CATEGORIES).optional().describe("Task category (Area)"),
+    category: z.string().optional().describe("Task category (Area) ka naam — Area ka naam hi Category hai"),
     tier:          z.enum(TIERS).optional(),
+    recurrence:    z.enum(RECURRENCE_TYPES).optional().describe("Recurrence type"),
     due_date:      z.string().optional().describe("Format: YYYY-MM-DD, ya 'null' hatane ke liye"),
     start_date:    z.string().optional().describe("Format: YYYY-MM-DD, ya 'null' hatane ke liye"),
     assignee_name: z.string().optional().describe("Nayi assignee ka naam"),
@@ -326,6 +342,7 @@ server.tool(
     if (args.status && args.status !== "all")      updateData.status      = args.status;
     if (args.priority)    updateData.priority    = args.priority;
     if (args.tier)        updateData.tier        = args.tier === "None" ? null : args.tier;
+    if (args.recurrence)  updateData.recurrence  = args.recurrence === "none" ? null : args.recurrence;
     
     if (args.category && args.category !== "all") {
       const area = await prisma.area.findFirst({
@@ -539,8 +556,9 @@ server.tool(
       created_by_name: z.string().describe("Creator ka naam — zarori"),
       description:     z.string().optional(),
       priority:        z.enum(["low", "medium", "high", "urgent"]).default("medium"),
-      category:        z.enum(CATEGORIES).optional().describe("Task category (Area)"),
+      category: z.string().optional().describe("Task category (Area) ka naam — Area ka naam hi Category hai"),
       tier:            z.enum(TIERS).optional(),
+      recurrence:      z.enum(RECURRENCE_TYPES).optional(),
       due_date:        z.string().optional().describe("YYYY-MM-DD format"),
       company_name:    z.string().optional().describe("Company ka naam — list_companies se check karo"),
       assignee_name:   z.string().optional().describe("Assignee ka naam — list_employees se check karo"),
@@ -593,6 +611,7 @@ server.tool(
             description: t.description ?? null,
             priority:    t.priority,
             tier:        t.tier === "None" ? null : (t.tier ?? null),
+            recurrence:  t.recurrence === "none" ? null : (t.recurrence ?? null),
             area_id:     area_id,
             status:      "not_started",
             created_by:  creator.id,

@@ -293,7 +293,11 @@ model tasks {
   id            String           @id @default(uuid())
   title         String
   description   String?
+  
   area_id       String?
+  area          Area?      @relation(fields: [area_id], references: [id])
+  
+
   company_id    String?
   assignee_id   String?
   created_by    String
@@ -313,7 +317,6 @@ model tasks {
   time_logs     task_time_logs[]
   attachments   task_attachments[]
   company       companies?       @relation(fields: [company_id], references: [id])
-  area          Area?            @relation(fields: [area_id], references: [id])
   assignee      Employee?        @relation("task_assignee", fields: [assignee_id], references: [id])
   creator       Employee         @relation("task_creator", fields: [created_by], references: [id])
   notifications notifications[]
@@ -404,9 +407,6 @@ model task_time_logs {
   @@index([employee_id])
 }
 
-
-
-
 // Daily Command Center - Standalone Module
 
 model DailyPlan {
@@ -463,10 +463,6 @@ model DailyBlocker {
   @@map("daily_blockers")
 }
 
-
-
-//test 
-
 model test_table2 {
   id         String   @id @default(uuid())
   name       String
@@ -480,9 +476,9 @@ model Area {
   description String?
   is_active   Boolean  @default(true)
   created_at  DateTime @default(now())
-
+  
   tasks       tasks[]
-
+  
   @@index([name])
   @@map("areas")
 }

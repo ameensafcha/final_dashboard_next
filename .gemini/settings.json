@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "task-manager": {
+      "command": "node",
+      "args": [
+        "C:\\Users\\User\\Desktop\\claude2\\mcp-server\\dist\\index.js"
+      ]
+    }
+  }
+}

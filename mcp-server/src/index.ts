@@ -85,7 +85,7 @@ function formatTask(t: any): string {
 // ─────────────────────────────────────────────
 server.tool(
   "list_tasks",
-  "Tasks ki list dikhao — filter kar sakte ho status, priority, category, tier, search se",
+  "List and filter tasks. All filters are optional — combine them freely. For category/assignee_name values call get_context() first. Status values: not_started, in_progress, review, completed, active, blocked, recurring, sop, parked, needs_verification. Priority: low, medium, high, urgent. Tier: T1 Strategic, T2 Quick Win, SOP, Recurring, Long-term.",
   {
     search:   z.string().optional().describe("Title ya description mein search"),
     status:   z.enum(STATUSES).optional().describe("Task ka status"),
@@ -231,7 +231,7 @@ server.tool(
 // ─────────────────────────────────────────────
 server.tool(
   "create_task",
-  "Nayi task banao",
+  "Create a new task. BEFORE calling this: call get_context() to get exact employee names (for created_by_name & assignee_name), company names (for company_name), and category names (for category). Required fields: title, created_by_name. All names are matched case-insensitively from the database. Dates must be YYYY-MM-DD format.",
   {
     title:           z.string().min(1).max(255).describe("Task ka title — zarori hai"),
     description:     z.string().optional().describe("Task ki description"),
@@ -317,7 +317,7 @@ server.tool(
 // ─────────────────────────────────────────────
 server.tool(
   "update_task",
-  "Existing task ko update karo — koi bhi field badal sakte ho",
+  "Update an existing task. First call list_tasks() to find the task_id. Only pass fields you want to change — others stay as-is. For assignee_name/company_name/category: call get_context() first to get exact names. To remove a date field pass 'null' as string. Setting status to 'completed' automatically sets completed_at.",
   {
     task_id:       z.string().describe("Task ka ID — zarori hai"),
     title:         z.string().optional(),
@@ -502,7 +502,7 @@ server.tool(
 // ─────────────────────────────────────────────
 server.tool(
   "get_context",
-  "CALL THIS FIRST — returns all employees, companies, categories, and task stats needed to create or update tasks",
+  "ALWAYS CALL THIS FIRST before creating or updating tasks. Returns: all active employee names (use for created_by_name/assignee_name), all company names (use for company_name), all category names (use for category field), all valid status/priority/tier/recurrence values, and current task stats. Never guess names — get them from here.",
   {},
   async () => {
     const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -622,7 +622,7 @@ server.tool(
 // ─────────────────────────────────────────────
 server.tool(
   "bulk_create_tasks",
-  "Ek sath kai tasks banao — list of tasks do",
+  "Create multiple tasks at once (max 50). Call get_context() first to get exact employee/company/category names. Each task needs: title (required), created_by_name (required). Optional: description, priority, status, tier, category, company_name, assignee_name, due_date (YYYY-MM-DD), start_date (YYYY-MM-DD), recurrence.",
   {
     tasks: z.array(z.object({
       title:           z.string().min(1).describe("Task title — zarori"),

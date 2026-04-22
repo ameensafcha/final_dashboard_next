@@ -19,6 +19,8 @@ interface TaskDetailTask {
   created_at: string;
   estimated_hours: number | null;
   recurrence: string | null;
+  tier: string | null;
+  area?: { id: string; name: string; color: string } | null;
   company?: { id: string; name: string } | null;
   assignee?: { id: string; name: string; email: string } | null;
   creator?: { id: string; name: string; email: string };
@@ -52,6 +54,8 @@ interface SerializedTask {
   created_at: string;
   estimated_hours?: number | null;
   recurrence?: string | null;
+  tier?: string | null;
+  area?: { id: string; name: string; color: string } | null;
   company?: { id: string; name: string } | null;
   assignee?: { id: string; name: string; email?: string } | null;
   creator?: { id: string; name: string; email?: string } | null;
@@ -114,6 +118,8 @@ export function DashboardClient({ kpis: initialKpis, tasks: initialTasks, error,
       created_at: task.created_at,
       estimated_hours: task.estimated_hours ?? null,
       recurrence: task.recurrence ?? null,
+      tier: task.tier ?? null,
+      area: task.area ?? null,
       company: task.company ?? null,
       assignee: task.assignee ? { id: task.assignee.id, name: task.assignee.name, email: task.assignee.email ?? "" } : null,
       creator: task.creator ? { id: task.creator.id, name: task.creator.name, email: task.creator.email ?? "" } : { id: "", name: "", email: "" },

@@ -6,7 +6,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
-import { Company, AREA_OPTIONS } from "./types";
+import { Company, Area } from "./types";
 import { cn } from "@/lib/utils";
 
 const statusColors: Record<string, string> = {
@@ -39,6 +39,7 @@ interface TaskFiltersProps {
   companyFilter: string;
   setCompanyFilter: (val: string) => void;
   companies: Company[];
+  areas: Area[];
   onAddTask: () => void;
   showAddButton: boolean;
 }
@@ -55,6 +56,7 @@ export function TaskFilters({
   companyFilter,
   setCompanyFilter,
   companies = [],
+  areas = [],
   onAddTask,
   showAddButton,
 }: TaskFiltersProps) {
@@ -100,6 +102,12 @@ export function TaskFilters({
                 <DropdownMenuRadioItem value="in_progress">In Progress</DropdownMenuRadioItem>
                 <DropdownMenuRadioItem value="review">Review</DropdownMenuRadioItem>
                 <DropdownMenuRadioItem value="completed">Completed</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="active">Active</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="blocked">Blocked</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="recurring">Recurring</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="sop">SOP</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="parked">Parked</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="needs_verification">Needs Verification</DropdownMenuRadioItem>
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -130,11 +138,11 @@ export function TaskFilters({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <span className="text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em] px-2">Area</span>
+          <span className="text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em] px-2">Category</span>
           <DropdownMenu>
             <DropdownMenuTriggerStyled>
               <span className="truncate">
-                {areaFilter === "all" || !areaFilter ? "All Areas" : areaFilter}
+                {areaFilter === "all" || !areaFilter ? "All Categories" : areas?.find(a => a.id === areaFilter)?.name || "All Categories"}
               </span>
               <ChevronDown className="w-3.5 h-3.5 opacity-50 shrink-0" />
             </DropdownMenuTriggerStyled>
@@ -143,8 +151,13 @@ export function TaskFilters({
                 value={areaFilter} 
                 onValueChange={(val) => setAreaFilter(val || "all")}
               >
-                <DropdownMenuRadioItem value="all">All Areas</DropdownMenuRadioItem>
-                {AREA_OPTIONS.map(a => <DropdownMenuRadioItem key={a} value={a}>{a}</DropdownMenuRadioItem>)}
+                <DropdownMenuRadioItem value="all">All Categories</DropdownMenuRadioItem>
+                {areas?.map((area) => (
+                  <DropdownMenuRadioItem key={area.id} value={area.id}>
+                    <span className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: area.color }} />
+                    {area.name}
+                  </DropdownMenuRadioItem>
+                ))}
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>

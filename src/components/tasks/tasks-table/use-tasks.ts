@@ -5,7 +5,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useUIStore } from "@/lib/stores";
 import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
-import { Task, Company, Employee, CreateTaskInput } from "./types";
+import { Task, Company, Employee, Area, CreateTaskInput } from "./types";
 
 export function useTasks(currentUserId?: string, filterAssigneeId?: string) {
   const queryClient = useQueryClient();
@@ -21,7 +21,7 @@ export function useTasks(currentUserId?: string, filterAssigneeId?: string) {
   // All other filters read directly from URL (persisted across refreshes)
   const statusFilter  = searchParams.get("status")   ?? "all";
   const priorityFilter = searchParams.get("priority") ?? "all";
-  const areaFilter    = searchParams.get("area")      ?? "all";
+  const areaFilter    = searchParams.get("area_id")      ?? "all";
   const companyFilter = searchParams.get("company")   ?? "all";
   const page          = Number(searchParams.get("page") ?? "1");
 
@@ -51,7 +51,7 @@ export function useTasks(currentUserId?: string, filterAssigneeId?: string) {
   // Setters for filter dropdowns (all reset page to 1)
   const setStatusFilter   = useCallback((val: string) => setParams({ status: val,   page: "1" }), [setParams]);
   const setPriorityFilter = useCallback((val: string) => setParams({ priority: val, page: "1" }), [setParams]);
-  const setAreaFilter     = useCallback((val: string) => setParams({ area: val,     page: "1" }), [setParams]);
+  const setAreaFilter     = useCallback((val: string) => setParams({ area_id: val,     page: "1" }), [setParams]);
   const setCompanyFilter  = useCallback((val: string) => setParams({ company: val,  page: "1" }), [setParams]);
   const setPage = useCallback((updater: number | ((prev: number) => number)) => {
     const next = typeof updater === "function" ? updater(page) : updater;
@@ -80,6 +80,15 @@ export function useTasks(currentUserId?: string, filterAssigneeId?: string) {
     },
   });
 
+  const { data: areas = [] } = useQuery<Area[]>({
+    queryKey: ["areas"],
+    queryFn: async () => {
+      const res = await fetch("/api/areas");
+      const json = await res.json();
+      return json.data || [];
+    },
+  });
+
   const { data, isLoading } = useQuery({
     queryKey: ["tasks", { search: debouncedSearch, statusFilter, priorityFilter, areaFilter, companyFilter, page, filterAssigneeId }],
     queryFn: async () => {
@@ -89,7 +98,7 @@ export function useTasks(currentUserId?: string, filterAssigneeId?: string) {
         search: debouncedSearch,
         status: statusFilter,
         priority: priorityFilter,
-        area: areaFilter,
+        area_id: areaFilter,
         company_id: companyFilter === "all" ? "" : companyFilter,
       });
       if (filterAssigneeId) params.append("assignee_id", filterAssigneeId);
@@ -151,7 +160,7 @@ export function useTasks(currentUserId?: string, filterAssigneeId?: string) {
         body: JSON.stringify({
           ...data,
           company_id: data.company_id || null,
-          area: data.area || null,
+          area_id: data.area || null,
           assignee_id: data.assignee_id || null,
           due_date: data.due_date || null,
           start_date: data.start_date || null,
@@ -162,6 +171,7 @@ export function useTasks(currentUserId?: string, filterAssigneeId?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["areas"] });
       addNotification({ type: "success", message: "Task created" });
     },
     onError: (err: Error) => addNotification({ type: "error", message: err.message }),
@@ -189,6 +199,7 @@ export function useTasks(currentUserId?: string, filterAssigneeId?: string) {
     pagination,
     companies,
     employees,
+    areas,
     search,
     setSearch,
     statusFilter,

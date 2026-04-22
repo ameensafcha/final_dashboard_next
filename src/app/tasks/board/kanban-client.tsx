@@ -6,7 +6,8 @@ interface Task {
   id: string;
   title: string;
   description: string | null;
-  area: string | null;
+  area_id: string | null;
+  area?: { id: string; name: string; color: string } | null;
   status: string;
   priority: string;
   assignee_id: string | null;
@@ -16,6 +17,7 @@ interface Task {
   created_at: string;
   estimated_hours: number | null;
   recurrence: string | null;
+  tier: string | null;
   assignee?: { id: string; name: string; email: string } | null;
   creator?: { id: string; name: string; email: string };
   subtasks?: { id: string; title: string; is_completed: boolean }[];

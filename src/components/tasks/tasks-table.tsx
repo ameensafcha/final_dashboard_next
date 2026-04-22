@@ -28,6 +28,7 @@ export function TasksTable({
     pagination,
     companies,
     employees,
+    areas,
     search,
     setSearch,
     statusFilter,
@@ -195,6 +196,7 @@ export function TasksTable({
         areaFilter={areaFilter} setAreaFilter={setAreaFilter}
         companyFilter={companyFilter} setCompanyFilter={setCompanyFilter}
         companies={companies}
+        areas={areas}
         onAddTask={() => setShowForm(true)}
         showAddButton={!filterAssigneeId}
       />
@@ -214,9 +216,10 @@ export function TasksTable({
               </th>
               <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Task</th>
               <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Company</th>
-              <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Area</th>
+              <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Category</th>
               <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Status</th>
               <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Priority</th>
+              <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Tier</th>
               {!filterAssigneeId && (
                 <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Assignee</th>
               )}
@@ -246,6 +249,7 @@ export function TasksTable({
                 isDeleting={deletingId === task.id}
                 companies={companies}
                 employees={employees}
+                areas={areas}
                 showAssignee={!filterAssigneeId}
                 isSelected={selectedIds.has(task.id)}
                 onToggleSelect={toggleSelect}

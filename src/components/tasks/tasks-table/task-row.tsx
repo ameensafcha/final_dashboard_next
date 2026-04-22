@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Task, Company, Employee, AREA_OPTIONS } from "./types";
+import { Task, Company, Employee, Area } from "./types";
 
 const statusColors: Record<string, string> = {
   "": "",
@@ -49,6 +49,7 @@ interface TaskRowProps {
   isDeleting: boolean;
   companies: Company[];
   employees: Employee[];
+  areas: Area[];
   showAssignee: boolean;
   isSelected: boolean;
   onToggleSelect: (id: string) => void;
@@ -98,6 +99,7 @@ export const TaskRow = React.memo(function TaskRow({
   isDeleting,
   companies,
   employees,
+  areas,
   showAssignee,
   isSelected,
   onToggleSelect,
@@ -119,6 +121,7 @@ export const TaskRow = React.memo(function TaskRow({
   const isUpdatingArea = updatingTaskId === task.id && updatingCell === "area";
   const isUpdatingStatus = updatingTaskId === task.id && updatingCell === "status";
   const isUpdatingPriority = updatingTaskId === task.id && updatingCell === "priority";
+  const isUpdatingTier = updatingTaskId === task.id && updatingCell === "tier";
   const isUpdatingAssignee = updatingTaskId === task.id && updatingCell === "assignee";
   const isUpdatingStartDate = updatingTaskId === task.id && updatingCell === "start_date";
   const isUpdatingDueDate = updatingTaskId === task.id && updatingCell === "due_date";
@@ -202,7 +205,7 @@ export const TaskRow = React.memo(function TaskRow({
         </DropdownMenu>
       </td>
 
-      {/* Area */}
+      {/* Category */}
       <td className="py-5 px-8">
         <DropdownMenu>
           <DropdownMenuTrigger 
@@ -214,20 +217,33 @@ export const TaskRow = React.memo(function TaskRow({
           >
             {isUpdatingArea && <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--primary)] shrink-0" />}
             {task.area
-              ? <span className="text-[10px] font-black px-3 py-1 bg-[var(--surface-container)] text-[var(--muted)] rounded-full uppercase tracking-widest">{task.area}</span>
+              ? (
+                <span 
+                  className="text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest flex items-center gap-1"
+                  style={{ backgroundColor: task.area.color + "20", color: task.area.color }}
+                >
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: task.area.color }} />
+                  {task.area.name}
+                </span>
+              )
               : <span className="text-xs font-bold text-[var(--muted)] hover:text-[var(--primary)] transition-colors cursor-pointer">Select</span>
             }
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuRadioGroup
-              value={task.area ?? "__none__"}
+              value={task.area_id ?? "__none__"}
               onValueChange={(val) => {
                 setUpdatingCell("area");
-                saveInlineField(task.id, { area: val === "__none__" ? null : val });
+                saveInlineField(task.id, { area_id: val === "__none__" ? null : val });
               }}
             >
               <DropdownMenuRadioItem value="__none__">None</DropdownMenuRadioItem>
-              {AREA_OPTIONS.map(a => <DropdownMenuRadioItem key={a} value={a}>{a}</DropdownMenuRadioItem>)}
+              {areas.map(a => (
+                <DropdownMenuRadioItem key={a.id} value={a.id}>
+                  <span className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: a.color }} />
+                  {a.name}
+                </DropdownMenuRadioItem>
+              ))}
             </DropdownMenuRadioGroup>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -258,6 +274,12 @@ export const TaskRow = React.memo(function TaskRow({
               <DropdownMenuRadioItem value="in_progress">In Progress</DropdownMenuRadioItem>
               <DropdownMenuRadioItem value="review">Review</DropdownMenuRadioItem>
               <DropdownMenuRadioItem value="completed">Completed</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="active">Active</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="blocked">Blocked</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="recurring">Recurring</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="sop">SOP</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="parked">Parked</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="needs_verification">Needs Verification</DropdownMenuRadioItem>
             </DropdownMenuRadioGroup>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -288,6 +310,44 @@ export const TaskRow = React.memo(function TaskRow({
               <DropdownMenuRadioItem value="medium">Medium</DropdownMenuRadioItem>
               <DropdownMenuRadioItem value="high">High</DropdownMenuRadioItem>
               <DropdownMenuRadioItem value="urgent">Urgent</DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </td>
+
+      {/* Tier */}
+      <td className="py-5 px-8">
+        <DropdownMenu>
+          <DropdownMenuTrigger 
+            disabled={isUpdatingTier}
+            className={cn(
+              "outline-none cursor-pointer p-0 bg-transparent border-none flex items-center gap-2",
+              isUpdatingTier && "opacity-50 pointer-events-none"
+            )}
+          >
+            {isUpdatingTier && <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--primary)] shrink-0" />}
+            {task.tier ? (
+              <span className="text-[10px] font-black px-3 py-1 bg-[var(--surface-container-high)] text-[var(--foreground)] rounded-full uppercase tracking-widest border border-[var(--border)]">
+                {task.tier}
+              </span>
+            ) : (
+              <span className="text-xs font-bold text-[var(--muted)] hover:text-[var(--primary)] transition-colors cursor-pointer">None</span>
+            )}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuRadioGroup
+              value={task.tier || "__none__"}
+              onValueChange={(val) => {
+                setUpdatingCell("tier");
+                saveInlineField(task.id, { tier: val === "__none__" ? null : val });
+              }}
+            >
+              <DropdownMenuRadioItem value="__none__">None</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="T1 Strategic">T1 Strategic</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="T2 Quick Win">T2 Quick Win</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="SOP">SOP</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="Recurring">Recurring</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="Long-term">Long-term</DropdownMenuRadioItem>
             </DropdownMenuRadioGroup>
           </DropdownMenuContent>
         </DropdownMenu>

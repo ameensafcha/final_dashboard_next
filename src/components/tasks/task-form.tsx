@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from "react";
 
-const AREA_OPTIONS = ["Production", "Quality", "Warehouse", "Procurement", "HR", "Admin", "Development", "Maintenance", "Finance"] as const;
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -20,15 +19,17 @@ interface Task {
   id: string;
   title: string;
   description: string | null;
-  area: string | null;
+  area_id: string | null;
   company_id: string | null;
   status: string;
   priority: string;
+  tier: string | null;
   assignee_id: string | null;
   due_date: string | null;
   start_date: string | null;
   estimated_hours: number | null;
   recurrence: string | null;
+  area?: { id: string; name: string; color: string } | null;
   assignee?: { id: string; name: string; email?: string } | null;
   company?: { id: string; name: string } | null;
 }
@@ -87,12 +88,24 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
   const queryClient = useQueryClient();
   const { addNotification } = useUIStore();
 
+  const { data: areas = [] } = useQuery<{ id: string; name: string; color: string }[]>({
+    queryKey: ["areas"],
+    queryFn: async () => {
+      const res = await fetch("/api/areas");
+      const json = await res.json();
+      return json.data || [];
+    },
+    enabled: open,
+  });
+
   const [formData, setFormData] = useState<{
     title: string;
     description: string;
     area: string;
     company_id: string;
     priority: string;
+    status: string;
+    tier: string;
     assignee_id: string;
     due_date: string;
     start_date: string;
@@ -104,6 +117,8 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
     area: "",
     company_id: "",
     priority: "medium",
+    status: "not_started",
+    tier: "",
     assignee_id: "",
     due_date: "",
     start_date: "",
@@ -116,9 +131,11 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
       setFormData({
         title: task.title,
         description: task.description || "",
-        area: task.area || "",
+        area: task.area_id || "",
         company_id: task.company_id || "",
         priority: task.priority,
+        status: task.status,
+        tier: task.tier || "",
         assignee_id: task.assignee_id || task.assignee?.id || "",
         due_date: task.due_date ? task.due_date.split("T")[0] : "",
         start_date: task.start_date ? task.start_date.split("T")[0] : "",
@@ -132,6 +149,8 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
         area: "",
         company_id: "",
         priority: "medium",
+        status: "not_started",
+        tier: "",
         assignee_id: defaultAssigneeId || "",
         due_date: "",
         start_date: "",
@@ -169,9 +188,11 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
         body: JSON.stringify({
           title: data.title,
           description: data.description || null,
-          area: data.area || null,
+          area_id: data.area || null,
           company_id: data.company_id || null,
           priority: data.priority,
+          status: data.status,
+          tier: data.tier || null,
           assignee_id: data.assignee_id || defaultAssigneeId || null,
           due_date: data.due_date || null,
           start_date: data.start_date || null,
@@ -204,9 +225,11 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
           id: task!.id,
           title: data.title,
           description: data.description || null,
-          area: data.area || null,
+          area_id: data.area || null,
           company_id: data.company_id || null,
           priority: data.priority,
+          status: data.status,
+          tier: data.tier || null,
           assignee_id: data.assignee_id || defaultAssigneeId || null,
           due_date: data.due_date || null,
           start_date: data.start_date || null,
@@ -290,20 +313,46 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
 
           <div className="grid grid-cols-2 gap-6">
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)] mb-2 px-1">Area</label>
+              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)] mb-2 px-1">Category</label>
               <FormDropdown
                 value={formData.area || "__none__"}
-                displayValue={formData.area}
+                displayValue={areas.find(a => a.id === formData.area)?.name || ""}
                 onValueChange={(val) => setFormData({ ...formData, area: val === "__none__" ? "" : val })}
-                placeholder="Select Area"
+                placeholder="Select Category"
               >
                 <DropdownMenuRadioItem value="__none__">None</DropdownMenuRadioItem>
-                {AREA_OPTIONS.map((area) => (
-                  <DropdownMenuRadioItem key={area} value={area}>{area}</DropdownMenuRadioItem>
+                {areas.map((area) => (
+                  <DropdownMenuRadioItem key={area.id} value={area.id}>
+                    <span className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: area.color }} />
+                    {area.name}
+                  </DropdownMenuRadioItem>
                 ))}
               </FormDropdown>
             </div>
 
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)] mb-2 px-1">Status</label>
+              <FormDropdown
+                value={formData.status}
+                displayValue={formData.status ? formData.status.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : ""}
+                onValueChange={(val) => setFormData({ ...formData, status: val })}
+                placeholder="Select Status"
+              >
+                <DropdownMenuRadioItem value="not_started">Not Started</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="in_progress">In Progress</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="review">Review</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="completed">Completed</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="active">Active</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="blocked">Blocked</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="recurring">Recurring</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="sop">SOP</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="parked">Parked</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="needs_verification">Needs Verification</DropdownMenuRadioItem>
+              </FormDropdown>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-6">
             <div>
               <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)] mb-2 px-1">Priority</label>
               <FormDropdown
@@ -316,6 +365,23 @@ export function TaskForm({ open, onClose, task, defaultAssigneeId, canChangeAssi
                 <DropdownMenuRadioItem value="medium">Medium</DropdownMenuRadioItem>
                 <DropdownMenuRadioItem value="high">High</DropdownMenuRadioItem>
                 <DropdownMenuRadioItem value="urgent">Urgent</DropdownMenuRadioItem>
+              </FormDropdown>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)] mb-2 px-1">Tier</label>
+              <FormDropdown
+                value={formData.tier || "__none__"}
+                displayValue={formData.tier || ""}
+                onValueChange={(val) => setFormData({ ...formData, tier: val === "__none__" ? "" : val })}
+                placeholder="Select Tier"
+              >
+                <DropdownMenuRadioItem value="__none__">None</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="T1 Strategic">T1 Strategic</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="T2 Quick Win">T2 Quick Win</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="SOP">SOP</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="Recurring">Recurring</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="Long-term">Long-term</DropdownMenuRadioItem>
               </FormDropdown>
             </div>
           </div>

@@ -1,7 +1,18 @@
 import { z } from "zod";
 
 export const taskPrioritySchema = z.enum(["low", "medium", "high", "urgent"]);
-export const taskStatusSchema = z.enum(["not_started", "in_progress", "review", "completed"]);
+export const taskStatusSchema = z.enum([
+  "not_started", 
+  "in_progress", 
+  "review", 
+  "completed",
+  "active",
+  "blocked",
+  "recurring",
+  "sop",
+  "parked",
+  "needs_verification"
+]);
 export const taskAreaSchema = z.enum([
   "Production",
   "Quality",
@@ -24,7 +35,7 @@ const dateSchema = z.preprocess((arg) => {
 export const createTaskSchema = z.object({
   title: z.string().min(1, "Title is required").max(255),
   description: z.string().nullable().optional(),
-  area: z.preprocess((v) => (v === "" || v === undefined || v === null ? null : v), taskAreaSchema.nullable().optional()),
+  area_id: z.preprocess((v) => (v === "" || v === undefined || v === null ? null : v), z.string().nullable().optional()),
   
   // FIX: Removed .uuid()
   company_id: z.preprocess((v) => (v === "" || v === undefined || v === null ? null : v), z.string().nullable().optional()),
@@ -41,6 +52,7 @@ export const createTaskSchema = z.object({
     return typeof v === "string" ? parseFloat(v) : v;
   }, z.number().min(0).nullable().optional()),
   recurrence: z.preprocess((v) => (v === "" || v === undefined || v === null ? null : v), taskRecurrenceSchema.optional()),
+  tier: z.string().nullable().optional(),
 });
 
 export const updateTaskSchema = createTaskSchema.partial().extend({
@@ -56,8 +68,8 @@ export const taskQuerySchema = z.object({
   search: z.string().optional(),
   status: taskStatusSchema.optional().or(z.literal("all")).transform(v => v === "all" ? undefined : v),
   priority: taskPrioritySchema.optional().or(z.literal("all")).transform(v => v === "all" ? undefined : v),
-  area: taskAreaSchema.optional().or(z.literal("all")).transform(v => v === "all" ? undefined : v),
-  
+  area_id: z.string().optional().or(z.literal("all")).transform(v => v === "all" ? undefined : v),
+
   // FIX: Removed .uuid()
   company_id: z.preprocess((v) => (v === "" || v === undefined || v === null ? undefined : v), z.string().optional()),
   assignee_id: z.preprocess((v) => (v === "" || v === undefined || v === null ? undefined : v), z.string().optional()),

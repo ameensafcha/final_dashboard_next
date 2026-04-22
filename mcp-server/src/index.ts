@@ -21,10 +21,50 @@ const { Pool } = pg;
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter } as any);
+
+const CATEGORIES = [
+  "Safcha — Product & SFDA",
+  "Packaging & Design",
+  "B2B & Wholesale",
+  "Nawafith — Operations",
+  "Nawafith — Marketing & Sales",
+  "Safcha — Marketing & Content",
+  "E-commerce & Online",
+  "Office & Operations",
+  "Hiring & Employees",
+  "Inventory & Production",
+  "Events, Expo & Export",
+  "Misc / Leads",
+  "all"
+] as const;
+
+const TIERS = [
+  "T1 Strategic",
+  "T2 Quick Win",
+  "SOP",
+  "Recurring",
+  "Long-term",
+  "None"
+] as const;
+
+const STATUSES = [
+  "not_started",
+  "in_progress",
+  "review",
+  "completed",
+  "active",
+  "blocked",
+  "recurring",
+  "sop",
+  "parked",
+  "needs_verification",
+  "all"
+] as const;
+
 function createServer() {
 const server = new McpServer({
   name: "task-manager",
-  version: "1.0.0",
+  version: "1.1.0",
 });
 
 // ─────────────────────────────────────────────
@@ -35,7 +75,8 @@ function formatTask(t: any): string {
     `📌 ${t.title} [${t.id}]`,
     `   Status   : ${t.status}`,
     `   Priority : ${t.priority}`,
-    t.area        ? `   Area     : ${t.area}` : null,
+    t.tier        ? `   Tier     : ${t.tier}` : null,
+    t.area        ? `   Category : ${t.area.name}` : null,
     t.company     ? `   Company  : ${t.company.name}` : null,
     t.assignee    ? `   Assignee : ${t.assignee.name}` : null,
     t.due_date    ? `   Due      : ${new Date(t.due_date).toLocaleDateString("en-PK")}` : null,
@@ -51,12 +92,13 @@ function formatTask(t: any): string {
 // ─────────────────────────────────────────────
 server.tool(
   "list_tasks",
-  "Tasks ki list dikhao — filter kar sakte ho status, priority, area, search se",
+  "Tasks ki list dikhao — filter kar sakte ho status, priority, category, tier, search se",
   {
     search:   z.string().optional().describe("Title ya description mein search"),
-    status:   z.enum(["not_started", "in_progress", "review", "completed", "all"]).optional().describe("Task ka status"),
+    status:   z.enum(STATUSES).optional().describe("Task ka status"),
     priority: z.enum(["low", "medium", "high", "urgent", "all"]).optional().describe("Priority level"),
-    area:     z.enum(["Production","Quality","Warehouse","Procurement","HR","Admin","Development","Maintenance","Finance","all"]).optional().describe("Department / area"),
+    category: z.enum(CATEGORIES).optional().describe("Task category (Area)"),
+    tier:     z.enum(TIERS).optional().describe("Task tier"),
     assignee_name: z.string().optional().describe("Assignee ka naam (partial bhi chalega)"),
     overdue_only: z.boolean().optional().describe("Sirf overdue tasks"),
     limit:    z.number().optional().default(20).describe("Kitni tasks dikhani hain (default 20)"),
@@ -72,7 +114,14 @@ server.tool(
     }
     if (args.status && args.status !== "all")   where.status   = args.status;
     if (args.priority && args.priority !== "all") where.priority = args.priority;
-    if (args.area && args.area !== "all")         where.area     = args.area;
+    if (args.tier && args.tier !== "None")       where.tier     = args.tier;
+    
+    if (args.category && args.category !== "all") {
+      const area = await prisma.area.findFirst({
+        where: { name: { equals: args.category, mode: "insensitive" } },
+      });
+      if (area) where.area_id = area.id;
+    }
 
     if (args.assignee_name) {
       where.assignee = { name: { contains: args.assignee_name, mode: "insensitive" } };
@@ -91,6 +140,7 @@ server.tool(
         company:  { select: { id: true, name: true } },
         assignee: { select: { id: true, name: true } },
         creator:  { select: { id: true, name: true } },
+        area:    { select: { id: true, name: true } },
         subtasks: true,
       },
     });
@@ -118,6 +168,7 @@ server.tool(
         company:  { select: { id: true, name: true } },
         assignee: { select: { id: true, name: true, email: true } },
         creator:  { select: { id: true, name: true } },
+        area:     { select: { id: true, name: true } },
         subtasks: { orderBy: { created_at: "asc" } },
         comments: {
           include: { employee: { select: { id: true, name: true } } },
@@ -172,7 +223,9 @@ server.tool(
     title:           z.string().min(1).max(255).describe("Task ka title — zarori hai"),
     description:     z.string().optional().describe("Task ki description"),
     priority:        z.enum(["low", "medium", "high", "urgent"]).optional().default("medium"),
-    area:            z.enum(["Production","Quality","Warehouse","Procurement","HR","Admin","Development","Maintenance","Finance"]).optional(),
+    status:          z.enum(STATUSES).optional().default("not_started"),
+    category:        z.enum(CATEGORIES).optional().describe("Task category (Area)"),
+    tier:            z.enum(TIERS).optional().describe("Task tier"),
     due_date:        z.string().optional().describe("Due date — format: YYYY-MM-DD"),
     start_date:      z.string().optional().describe("Start date — format: YYYY-MM-DD"),
     assignee_name:   z.string().optional().describe("Assignee ka naam — partial bhi chalega"),
@@ -207,13 +260,23 @@ server.tool(
       company_id = company.id;
     }
 
+    // Find area by name and get area_id
+    let area_id: string | null = null;
+    if (args.category && args.category !== "all") {
+      const area = await prisma.area.findFirst({
+        where: { name: { equals: args.category, mode: "insensitive" } },
+      });
+      if (area) area_id = area.id;
+    }
+
     const task = await prisma.tasks.create({
       data: {
         title:           args.title,
         description:     args.description ?? null,
         priority:        args.priority ?? "medium",
-        area:            args.area ?? null,
-        status:          "not_started",
+        status:          args.status === "all" ? "not_started" : (args.status ?? "not_started"),
+        tier:            args.tier === "None" ? null : (args.tier ?? null),
+        area_id:         area_id,
         created_by:      creator.id,
         assignee_id,
         company_id,
@@ -225,6 +288,7 @@ server.tool(
         company:  { select: { id: true, name: true } },
         assignee: { select: { id: true, name: true } },
         creator:  { select: { id: true, name: true } },
+        area:     { select: { id: true, name: true } },
         subtasks: true,
       },
     });
@@ -243,9 +307,10 @@ server.tool(
     task_id:       z.string().describe("Task ka ID — zarori hai"),
     title:         z.string().optional(),
     description:   z.string().optional(),
-    status:        z.enum(["not_started", "in_progress", "review", "completed"]).optional(),
+    status:        z.enum(STATUSES).optional(),
     priority:      z.enum(["low", "medium", "high", "urgent"]).optional(),
-    area:          z.enum(["Production","Quality","Warehouse","Procurement","HR","Admin","Development","Maintenance","Finance"]).optional(),
+    category:      z.enum(CATEGORIES).optional().describe("Task category (Area)"),
+    tier:          z.enum(TIERS).optional(),
     due_date:      z.string().optional().describe("Format: YYYY-MM-DD, ya 'null' hatane ke liye"),
     start_date:    z.string().optional().describe("Format: YYYY-MM-DD, ya 'null' hatane ke liye"),
     assignee_name: z.string().optional().describe("Nayi assignee ka naam"),
@@ -258,9 +323,17 @@ server.tool(
     const updateData: any = {};
     if (args.title)       updateData.title       = args.title;
     if (args.description !== undefined) updateData.description = args.description;
-    if (args.status)      updateData.status      = args.status;
+    if (args.status && args.status !== "all")      updateData.status      = args.status;
     if (args.priority)    updateData.priority    = args.priority;
-    if (args.area)        updateData.area        = args.area;
+    if (args.tier)        updateData.tier        = args.tier === "None" ? null : args.tier;
+    
+    if (args.category && args.category !== "all") {
+      const area = await prisma.area.findFirst({
+        where: { name: { equals: args.category, mode: "insensitive" } },
+      });
+      if (area) updateData.area_id = area.id;
+    }
+    
     if (args.estimated_hours !== undefined) updateData.estimated_hours = args.estimated_hours;
 
     if (args.due_date !== undefined)
@@ -289,6 +362,7 @@ server.tool(
         company:  { select: { id: true, name: true } },
         assignee: { select: { id: true, name: true } },
         creator:  { select: { id: true, name: true } },
+        area:     { select: { id: true, name: true } },
         subtasks: true,
       },
     });
@@ -465,7 +539,8 @@ server.tool(
       created_by_name: z.string().describe("Creator ka naam — zarori"),
       description:     z.string().optional(),
       priority:        z.enum(["low", "medium", "high", "urgent"]).default("medium"),
-      area:            z.enum(["Production","Quality","Warehouse","Procurement","HR","Admin","Development","Maintenance","Finance"]).optional(),
+      category:        z.enum(CATEGORIES).optional().describe("Task category (Area)"),
+      tier:            z.enum(TIERS).optional(),
       due_date:        z.string().optional().describe("YYYY-MM-DD format"),
       company_name:    z.string().optional().describe("Company ka naam — list_companies se check karo"),
       assignee_name:   z.string().optional().describe("Assignee ka naam — list_employees se check karo"),
@@ -503,12 +578,22 @@ server.tool(
           assignee_id = assignee.id;
         }
 
+        // Area dhundho (optional)
+        let area_id: string | null = null;
+        if (t.category && t.category !== "all") {
+          const area = await prisma.area.findFirst({
+            where: { name: { equals: t.category, mode: "insensitive" } },
+          });
+          if (area) area_id = area.id;
+        }
+
         await prisma.tasks.create({
           data: {
             title:       t.title,
             description: t.description ?? null,
             priority:    t.priority,
-            area:        t.area ?? null,
+            tier:        t.tier === "None" ? null : (t.tier ?? null),
+            area_id:     area_id,
             status:      "not_started",
             created_by:  creator.id,
             due_date:    t.due_date    ? new Date(t.due_date)    : null,

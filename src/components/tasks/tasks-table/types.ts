@@ -2,10 +2,11 @@ export interface Task {
   id: string;
   title: string;
   description: string | null;
-  area: string | null;
+  area_id: string | null;
   company_id: string | null;
   status: string;
   priority: string;
+  tier: string | null;
   assignee_id: string | null;
   due_date: string | null;
   start_date: string | null;
@@ -13,6 +14,7 @@ export interface Task {
   created_at: string;
   estimated_hours: number | null;
   recurrence: string | null;
+  area?: { id: string; name: string; color: string } | null;
   company?: { id: string; name: string } | null;
   assignee?: {
     id: string;
@@ -45,19 +47,22 @@ export interface Employee {
   name: string;
 }
 
-export const AREA_OPTIONS = [
-  "Production", "Quality", "Warehouse", "Procurement",
-  "HR", "Admin", "Development", "Maintenance", "Finance",
-];
+export interface Area {
+  id: string;
+  name: string;
+  color: string;
+}
 
 export interface CreateTaskInput {
   title: string;
   status: string;
   priority: string;
   company_id: string;
-  area: string;
+  area_id?: string;
+  area?: string;
   assignee_id: string;
   due_date: string;
   start_date: string;
+  tier?: string;
 }
 

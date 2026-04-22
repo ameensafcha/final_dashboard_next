@@ -15,6 +15,10 @@ interface Task {
   due_date: string | null;
   start_date: string | null;
   created_at: string;
+  estimated_hours: number | null;
+  recurrence: string | null;
+  tier: string | null;
+  area?: { id: string; name: string; color: string } | null;
   company?: { id: string; name: string } | null;
   assignee?: {
     id: string;
@@ -78,6 +82,13 @@ export function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
         <p className="text-[12px] text-[var(--muted)] line-clamp-2 font-bold leading-relaxed">
           {task.description}
         </p>
+      )}
+
+      {task.area && (
+        <div className="flex items-center gap-1.5 mt-[-8px]">
+          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: task.area.color }} />
+          <span className="text-[9px] font-black uppercase tracking-widest text-[var(--muted)]">{task.area.name}</span>
+        </div>
       )}
 
       <div className="flex items-center justify-between mt-auto pt-2">

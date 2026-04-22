@@ -293,7 +293,7 @@ model tasks {
   id            String           @id @default(uuid())
   title         String
   description   String?
-  area          String?
+  area_id       String?
   company_id    String?
   assignee_id   String?
   created_by    String
@@ -304,6 +304,7 @@ model tasks {
   completed_at  DateTime?
   estimated_hours Float?
   recurrence      String?
+  tier            String?
   has_spawned_recurrence Boolean @default(false)
   created_at    DateTime         @default(now())
   updated_at    DateTime         @updatedAt
@@ -312,6 +313,7 @@ model tasks {
   time_logs     task_time_logs[]
   attachments   task_attachments[]
   company       companies?       @relation(fields: [company_id], references: [id])
+  area          Area?            @relation(fields: [area_id], references: [id])
   assignee      Employee?        @relation("task_assignee", fields: [assignee_id], references: [id])
   creator       Employee         @relation("task_creator", fields: [created_by], references: [id])
   notifications notifications[]
@@ -321,7 +323,7 @@ model tasks {
   @@index([priority])
   @@index([due_date])
   @@index([created_by])
-  @@index([area])
+  @@index([area_id])
   @@index([company_id])
 }
 
@@ -469,4 +471,18 @@ model test_table2 {
   id         String   @id @default(uuid())
   name       String
   created_at DateTime @default(now())
+}
+
+model Area {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  color       String   @default("#6366f1")
+  description String?
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+
+  tasks       tasks[]
+
+  @@index([name])
+  @@map("areas")
 }

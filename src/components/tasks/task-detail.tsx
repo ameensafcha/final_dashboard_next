@@ -27,6 +27,8 @@ interface Task {
   created_at: string;
   estimated_hours: number | null;
   recurrence: string | null;
+  tier: string | null;
+  area?: { id: string; name: string; color: string } | null;
   company?: { id: string; name: string } | null;
   assignee?: { id: string; name: string; email: string } | null;
   creator?: { id: string; name: string; email: string };
@@ -338,6 +340,23 @@ export function TaskDetail({ task, open, onClose }: TaskDetailProps) {
                         <span className="text-[var(--foreground)] text-[12px] font-bold">{currentTask.company.name}</span>
                       </div>
                     ) : <span className="text-[var(--muted)] italic font-medium">No Company</span>}
+                  </PropertyRow>
+
+                  <PropertyRow icon={Activity} label="Category">
+                    {currentTask.area ? (
+                      <div className="flex items-center gap-2 bg-[var(--surface)] px-4 py-1.5 rounded-full w-fit shadow-sm">
+                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: currentTask.area.color }} />
+                        <span className="text-[var(--foreground)] text-[12px] font-bold">{currentTask.area.name}</span>
+                      </div>
+                    ) : <span className="text-[var(--muted)] italic font-medium">No Category</span>}
+                  </PropertyRow>
+
+                  <PropertyRow icon={Flag} label="Tier">
+                    {currentTask.tier ? (
+                      <div className="bg-[var(--surface)] px-4 py-1.5 rounded-full w-fit shadow-sm">
+                        <span className="text-[var(--foreground)] text-[12px] font-bold uppercase tracking-widest">{currentTask.tier}</span>
+                      </div>
+                    ) : <span className="text-[var(--muted)] italic font-medium">No Tier</span>}
                   </PropertyRow>
 
                   <PropertyRow icon={User} label="Assignee">

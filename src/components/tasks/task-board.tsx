@@ -39,6 +39,8 @@ interface Task {
   created_at: string;
   estimated_hours: number | null;
   recurrence: string | null;
+  tier: string | null;
+  area?: { id: string; name: string; color: string } | null;
   company?: { id: string; name: string } | null;
   assignee?: {
     id: string;

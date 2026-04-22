@@ -8,7 +8,7 @@
     "node": "20.x"
   },
   "scripts": {
-    "build": "node node_modules/prisma/build/index.js generate && node node_modules/typescript/bin/tsc",
+    "build": "npm install @prisma/client --no-save && node node_modules/prisma/build/index.js generate && node node_modules/typescript/bin/tsc",
     "start": "node dist/index.js",
     "dev": "tsc && node dist/index.js"
   },

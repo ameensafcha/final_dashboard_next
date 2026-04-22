@@ -4,8 +4,11 @@
   "description": "MCP Server for Task Manager — connects Claude AI to your task database",
   "type": "module",
   "main": "dist/index.js",
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
-    "build": "npx prisma generate && npx tsc",
+    "build": "node node_modules/prisma/build/index.js generate && node node_modules/typescript/bin/tsc",
     "start": "node dist/index.js",
     "dev": "tsc && node dist/index.js"
   },

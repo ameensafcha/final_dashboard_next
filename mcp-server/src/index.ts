@@ -498,6 +498,69 @@ server.tool(
 );
 
 // ─────────────────────────────────────────────
+// TOOL: get_context
+// ─────────────────────────────────────────────
+server.tool(
+  "get_context",
+  "CALL THIS FIRST — returns all employees, companies, categories, and task stats needed to create or update tasks",
+  {},
+  async () => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+
+    const [employees, companies, areas, total, completed, inProgress, overdue, notStarted] = await Promise.all([
+      prisma.employee.findMany({
+        where: { is_active: true },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true, role: { select: { name: true } } },
+      }),
+      prisma.companies.findMany({
+        where: { is_active: true },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
+      }),
+      prisma.area.findMany({
+        where: { is_active: true },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
+      }),
+      prisma.tasks.count(),
+      prisma.tasks.count({ where: { status: "completed" } }),
+      prisma.tasks.count({ where: { status: "in_progress" } }),
+      prisma.tasks.count({ where: { due_date: { lt: today }, status: { not: "completed" } } }),
+      prisma.tasks.count({ where: { status: "not_started" } }),
+    ]);
+
+    const text = [
+      "=== EMPLOYEES (use exact name for created_by_name / assignee_name) ===",
+      employees.map((e: any) => `  ${e.name}${e.role ? ` [${e.role.name}]` : ""}`).join("\n"),
+      "",
+      "=== COMPANIES (use exact name for company_name) ===",
+      companies.map((c: any) => `  ${c.name}`).join("\n"),
+      "",
+      "=== CATEGORIES (use exact name for category field) ===",
+      areas.map((a: any) => `  ${a.name}`).join("\n"),
+      "",
+      "=== VALID STATUS VALUES ===",
+      "  not_started | in_progress | review | completed | active | blocked | recurring | sop | parked | needs_verification",
+      "",
+      "=== VALID PRIORITY VALUES ===",
+      "  low | medium | high | urgent",
+      "",
+      "=== VALID TIER VALUES ===",
+      "  T1 Strategic | T2 Quick Win | SOP | Recurring | Long-term | None",
+      "",
+      "=== VALID RECURRENCE VALUES ===",
+      "  daily | weekly | monthly | yearly | none",
+      "",
+      "=== TASK STATS ===",
+      `  Total: ${total} | In Progress: ${inProgress} | Not Started: ${notStarted} | Completed: ${completed} | Overdue: ${overdue}`,
+    ].join("\n");
+
+    return { content: [{ type: "text", text }] };
+  }
+);
+
+// ─────────────────────────────────────────────
 // TOOL: task_summary
 // ─────────────────────────────────────────────
 server.tool(

@@ -107,8 +107,6 @@ export function useTasks(currentUserId?: string, filterAssigneeId?: string) {
       return res.json();
     },
     placeholderData: (previousData) => previousData,
-    refetchInterval: 15000,          // MCP fallback — 15s, sirf jab realtime miss ho
-    refetchIntervalInBackground: false, // Tab switch pe band, tab focus pe hi chale
   });
 
   const tasks = data?.data || [];

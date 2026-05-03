@@ -201,11 +201,11 @@ export function TasksTable({
         showAddButton={!filterAssigneeId}
       />
 
-      <div className="bg-[var(--surface-container-lowest)] rounded-[var(--radius-xl)] shadow-[0_20px_50px_rgba(0,0,0,0.03)] overflow-hidden overflow-x-auto border-none">
+      <div className="bg-[var(--surface-container-lowest)] rounded-[var(--radius-xl)] shadow-[0_20px_50px_rgba(0,0,0,0.03)] overflow-hidden overflow-x-auto scrollbar-hide border-none">
         <table className="w-full min-w-[1000px] border-collapse">
           <thead>
             <tr className="bg-[var(--surface)]/50 border-none">
-              <th className="py-5 pl-4 pr-0 w-10">
+              <th className="py-3 pl-4 pr-0 w-10 whitespace-nowrap">
                 <input
                   type="checkbox"
                   checked={tasks.length > 0 && selectedIds.size === tasks.length}
@@ -214,19 +214,19 @@ export function TasksTable({
                   className="w-4 h-4 rounded accent-[var(--primary)] cursor-pointer"
                 />
               </th>
-              <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Task</th>
-              <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Company</th>
-              <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Category</th>
-              <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Status</th>
-              <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Priority</th>
-              <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Tier</th>
+              <th className="text-left py-3 px-6 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em] whitespace-nowrap">Task</th>
+              <th className="text-left py-3 px-6 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em] whitespace-nowrap">Company</th>
+              <th className="text-left py-3 px-6 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em] whitespace-nowrap">Category</th>
+              <th className="text-left py-3 px-6 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em] whitespace-nowrap">Status</th>
+              <th className="text-left py-3 px-6 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em] whitespace-nowrap">Priority</th>
+              <th className="text-left py-3 px-6 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em] whitespace-nowrap">Tier</th>
               {!filterAssigneeId && (
-                <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Assignee</th>
+                <th className="text-left py-3 px-6 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em] whitespace-nowrap">Assignee</th>
               )}
-              <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Start Date</th>
-              <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Due</th>
-              <th className="text-left py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Time Left</th>
-              <th className="text-right py-5 px-8 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em]">Actions</th>
+              <th className="text-left py-3 px-6 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em] whitespace-nowrap">Start Date</th>
+              <th className="text-left py-3 px-6 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em] whitespace-nowrap">Due</th>
+              <th className="text-left py-3 px-6 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em] whitespace-nowrap">Time Left</th>
+              <th className="text-right py-3 px-6 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.2em] whitespace-nowrap">Actions</th>
             </tr>
           </thead>
           <tbody className="border-none">
@@ -274,7 +274,7 @@ export function TasksTable({
                 }}
                 className="cursor-pointer hover:bg-[var(--accent)]/5 transition-colors border-none"
               >
-                <td colSpan={colCount} className="py-5 px-8">
+                <td colSpan={colCount} className="py-3 px-6 whitespace-nowrap">
                   <div className="flex items-center gap-3 text-[var(--muted)] hover:text-[var(--primary)] transition-colors group/add">
                     <div className="p-1 bg-[var(--surface-container)] rounded-lg group-hover/add:bg-[var(--accent)]/20 transition-colors">
                       <Plus className="w-4 h-4" />
@@ -287,7 +287,7 @@ export function TasksTable({
 
             {tasks.length === 0 && !showAddRow && (
               <tr>
-                <td colSpan={colCount} className="py-20 text-center text-[var(--muted)]">
+                <td colSpan={colCount} className="py-10 text-center text-[var(--muted)]">
                   <p className="font-black uppercase tracking-[0.3em] text-[10px]">No missions found</p>
                 </td>
               </tr>

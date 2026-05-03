@@ -129,7 +129,7 @@ export const TaskRow = React.memo(function TaskRow({
   return (
     <tr className={cn("hover:bg-[var(--surface)] transition-colors group border-none", isSelected && "bg-[var(--accent)]/10")}>
       {/* Checkbox */}
-      <td className="py-5 pl-4 pr-0 w-10" onClick={e => e.stopPropagation()}>
+      <td className="py-3 pl-4 pr-0 w-10 whitespace-nowrap" onClick={e => e.stopPropagation()}>
         <input
           type="checkbox"
           checked={isSelected}
@@ -139,7 +139,7 @@ export const TaskRow = React.memo(function TaskRow({
       </td>
       {/* Title */}
       <td
-        className="py-5 px-8 min-w-[250px]"
+        className="py-3 px-6 whitespace-nowrap min-w-[250px]"
         onClick={() => !inlineEditingId && startInlineEdit(task.id, "title", task.title)}
       >
         {inlineEditingId === task.id && inlineField === "title" ? (
@@ -166,8 +166,8 @@ export const TaskRow = React.memo(function TaskRow({
           <div className="cursor-pointer">
             <div className={cn("flex items-center gap-2", isUpdatingTitle && "opacity-50")}>
               {isUpdatingTitle && <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--primary)] shrink-0" />}
-              <p className="font-bold text-sm text-[var(--foreground)] group-hover:text-[var(--primary)] transition-colors">
-                {task.title.length > 25 ? task.title.slice(0, 25) + "..." : task.title}
+              <p className="font-bold text-sm text-[var(--foreground)] group-hover:text-[var(--primary)] transition-colors truncate max-w-[250px]" title={task.title}>
+                {task.title}
               </p>
             </div>
           </div>
@@ -175,7 +175,7 @@ export const TaskRow = React.memo(function TaskRow({
       </td>
 
       {/* Company */}
-      <td className="py-5 px-8">
+      <td className="py-3 px-6 whitespace-nowrap">
         <DropdownMenu>
           <DropdownMenuTrigger 
             disabled={isUpdatingCompany}
@@ -206,7 +206,7 @@ export const TaskRow = React.memo(function TaskRow({
       </td>
 
       {/* Category */}
-      <td className="py-5 px-8">
+      <td className="py-3 px-6 whitespace-nowrap">
         <DropdownMenu>
           <DropdownMenuTrigger 
             disabled={isUpdatingArea}
@@ -250,7 +250,7 @@ export const TaskRow = React.memo(function TaskRow({
       </td>
 
       {/* Status */}
-      <td className="py-5 px-8">
+      <td className="py-3 px-6 whitespace-nowrap">
         <DropdownMenu>
           <DropdownMenuTrigger 
             disabled={isUpdatingStatus}
@@ -286,7 +286,7 @@ export const TaskRow = React.memo(function TaskRow({
       </td>
 
       {/* Priority */}
-      <td className="py-5 px-8">
+      <td className="py-3 px-6 whitespace-nowrap">
         <DropdownMenu>
           <DropdownMenuTrigger 
             disabled={isUpdatingPriority}
@@ -316,7 +316,7 @@ export const TaskRow = React.memo(function TaskRow({
       </td>
 
       {/* Tier */}
-      <td className="py-5 px-8">
+      <td className="py-3 px-6 whitespace-nowrap">
         <DropdownMenu>
           <DropdownMenuTrigger 
             disabled={isUpdatingTier}
@@ -355,7 +355,7 @@ export const TaskRow = React.memo(function TaskRow({
 
       {/* Assignee */}
       {showAssignee && (
-        <td className="py-5 px-8">
+        <td className="py-3 px-6 whitespace-nowrap">
           <DropdownMenu>
             <DropdownMenuTrigger 
               disabled={isUpdatingAssignee}
@@ -391,7 +391,7 @@ export const TaskRow = React.memo(function TaskRow({
       )}
 
       {/* Start Date */}
-      <td className="py-5 px-8">
+      <td className="py-3 px-6 whitespace-nowrap">
         <Popover open={startDatePickerOpen} onOpenChange={setStartDatePickerOpen}>
           <PopoverTrigger
             onClick={() => {
@@ -432,7 +432,7 @@ export const TaskRow = React.memo(function TaskRow({
       </td>
 
       {/* Due Date (Using Shadcn Popover + Calendar) */}
-      <td className="py-5 px-8">
+      <td className="py-3 px-6 whitespace-nowrap">
         <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
           <PopoverTrigger
             onClick={() => {
@@ -473,12 +473,12 @@ export const TaskRow = React.memo(function TaskRow({
       </td>
 
       {/* Time Left */}
-      <td className={cn("py-5 px-8 transition-opacity", isUpdatingDueDate && "opacity-50")}>
+      <td className={cn("py-3 px-6 whitespace-nowrap transition-opacity", isUpdatingDueDate && "opacity-50")}>
         <TimeLeftDisplay dueDate={task.due_date} />
       </td>
 
       {/* Actions */}
-      <td className="py-5 px-8">
+      <td className="py-3 px-6 whitespace-nowrap">
         <div className="flex items-center justify-end gap-3">
           <button
             onClick={() => onView(task)}

@@ -275,83 +275,132 @@ export default function SizesPage() {
       </div>
 
       {/* Add/Edit Dialog */}
-      <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent style={{ backgroundColor: "#FFFFFF" }}>
-          <DialogHeader>
-            <DialogTitle style={{ color: "#1A1A1A" }}>
-              {editSize ? "Edit Size" : "Add Size"}
-            </DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: "#1A1A1A" }}>Size</label>
-                <Input
-                  type="number"
-                  value={formData.size}
-                  onChange={(e) => setFormData({ ...formData, size: e.target.value })}
-                  placeholder="e.g., 1, 500, 100"
-                  required
-                  style={{ borderColor: "#E8C54720" }}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: "#1A1A1A" }}>Unit</label>
-                <select
-                  value={formData.unit}
-                  onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                  className="w-full px-3 py-2 rounded-md border"
-                  style={{ borderColor: "#E8C54720" }}
-                >
-                  <option value="kg">kg</option>
-                  <option value="gm">gm</option>
-                </select>
-              </div>
-            </div>
+     {open && (
+  // 1. The Overlay / Backdrop
+  <div 
+    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 overflow-y-auto"
+    onClick={handleClose} // Closes modal when clicking outside
+  >
+    {/* // 2. The Modal Container */}
+    <div 
+      className="relative w-full max-w-md rounded-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
+      style={{ backgroundColor: "#FFFFFF" }}
+      onClick={(e) => e.stopPropagation()} // Prevents clicks inside the form from triggering the overlay close
+    >
+      {/* Modal Header */}
+      <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: "#E8C54720" }}>
+        <h2 className="text-xl font-bold" style={{ color: "#1A1A1A" }}>
+          {editSize ? "Edit Size" : "Add Size"}
+        </h2>
+        <button 
+          onClick={handleClose}
+          className="text-gray-400 hover:text-red-500 transition-colors cursor-pointer p-1 rounded-md"
+          aria-label="Close"
+        >
+          ✕
+        </button>
+      </div>
+      
+      {/* Modal Body / Form */}
+      <div className="p-6 overflow-y-auto">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          
+          {/* Size and Unit Grid */}
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: "#1A1A1A" }}>Pack Type</label>
+              <label className="block text-sm font-medium mb-1" style={{ color: "#1A1A1A" }}>
+                Size
+              </label>
               <Input
-                type="text"
-                value={formData.pack_type}
-                onChange={(e) => setFormData({ ...formData, pack_type: e.target.value })}
-                placeholder="e.g., Bottle, Box, Pouch"
+                type="number"
+                value={formData.size}
+                onChange={(e) => setFormData({ ...formData, size: e.target.value })}
+                placeholder="e.g., 1, 500, 100"
                 required
                 style={{ borderColor: "#E8C54720" }}
               />
             </div>
-            {editSize && (
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium" style={{ color: "#1A1A1A" }}>
-                  Status
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, is_active: !formData.is_active })}
-                  className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer"
-                  style={{ backgroundColor: formData.is_active ? "#E8C547" : "#DC2626" }}
-                >
-                  <span
-                    className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
-                    style={{ transform: formData.is_active ? "translateX(22px)" : "translateX(2px)" }}
-                  />
-                </button>
-              </div>
-            )}
-            <div className="flex gap-2 justify-end pt-2">
-              <Button type="button" onClick={handleClose} style={{ borderColor: "#E8C54720", color: "#1A1A1A" }}>
-                Cancel
-              </Button>
-              <Button 
-                type="submit" 
-                disabled={createMutation.isPending || updateMutation.isPending}
-                style={{ backgroundColor: "#E8C547", color: "white" }}
+            <div>
+              <label className="block text-sm font-medium mb-1" style={{ color: "#1A1A1A" }}>
+                Unit
+              </label>
+              <select
+                value={formData.unit}
+                onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                className="w-full px-3 py-2 rounded-md border focus:outline-none focus:ring-2 focus:border-transparent transition-all"
+                style={{ 
+                  borderColor: "#E8C54720", 
+                  color: "#1A1A1A",
+                  backgroundColor: "#FFFFFF" 
+                }}
               >
-                {editSize ? (updateMutation.isPending ? "Saving..." : "Save") : (createMutation.isPending ? "Saving..." : "Save")}
-              </Button>
+                <option value="kg">kg</option>
+                <option value="gm">gm</option>
+              </select>
             </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+          </div>
+
+          {/* Pack Type Input */}
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: "#1A1A1A" }}>
+              Pack Type
+            </label>
+            <Input
+              type="text"
+              value={formData.pack_type}
+              onChange={(e) => setFormData({ ...formData, pack_type: e.target.value })}
+              placeholder="e.g., Bottle, Box, Pouch"
+              required
+              style={{ borderColor: "#E8C54720" }}
+            />
+          </div>
+
+          {/* Status Toggle (Only for Edit Mode) */}
+          {editSize && (
+            <div className="flex items-center justify-between pt-2">
+              <label className="text-sm font-medium" style={{ color: "#1A1A1A" }}>
+                Status
+              </label>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, is_active: !formData.is_active })}
+                className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer"
+                style={{ backgroundColor: formData.is_active ? "#E8C547" : "#DC2626" }}
+              >
+                <span
+                  className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                  style={{ transform: formData.is_active ? "translateX(22px)" : "translateX(2px)" }}
+                />
+              </button>
+            </div>
+          )}
+
+          {/* Footer Actions */}
+          <div className="flex gap-2 justify-end pt-4 mt-4 border-t" style={{ borderColor: "#E8C54720" }}>
+            <Button 
+              type="button" 
+              variant="outline"
+              onClick={handleClose} 
+              style={{ borderColor: "#E8C54720", color: "#1A1A1A" }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="submit" 
+              disabled={createMutation.isPending || updateMutation.isPending}
+              style={{ backgroundColor: "#E8C547", color: "white" }}
+              className="hover:opacity-90"
+            >
+              {editSize 
+                ? (updateMutation.isPending ? "Saving..." : "Save") 
+                : (createMutation.isPending ? "Saving..." : "Save")}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteOpen} onOpenChange={(open) => { setDeleteOpen(open); if (!open) setLinkedProducts([]); }}>

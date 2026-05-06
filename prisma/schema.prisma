@@ -101,25 +101,52 @@ model products {
 }
 
 model product_variants {
-  id            String                  @id @default(uuid())
-  product_id    String
-  size_id       String
-  price         Float                   @default(0)
-  sku           String                  @unique
-  is_active     Boolean                 @default(false)
-  created_at    DateTime                @default(now())
-  description   String?
-  flavor_id     String
-  receive_items packing_receive_items[]
-  flavor        flavors                 @relation(fields: [flavor_id], references: [id])
-  product       products                @relation(fields: [product_id], references: [id], onDelete: Cascade)
-  size          sizes                   @relation(fields: [size_id], references: [id])
-  inventory     variant_inventory?
-  stock         product_stock?
+  id                   String                  @id @default(uuid())
+  product_id           String
+  size_id              String
+  price                Float                   @default(0)
+  sku                  String                  @unique
+  is_active            Boolean                 @default(false)
+  created_at           DateTime                @default(now())
+  description          String?
+  flavor_id            String
+  grade                String                  @default("STD")
+  mesh_size            String?
+  name_arabic          String?
+  nutritional_values   String?
+  barcode              String?
+  sfda_reg_no          String?
+  shelf_life_months    Int?
+  storage_instructions String?
+  receive_items        packing_receive_items[]
+  batches              product_batches[]
+  flavor               flavors                 @relation(fields: [flavor_id], references: [id])
+  product              products                @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  size                 sizes                   @relation(fields: [size_id], references: [id])
+  inventory            variant_inventory?
+  stock                product_stock?
 
-  @@unique([product_id, flavor_id, size_id])
+  @@unique([product_id, flavor_id, size_id, grade])
   @@index([product_id])
   @@index([is_active])
+  @@index([grade])
+}
+
+model product_batches {
+  id                 String           @id @default(uuid())
+  variant_id         String
+  batch_id           String           @unique
+  quantity           Int
+  manufacturing_date DateTime?
+  expiry_date        DateTime?
+  packaging_state    String           @default("raw")
+  location           String           @default("factory")
+  notes              String?
+  created_at         DateTime         @default(now())
+  variant            product_variants @relation(fields: [variant_id], references: [id])
+
+  @@index([variant_id])
+  @@index([expiry_date])
 }
 
 model product_flavors {

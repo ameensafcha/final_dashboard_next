@@ -2,16 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Edit, Trash2, ShoppingBag, Package, DollarSign, CheckCircle, XCircle, LayoutGrid, List } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Plus, Edit, Trash2, ShoppingBag, Package, DollarSign, CheckCircle, XCircle, LayoutGrid, List, Save, X, Layers, Loader2 } from "lucide-react";
 import { useUIStore } from "@/lib/stores";
+import { PACKAGING_STATES, LOCATIONS } from "@/lib/sku";
+import { format } from "date-fns";
 
 async function fetchProducts() {
   const res = await fetch("/api/products");
@@ -21,6 +15,12 @@ async function fetchProducts() {
 
 async function fetchFlavors() {
   const res = await fetch("/api/flavors");
+  if (!res.ok) throw new Error("Failed to fetch");
+  return res.json();
+}
+
+async function fetchBatches(variantId: string) {
+  const res = await fetch(`/api/product-batches?variant_id=${variantId}`);
   if (!res.ok) throw new Error("Failed to fetch");
   return res.json();
 }
@@ -48,8 +48,17 @@ interface Variant {
   description: string | null;
   sku: string;
   is_active: boolean;
+  grade: string;
+  mesh_size: string | null;
+  name_arabic: string | null;
+  nutritional_values: string | null;
+  barcode: string | null;
+  sfda_reg_no: string | null;
+  shelf_life_months: number | null;
+  storage_instructions: string | null;
   flavor: Flavor;
   size: Size;
+  inventory?: { quantity: number };
 }
 
 interface ProductFlavor {
@@ -64,160 +73,148 @@ interface Product {
   is_active: boolean;
   product_flavors: ProductFlavor[];
   variants: Variant[];
-  variants_count?: {
-    active: number;
-    inactive: number;
-    total: number;
-  };
+  variants_count?: { active: number; inactive: number; total: number };
 }
 
-export default function ProductEntryPage() {
+interface Batch {
+  id: string;
+  batch_id: string;
+  quantity: number;
+  manufacturing_date: string | null;
+  expiry_date: string | null;
+  packaging_state: string;
+  location: string;
+  notes: string | null;
+  created_at: string;
+}
+
+const defaultBatchForm = {
+  quantity: "",
+  manufacturing_date: "",
+  expiry_date: "",
+  packaging_state: PACKAGING_STATES[0],
+  location: LOCATIONS[0],
+  notes: "",
+};
+
+const TABS = [
+  { id: "overview", label: "Overview" },
+  { id: "variants", label: "Variants" },
+  { id: "batches", label: "Batches" },
+  { id: "info", label: "Product Info" },
+  { id: "ingredients", label: "Ingredients" },
+];
+
+export default function ProductsEntryPage() {
   const queryClient = useQueryClient();
   const { addNotification } = useUIStore();
-  
   const [open, setOpen] = useState(false);
-  const [viewProductId, setViewProductId] = useState<string | null>(null);
+  const [viewProduct, setViewProduct] = useState<Product | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"overview" | "variants" | "ingredients">("overview");
+  const [activeTab, setActiveTab] = useState("overview");
   const [variantViewMode, setVariantViewMode] = useState<"grid" | "list">("grid");
-  const [selectedFlavorForIngredients, setSelectedFlavorForIngredients] = useState<string | null>(null);
-  const [selectedFlavorForVariants, setSelectedFlavorForVariants] = useState<string | null>(null);
-  const [editingPrice, setEditingPrice] = useState<string | null>(null);
-  const [priceInput, setPriceInput] = useState("");
+  const [selectedFlavorId, setSelectedFlavorId] = useState<string | null>(null);
   
+  // Batch logging state
+  const [selectedVariantForBatch, setSelectedVariantForBatch] = useState<Variant | null>(null);
+  const [batchFormOpen, setBatchFormOpen] = useState(false);
+  const [batchForm, setBatchForm] = useState(defaultBatchForm);
+  const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
+
+  // Variant Info Editing
+  const [editingInfoVariant, setEditingInfoVariant] = useState<string | null>(null);
+  const [infoForm, setInfoForm] = useState({
+    name_arabic: "",
+    nutritional_values: "",
+    barcode: "",
+    sfda_reg_no: "",
+    storage_instructions: "",
+    shelf_life_months: null as number | null,
+  });
+
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    flavor_ids: [] as string[],
     is_active: true,
+    flavor_ids: [] as string[],
   });
 
-  const { data: products, isLoading } = useQuery({
-    queryKey: ["products"],
-    queryFn: fetchProducts,
-    refetchInterval: 30000,
-  });
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  const viewProduct = viewProductId ? (products?.find((p: Product) => p.id === viewProductId) ?? null) : null;
+  const { data: products, isLoading } = useQuery({ queryKey: ["products"], queryFn: fetchProducts });
+  const { data: flavors } = useQuery({ queryKey: ["flavors"], queryFn: fetchFlavors });
+
+  const { data: batches, isLoading: batchesLoading } = useQuery({
+    queryKey: ["product-batches", selectedVariantForBatch?.id],
+    queryFn: () => fetchBatches(selectedVariantForBatch!.id),
+    enabled: !!selectedVariantForBatch?.id,
+  });
 
   useEffect(() => {
-    if (activeTab === "ingredients" && viewProduct?.product_flavors?.length > 0) {
-      if (!selectedFlavorForIngredients) {
-        setSelectedFlavorForIngredients(viewProduct.product_flavors[0].flavor.id);
-      }
-    } else if (activeTab !== "ingredients") {
-      setSelectedFlavorForIngredients(null);
+    if (viewProduct && viewProduct.product_flavors?.length > 0 && !selectedFlavorId) {
+      setSelectedFlavorId(viewProduct.product_flavors[0].flavor.id);
     }
-  }, [activeTab, viewProduct, selectedFlavorForIngredients]);
-
-  useEffect(() => {
-    if (activeTab === "variants" && viewProduct?.product_flavors?.length > 0) {
-      if (!selectedFlavorForVariants) {
-        setSelectedFlavorForVariants(viewProduct.product_flavors[0].flavor.id);
-      }
-    } else if (activeTab !== "variants") {
-      setSelectedFlavorForVariants(null);
-    }
-  }, [activeTab, viewProduct, selectedFlavorForVariants]);
-
-  const { data: flavors } = useQuery({
-    queryKey: ["flavors"],
-    queryFn: fetchFlavors,
-  });
+  }, [viewProduct, selectedFlavorId]);
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const res = await fetch("/api/products", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Failed to create");
-      }
+      const res = await fetch("/api/products", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+      if (!res.ok) throw new Error("Failed to create product");
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      setOpen(false);
-      resetForm();
-      addNotification({ type: "success", message: "Product added successfully!" });
+      handleClose();
+      addNotification({ type: "success", message: "Product created!" });
     },
-    onError: (error: Error) => {
-      addNotification({ type: "error", message: error.message || "Failed to add product" });
-    },
+    onError: (e: Error) => addNotification({ type: "error", message: e.message }),
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (data: { id: string; name: string; description: string; flavor_ids: string[]; is_active: boolean }) => {
-      const res = await fetch("/api/products", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Failed to update");
+    mutationFn: async (data: typeof formData & { id: string }) => {
+      const res = await fetch("/api/products", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+      if (!res.ok) throw new Error("Failed to update product");
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      setOpen(false);
-      setEditMode(false);
-      setEditId(null);
-      resetForm();
-      addNotification({ type: "success", message: "Product updated successfully!" });
+      handleClose();
+      addNotification({ type: "success", message: "Product updated!" });
     },
-    onError: (error: Error) => {
-      addNotification({ type: "error", message: error.message || "Failed to update" });
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await fetch(`/api/products?id=${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-      setDeleteOpen(false);
-      setDeleteId(null);
-      addNotification({ type: "success", message: "Product deleted successfully!" });
-    },
-    onError: (error: Error) => {
-      addNotification({ type: "error", message: error.message || "Failed to delete" });
-    },
+    onError: (e: Error) => addNotification({ type: "error", message: e.message }),
   });
 
   const toggleStatusMutation = useMutation({
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
-      const res = await fetch("/api/products", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, is_active }),
-      });
-      if (!res.ok) throw new Error("Failed to update");
+      const res = await fetch("/api/products", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, is_active }) });
+      if (!res.ok) throw new Error("Failed to update status");
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       addNotification({ type: "success", message: "Status updated!" });
     },
-    onError: (error: Error) => {
-      addNotification({ type: "error", message: error.message || "Failed to update status" });
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/products?id=${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete product");
+      return res.json();
     },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      setDeleteOpen(false);
+      addNotification({ type: "success", message: "Product deleted!" });
+    },
+    onError: (e: Error) => addNotification({ type: "error", message: e.message }),
   });
 
   const updateVariantMutation = useMutation({
-    mutationFn: async ({ id, price, is_active }: { id: string; price: number; is_active: boolean }) => {
-      const res = await fetch("/api/variants", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, price, is_active }),
-      });
+    mutationFn: async (data: Record<string, unknown>) => {
+      const res = await fetch("/api/variants", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
       if (!res.ok) throw new Error("Failed to update variant");
       return res.json();
     },
@@ -226,25 +223,71 @@ export default function ProductEntryPage() {
       queryClient.invalidateQueries({ queryKey: ["variants"] });
       setEditingPrice(null);
       setPriceInput("");
-      addNotification({ type: "success", message: "Variant updated!" });
+      setEditingInfoVariant(null);
+      addNotification({ type: "success", message: "Updated!" });
     },
-    onError: (error: Error) => {
-      addNotification({ type: "error", message: error.message || "Failed to update variant" });
+    onError: (e: Error) => addNotification({ type: "error", message: e.message }),
+  });
+
+  const createBatchMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await fetch("/api/product-batches", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+      if (!res.ok) throw new Error("Failed to log batch");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["product-batches"] });
+      setBatchFormOpen(false);
+      setBatchForm(defaultBatchForm);
+      addNotification({ type: "success", message: "Batch logged!" });
     },
   });
 
-  const resetForm = () => {
-    setFormData({ name: "", description: "", flavor_ids: [], is_active: true });
+  const updateBatchMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await fetch("/api/product-batches", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+      if (!res.ok) throw new Error("Failed to update batch");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["product-batches"] });
+      setBatchFormOpen(false);
+      setEditingBatch(null);
+      setBatchForm(defaultBatchForm);
+      addNotification({ type: "success", message: "Batch updated!" });
+    },
+  });
+
+  const deleteBatchMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/product-batches?id=${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete batch");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["product-batches"] });
+      addNotification({ type: "success", message: "Batch deleted!" });
+    },
+  });
+
+  const handleEdit = (product: Product) => {
+    setFormData({
+      name: product.name,
+      description: product.description || "",
+      is_active: product.is_active,
+      flavor_ids: product.product_flavors.map(pf => pf.flavor.id),
+    });
+    setEditId(product.id);
+    setEditMode(true);
+    setOpen(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.name || formData.flavor_ids.length === 0) {
-      addNotification({ type: "error", message: "Please fill required fields" });
+    if (formData.flavor_ids.length === 0) {
+      addNotification({ type: "error", message: "Select at least one flavor" });
       return;
     }
-
     if (editMode && editId) {
       updateMutation.mutate({ ...formData, id: editId });
     } else {
@@ -252,164 +295,123 @@ export default function ProductEntryPage() {
     }
   };
 
-  const handleEdit = (product: Product) => {
-    setFormData({
-      name: product.name,
-      description: product.description || "",
-      flavor_ids: product.product_flavors.map(pf => pf.flavor.id),
-      is_active: product.is_active,
-    });
-    setEditMode(true);
-    setEditId(product.id);
-    setOpen(true);
-  };
-
-  const handleDelete = () => {
-    if (deleteId) {
-      deleteMutation.mutate(deleteId);
+  const handleBatchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedVariantForBatch) return;
+    const data = {
+      ...batchForm,
+      quantity: parseFloat(batchForm.quantity),
+      variant_id: selectedVariantForBatch.id,
+    };
+    if (editingBatch) {
+      updateBatchMutation.mutate({ ...data, id: editingBatch.id });
+    } else {
+      createBatchMutation.mutate(data);
     }
   };
 
   const handleClose = () => {
     setOpen(false);
-    setViewProductId(null);
+    setViewProduct(null);
     setEditMode(false);
     setEditId(null);
-    resetForm();
+    setFormData({ name: "", description: "", is_active: true, flavor_ids: [] });
+    setActiveTab("overview");
+    setSelectedFlavorId(null);
+    setEditingPrice(null);
+    setPriceInput("");
+    setEditingInfoVariant(null);
+    setSelectedVariantForBatch(null);
   };
 
-  const handleToggleStatus = (product: Product) => {
-    toggleStatusMutation.mutate({ id: product.id, is_active: !product.is_active });
-  };
+  const [editingPrice, setEditingPrice] = useState<string | null>(null);
+  const [priceInput, setPriceInput] = useState("");
 
-  const handleFlavorToggle = (flavorId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      flavor_ids: prev.flavor_ids.includes(flavorId)
-        ? prev.flavor_ids.filter(id => id !== flavorId)
-        : [...prev.flavor_ids, flavorId]
-    }));
-  };
-
-  if (isLoading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="animate-spin w-8 h-8 border-2 border-t-transparent rounded-full" style={{ borderColor: "#E8C547", borderTopColor: "transparent" }}></div>
-    </div>
-  );
-
-  const productsList: Product[] = products || [];
+  if (isLoading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 animate-spin text-[#E8C547]" /></div>;
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-8">
+      <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: "#1A1A1A" }}>Product</h1>
-          <p className="text-sm mt-1" style={{ color: "#C9A83A" }}>Manage your products</p>
+          <h1 className="text-3xl font-bold tracking-tight" style={{ color: "#1A1A1A" }}>Product Entry</h1>
+          <p className="text-sm mt-1" style={{ color: "#C9A83A" }}>Manage your master product list and variants</p>
         </div>
         <button 
-          onClick={() => { resetForm(); setOpen(true); }}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 hover:opacity-90 cursor-pointer"
-          style={{ backgroundColor: "#F97316", color: "white" }}
+          onClick={() => { setEditMode(false); setOpen(true); }}
+          className="flex items-center gap-2 px-6 py-3 rounded-2xl font-bold text-white transition-all shadow-lg hover:shadow-xl active:scale-95 cursor-pointer"
+          style={{ backgroundColor: "#E8C547" }}
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-5 h-5" />
           Add Product
         </button>
       </div>
 
-      <div 
-        className="rounded-xl overflow-hidden border"
-        style={{ backgroundColor: "#FFFFFF", borderColor: "#E8C54720" }}
-      >
+      <div className="rounded-[2.5rem] overflow-hidden border bg-white shadow-sm" style={{ borderColor: "#F5F4EE" }}>
         <table className="w-full">
           <thead>
-            <tr style={{ backgroundColor: "#F5F4EE" }}>
-              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#1A1A1A" }}>Product</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#1A1A1A" }}>Flavors</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#1A1A1A" }}>Active</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#1A1A1A" }}>Inactive</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#1A1A1A" }}>Status</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#1A1A1A" }}>Actions</th>
+            <tr style={{ backgroundColor: "#FBFBF7" }}>
+              <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-widest" style={{ color: "#C9A83A" }}>Product Name</th>
+              <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-widest" style={{ color: "#C9A83A" }}>Flavors</th>
+              <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-widest" style={{ color: "#C9A83A" }}>Active</th>
+              <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-widest" style={{ color: "#C9A83A" }}>Inactive</th>
+              <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-widest" style={{ color: "#C9A83A" }}>Status</th>
+              <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-widest" style={{ color: "#C9A83A" }}>Actions</th>
             </tr>
           </thead>
-          <tbody>
-            {productsList.map((item, index) => (
-              <tr 
-                key={item.id}
-                style={{ backgroundColor: index % 2 === 0 ? "transparent" : "#F5F4EE" }}
-              >
-                <td className="px-4 py-3">
-                  <p className="font-medium text-sm" style={{ color: "#1A1A1A" }}>{item.name}</p>
+          <tbody className="divide-y" style={{ borderColor: "#F5F4EE" }}>
+            {products?.map((item: Product) => (
+              <tr key={item.id} className="hover:bg-[#FBFBF7] transition-colors group">
+                <td className="px-6 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl flex items-center justify-center bg-[#F5F4EE] group-hover:bg-[#E8C54720] transition-colors">
+                      <ShoppingBag className="w-5 h-5" style={{ color: "#E8C547" }} />
+                    </div>
+                    <span className="font-bold text-[#1A1A1A]">{item.name}</span>
+                  </div>
                 </td>
-                <td className="px-4 py-3">
-                  <span 
-                    className="px-2 py-1 rounded-full text-xs font-medium"
-                    style={{ backgroundColor: "#E8C547", color: "white" }}
-                  >
-                    {item.product_flavors?.length || 0}
-                  </span>
+                <td className="px-6 py-4">
+                  <div className="flex flex-wrap gap-1 max-w-[200px]">
+                    {item.product_flavors.map((pf, idx) => (
+                      <span key={idx} className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-[#F5F4EE] text-[#C9A83A]">{pf.flavor.name}</span>
+                    ))}
+                  </div>
                 </td>
-                <td className="px-4 py-3">
-                  <span 
-                    className="px-2 py-1 rounded-full text-xs font-medium"
-                    style={{ backgroundColor: "#DCFCE7", color: "#16A34A" }}
-                  >
-                    {item.variants_count?.active || 0}
-                  </span>
+                <td className="px-6 py-4">
+                  <span className="font-bold" style={{ color: "#16A34A" }}>{item.variants_count?.active || 0}</span>
                 </td>
-                <td className="px-4 py-3">
-                  <span 
-                    className="px-2 py-1 rounded-full text-xs font-medium"
-                    style={{ backgroundColor: "#FEE2E2", color: "#DC2626" }}
-                  >
-                    {item.variants_count?.inactive || 0}
-                  </span>
+                <td className="px-6 py-4">
+                  <span className="font-bold" style={{ color: "#DC2626" }}>{item.variants_count?.inactive || 0}</span>
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-6 py-4">
                   <button 
-                    onClick={() => handleToggleStatus(item)}
-                    className="px-2 py-1 rounded-full text-xs font-medium cursor-pointer hover:opacity-80"
-                    style={{ 
-                      backgroundColor: item.is_active ? "#DCFCE7" : "#FEE2E2",
-                      color: item.is_active ? "#16A34A" : "#DC2626"
-                    }}
+                    onClick={() => toggleStatusMutation.mutate({ id: item.id, is_active: !item.is_active })}
+                    className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all ${item.is_active ? 'bg-[#DCFCE7] text-[#16A34A]' : 'bg-[#FEE2E2] text-[#DC2626]'}`}
                   >
                     {item.is_active ? "Active" : "Inactive"}
                   </button>
                 </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <button 
-                      onClick={() => setViewProductId(item.id)}
-                      className="px-3 py-1 rounded-lg text-sm font-medium hover:bg-yellow-100 cursor-pointer"
-                      style={{ color: "#E8C547", backgroundColor: "#F5F4EE" }}
-                    >
+                <td className="px-6 py-4">
+                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => setViewProduct(item)} className="px-4 py-1.5 rounded-xl text-xs font-bold bg-[#F5F4EE] text-[#C9A83A] hover:bg-[#E8C547] hover:text-white transition-all cursor-pointer">
                       View
                     </button>
-                    <button 
-                      onClick={() => handleEdit(item)}
-                      className="p-1.5 rounded-lg hover:bg-yellow-100 cursor-pointer" 
-                      style={{ color: "#E8C547" }}
-                    >
+                    <button onClick={() => handleEdit(item)} className="p-2 rounded-xl hover:bg-[#F5F4EE] text-[#C9A83A] transition-colors cursor-pointer">
                       <Edit className="w-4 h-4" />
                     </button>
-                    <button 
-                      onClick={() => { setDeleteId(item.id); setDeleteOpen(true); }}
-                      className="p-1.5 rounded-lg hover:bg-red-100 cursor-pointer" 
-                      style={{ color: "#DC2626" }}
-                    >
+                    <button onClick={() => { setDeleteId(item.id); setDeleteOpen(true); }} className="p-2 rounded-xl hover:bg-red-50 text-red-400 transition-colors cursor-pointer">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </td>
               </tr>
             ))}
-            {productsList.length === 0 && (
+            {products?.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-12 text-center">
-                  <div className="flex flex-col items-center gap-2">
-                    <ShoppingBag className="w-12 h-12 opacity-30" style={{ color: "#C9A83A" }} />
-                    <p className="font-medium" style={{ color: "#C9A83A" }}>No products found</p>
-                    <p className="text-sm" style={{ color: "#C9A83A" }}>Add your first product</p>
+                <td colSpan={6} className="px-6 py-20 text-center">
+                  <div className="flex flex-col items-center gap-2 opacity-20">
+                    <ShoppingBag className="w-16 h-16" />
+                    <p className="font-bold text-xl">No products yet</p>
+                    <p className="text-sm">Click "Add Product" to start your catalog</p>
                   </div>
                 </td>
               </tr>
@@ -418,263 +420,308 @@ export default function ProductEntryPage() {
         </table>
       </div>
 
-      {/* View/Add/Edit Dialog */}
-      <Dialog open={open || !!viewProduct} onOpenChange={(isOpen) => { if (!isOpen) handleClose(); }}>
-        <DialogContent style={{ backgroundColor: "#FFFFFF", maxWidth: "800px", height: "90vh", display: "flex", flexDirection: "column" }}>
-          <DialogHeader>
-            <DialogTitle style={{ color: "#1A1A1A" }}>
-              {viewProduct && !editMode ? "Product Details" : editMode ? "Edit Product" : "Add Product"}
-            </DialogTitle>
-          </DialogHeader>
-          
-          {viewProduct && !editMode ? (
-            <div className="flex-1 overflow-auto scrollbar-hide space-y-4">
-              {/* Header Section */}
-              <div className="flex items-center justify-between p-4 rounded-xl" style={{ backgroundColor: "#F5F4EE" }}>
-                <div>
-                  <h3 className="text-xl font-bold" style={{ color: "#1A1A1A" }}>{viewProduct.name}</h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-sm" style={{ color: "#C9A83A" }}>
-                      {viewProduct.product_flavors?.length || 0} Flavors
-                    </span>
-                    <span style={{ color: "#C9A83A" }}>•</span>
-                    <span className="text-sm" style={{ color: "#16A34A" }}>
-                      {viewProduct.variants_count?.active || 0} Active
-                    </span>
-                    <span style={{ color: "#C9A83A" }}>•</span>
-                    <span className="text-sm" style={{ color: "#DC2626" }}>
-                      {viewProduct.variants_count?.inactive || 0} Inactive
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button onClick={() => { setEditMode(true); handleEdit(viewProduct); }} style={{ backgroundColor: "#E8C547", color: "white" }}>
-                    Edit Product
-                  </Button>
-                  <span 
-                    className="px-3 py-1.5 rounded-full text-sm font-medium"
-                    style={{ 
-                      backgroundColor: viewProduct.is_active ? "#DCFCE7" : "#FEE2E2",
-                      color: viewProduct.is_active ? "#16A34A" : "#DC2626"
-                    }}
-                  >
-                    {viewProduct.is_active ? "Active" : "Inactive"}
-                  </span>
-                </div>
-              </div>
+      {/* Main Product Dialog (View/Edit/Add) */}
+      {(open || !!viewProduct) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-3xl bg-white rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b" style={{ borderColor: "#F5F4EE" }}>
+              <h3 className="text-xl font-bold" style={{ color: "#1A1A1A" }}>
+                {viewProduct && !editMode ? "Product Details" : editMode ? "Edit Product" : "Add Product"}
+              </h3>
+              <button onClick={handleClose} className="p-2 rounded-full hover:bg-[#F5F4EE] transition-colors cursor-pointer">
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
 
-              {/* Tabs */}
-              <div className="flex gap-1 p-1 rounded-lg" style={{ backgroundColor: "#F5F4EE" }}>
-                <button
-                  onClick={() => setActiveTab("overview")}
-                  className="flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all cursor-pointer"
-                  style={{ 
-                    backgroundColor: activeTab === "overview" ? "#FFFFFF" : "transparent",
-                    color: activeTab === "overview" ? "#E8C547" : "#C9A83A",
-                    boxShadow: activeTab === "overview" ? "0 1px 3px rgba(0,0,0,0.1)" : "none"
-                  }}
-                >
-                  Overview
-                </button>
-                <button
-                  onClick={() => setActiveTab("variants")}
-                  className="flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all cursor-pointer"
-                  style={{ 
-                    backgroundColor: activeTab === "variants" ? "#FFFFFF" : "transparent",
-                    color: activeTab === "variants" ? "#E8C547" : "#C9A83A",
-                    boxShadow: activeTab === "variants" ? "0 1px 3px rgba(0,0,0,0.1)" : "none"
-                  }}
-                >
-                  Flavors & Variants
-                </button>
-                <button
-                  onClick={() => setActiveTab("ingredients")}
-                  className="flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all cursor-pointer"
-                  style={{ 
-                    backgroundColor: activeTab === "ingredients" ? "#FFFFFF" : "transparent",
-                    color: activeTab === "ingredients" ? "#E8C547" : "#C9A83A",
-                    boxShadow: activeTab === "ingredients" ? "0 1px 3px rgba(0,0,0,0.1)" : "none"
-                  }}
-                >
-                  Ingredients
-                </button>
-              </div>
-
-              {/* Overview Tab */}
-              {activeTab === "overview" && (
-                <div className="space-y-4">
-                  {viewProduct.description && (
-                    <div className="p-4 rounded-xl border" style={{ borderColor: "#E8C54720" }}>
-                      <p className="text-xs uppercase tracking-wide mb-2" style={{ color: "#C9A83A" }}>Description</p>
-                      <p className="text-sm" style={{ color: "#1A1A1A" }}>{viewProduct.description}</p>
-                    </div>
-                  )}
-
-                  {/* Summary Cards */}
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="p-4 rounded-xl border text-center cursor-pointer hover:shadow-md transition-all" style={{ borderColor: "#E8C54730", backgroundColor: "#F5F4EE" }}>
-                      <p className="text-2xl font-bold" style={{ color: "#E8C547" }}>{viewProduct.product_flavors?.length || 0}</p>
-                      <p className="text-xs" style={{ color: "#C9A83A" }}>Flavors</p>
-                    </div>
-                    <div className="p-4 rounded-xl border text-center cursor-pointer hover:shadow-md transition-all" style={{ borderColor: "#16A34A30", backgroundColor: "#F0FDF4" }}>
-                      <p className="text-2xl font-bold" style={{ color: "#16A34A" }}>{viewProduct.variants_count?.active || 0}</p>
-                      <p className="text-xs" style={{ color: "#16A34A" }}>Active Variants</p>
-                    </div>
-                    <div className="p-4 rounded-xl border text-center cursor-pointer hover:shadow-md transition-all" style={{ borderColor: "#DC262630", backgroundColor: "#FEF2F2" }}>
-                      <p className="text-2xl font-bold" style={{ color: "#DC2626" }}>{viewProduct.variants_count?.inactive || 0}</p>
-                      <p className="text-xs" style={{ color: "#DC2626" }}>Inactive</p>
-                    </div>
-                  </div>
-
-                  {/* Flavor List */}
-                  <div>
-                    <h4 className="text-sm font-semibold mb-3" style={{ color: "#1A1A1A" }}>Flavors</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {viewProduct.product_flavors?.map((pf: ProductFlavor) => {
-                        const variantCount = viewProduct.variants?.filter((v: Variant) => v.flavor_id === pf.flavor.id).length || 0;
-                        return (
-                          <div 
-                            key={pf.id} 
-                            className="flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer hover:shadow-md transition-all"
-                            style={{ borderColor: "#E8C54730", backgroundColor: "#FFFFFF" }}
-                          >
-                            <span className="text-sm font-medium" style={{ color: "#1A1A1A" }}>{pf.flavor.name}</span>
-                            <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "#F5F4EE", color: "#C9A83A" }}>{variantCount} variants</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Variants Tab */}
-              {activeTab === "variants" && (
-                <div className="space-y-4">
-                  {/* View Toggle */}
+            <div className="flex-1 overflow-auto p-6 scrollbar-hide">
+              {viewProduct && !editMode ? (
+                <div className="space-y-6">
+                  {/* View Logic */}
                   <div className="flex items-center justify-between">
-                    <p className="text-sm" style={{ color: "#C9A83A" }}>Showing {viewProduct.product_flavors?.length} flavors</p>
-                    <div className="flex items-center gap-1 p-1 rounded-lg" style={{ backgroundColor: "#F5F4EE" }}>
-                      <button
-                        onClick={() => setVariantViewMode("grid")}
-                        className="p-1.5 rounded-md cursor-pointer transition-all"
-                        style={{ 
-                          backgroundColor: variantViewMode === "grid" ? "#FFFFFF" : "transparent",
-                          color: variantViewMode === "grid" ? "#E8C547" : "#C9A83A"
-                        }}
+                    <div>
+                      <h2 className="text-2xl font-bold" style={{ color: "#1A1A1A" }}>{viewProduct.name}</h2>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-sm" style={{ color: "#C9A83A" }}>{viewProduct.variants?.length || 0} Variants</span>
+                        <span style={{ color: "#C9A83A" }}>•</span>
+                        <span className="text-sm" style={{ color: "#16A34A" }}>{viewProduct.variants_count?.active || 0} Active</span>
+                        <span style={{ color: "#C9A83A" }}>•</span>
+                        <span className="text-sm" style={{ color: "#DC2626" }}>{viewProduct.variants_count?.inactive || 0} Inactive</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => { setEditMode(true); handleEdit(viewProduct); }}
+                        className="px-6 py-2.5 rounded-xl font-semibold text-white transition-all shadow-md active:scale-95 cursor-pointer"
+                        style={{ backgroundColor: "#E8C547" }}
                       >
-                        <LayoutGrid className="w-4 h-4" />
+                        Edit Product
                       </button>
-                      <button
-                        onClick={() => setVariantViewMode("list")}
-                        className="p-1.5 rounded-md cursor-pointer transition-all"
-                        style={{ 
-                          backgroundColor: variantViewMode === "list" ? "#FFFFFF" : "transparent",
-                          color: variantViewMode === "list" ? "#E8C547" : "#C9A83A"
-                        }}
-                      >
-                        <List className="w-4 h-4" />
-                      </button>
+                      <span className="px-3 py-1.5 rounded-full text-sm font-bold" style={{ backgroundColor: viewProduct.is_active ? "#DCFCE7" : "#FEE2E2", color: viewProduct.is_active ? "#16A34A" : "#DC2626" }}>
+                        {viewProduct.is_active ? "Active" : "Inactive"}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Flavor Buttons Row */}
-                  <div className="flex flex-wrap gap-2">
-                    {viewProduct.product_flavors?.map((pf: ProductFlavor) => {
-                      const flavorVariants = viewProduct.variants?.filter((v: Variant) => v.flavor_id === pf.flavor.id) || [];
-                      const activeCount = flavorVariants.filter((v: Variant) => v.is_active).length;
-                      return (
-                        <button
-                          key={pf.id}
-                          type="button"
-                          onClick={() => setSelectedFlavorForVariants(pf.flavor.id)}
-                          className="px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer"
-                          style={{ 
-                            backgroundColor: selectedFlavorForVariants === pf.flavor.id ? "#E8C547" : "#F5F4EE",
-                            color: selectedFlavorForVariants === pf.flavor.id ? "white" : "#1A1A1A",
-                            border: selectedFlavorForVariants === pf.flavor.id ? "none" : "1px solid #E8C54730"
-                          }}
-                        >
-                          {pf.flavor.name} ({pf.flavor.short_code})
-                          <span className="ml-2 text-xs opacity-75">({activeCount})</span>
-                        </button>
-                      );
-                    })}
+                  {/* Tabs */}
+                  <div className="flex gap-1 p-1 rounded-xl" style={{ backgroundColor: "#F5F4EE" }}>
+                    {TABS.map((tab) => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className="flex-1 px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer"
+                        style={{
+                          backgroundColor: activeTab === tab.id ? "#FFFFFF" : "transparent",
+                          color: activeTab === tab.id ? "#E8C547" : "#C9A83A",
+                          boxShadow: activeTab === tab.id ? "0 4px 6px -1px rgba(0, 0, 0, 0.1)" : "none",
+                        }}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
                   </div>
 
-                  {/* Selected Flavor Variants */}
-                  {selectedFlavorForVariants && (() => {
-                    const selectedPF = viewProduct.product_flavors.find((pf: ProductFlavor) => pf.flavor.id === selectedFlavorForVariants);
-                    const selectedFlavorData = selectedPF?.flavor;
-                    const flavorVariants = viewProduct.variants?.filter((v: Variant) => v.flavor_id === selectedFlavorForVariants) || [];
-                    const activeCount = flavorVariants.filter((v: Variant) => v.is_active).length;
-                    const inactiveCount = flavorVariants.filter((v: Variant) => !v.is_active).length;
-                    
-                    return (
-                      <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#E8C54730" }}>
-                        <div className="flex items-center justify-between p-3" style={{ backgroundColor: "#F5F4EE" }}>
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-sm" style={{ color: "#1A1A1A" }}>{selectedFlavorData?.name}</span>
-                            <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "#E8C54720", color: "#E8C547" }}>{selectedFlavorData?.short_code}</span>
+                  {/* Tab Content Components */}
+                  <div className="min-h-[300px]">
+                    {/* OVERVIEW TAB */}
+                    {activeTab === "overview" && (
+                      <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        {viewProduct.description && (
+                          <div className="p-5 rounded-2xl border bg-[#FBFBF7]" style={{ borderColor: "#F5F4EE" }}>
+                            <p className="text-xs uppercase tracking-wider font-bold mb-2" style={{ color: "#C9A83A" }}>Description</p>
+                            <p className="text-sm leading-relaxed" style={{ color: "#4B5563" }}>{viewProduct.description}</p>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="px-2 py-0.5 rounded text-xs" style={{ backgroundColor: "#DCFCE7", color: "#16A34A" }}>{activeCount} Active</span>
-                            <span className="px-2 py-0.5 rounded text-xs" style={{ backgroundColor: "#FEE2E2", color: "#DC2626" }}>{inactiveCount} Inactive</span>
+                        )}
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="p-5 rounded-2xl border text-center" style={{ borderColor: "#E8C54720", backgroundColor: "#FBFBF7" }}>
+                            <p className="text-3xl font-bold" style={{ color: "#E8C547" }}>{viewProduct.product_flavors?.length || 0}</p>
+                            <p className="text-xs font-bold uppercase tracking-widest mt-1" style={{ color: "#C9A83A" }}>Flavors</p>
+                          </div>
+                          <div className="p-5 rounded-2xl border text-center" style={{ borderColor: "#16A34A20", backgroundColor: "#F0FDF4" }}>
+                            <p className="text-3xl font-bold" style={{ color: "#16A34A" }}>{viewProduct.variants_count?.active || 0}</p>
+                            <p className="text-xs font-bold uppercase tracking-widest mt-1" style={{ color: "#16A34A" }}>Active</p>
+                          </div>
+                          <div className="p-5 rounded-2xl border text-center" style={{ borderColor: "#DC262620", backgroundColor: "#FEF2F2" }}>
+                            <p className="text-3xl font-bold" style={{ color: "#DC2626" }}>{viewProduct.variants_count?.inactive || 0}</p>
+                            <p className="text-xs font-bold uppercase tracking-widest mt-1" style={{ color: "#DC2626" }}>Inactive</p>
                           </div>
                         </div>
-                        
-                        <div className="p-3" style={{ backgroundColor: "#FFFFFF" }}>
-                          {flavorVariants.length > 0 ? (
-                            variantViewMode === "grid" ? (
-                              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
-                                {flavorVariants.map((variant: Variant) => (
-                                  <div
-                                    key={variant.id}
-                                    onClick={() => { setEditingPrice(variant.id); setPriceInput(variant.price.toString()); }}
-                                    className="p-3 rounded-lg border text-center cursor-pointer hover:shadow-md transition-all group"
-                                    style={{ 
-                                      borderColor: variant.is_active ? "#16A34A30" : "#DC262630",
-                                      backgroundColor: variant.is_active ? "#F0FDF4" : "#FEF2F2"
-                                    }}
-                                  >
-                                    <p className="text-sm font-semibold" style={{ color: "#1A1A1A" }}>{variant.size.size} {variant.size.unit}</p>
-                                    <p className="text-xs mb-2" style={{ color: "#6B7280" }}>{variant.size.pack_type}</p>
-                                    {editingPrice === variant.id ? (
-                                      <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
-                                        <input
-                                          type="number"
-                                          value={priceInput}
-                                          onChange={(e) => setPriceInput(e.target.value)}
-                                          className="w-16 px-2 py-1 text-xs text-center rounded border"
-                                          style={{ borderColor: "#E8C547" }}
-                                          autoFocus
-                                        />
-                                        <button
-                                          onClick={() => updateVariantMutation.mutate({ 
-                                            id: variant.id, 
-                                            price: parseFloat(priceInput) || 0, 
-                                            is_active: parseFloat(priceInput) > 0 
-                                          })}
-                                          className="p-1 rounded bg-green-500 text-white cursor-pointer"
+                      </div>
+                    )}
+
+                    {/* VARIANTS TAB */}
+                    {activeTab === "variants" && (
+                      <div className="space-y-4 animate-in fade-in duration-300">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-bold" style={{ color: "#C9A83A" }}>{viewProduct.product_flavors?.length} available flavors</p>
+                          <div className="flex items-center gap-1 p-1 rounded-xl bg-[#F5F4EE]">
+                            <button onClick={() => setVariantViewMode("grid")} className="p-2 rounded-lg cursor-pointer transition-all" style={{ backgroundColor: variantViewMode === "grid" ? "#FFFFFF" : "transparent", color: variantViewMode === "grid" ? "#E8C547" : "#C9A83A" }}>
+                              <LayoutGrid className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => setVariantViewMode("list")} className="p-2 rounded-lg cursor-pointer transition-all" style={{ backgroundColor: variantViewMode === "list" ? "#FFFFFF" : "transparent", color: variantViewMode === "list" ? "#E8C547" : "#C9A83A" }}>
+                              <List className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          {viewProduct.product_flavors?.map((pf: ProductFlavor) => {
+                            const flavorVariants = viewProduct.variants?.filter((v: Variant) => v.flavor_id === pf.flavor.id) || [];
+                            const activeCount = flavorVariants.filter((v: Variant) => v.is_active).length;
+                            return (
+                              <button key={pf.id} type="button" onClick={() => setSelectedFlavorId(pf.flavor.id)}
+                                className="px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer border"
+                                style={{ 
+                                  backgroundColor: selectedFlavorId === pf.flavor.id ? "#E8C547" : "white", 
+                                  color: selectedFlavorId === pf.flavor.id ? "white" : "#1A1A1A", 
+                                  borderColor: selectedFlavorId === pf.flavor.id ? "#E8C547" : "#E8E7E1" 
+                                }}
+                              >
+                                {pf.flavor.name} <span className="ml-1 opacity-70">({activeCount})</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {selectedFlavorId && (() => {
+                          const pf = viewProduct.product_flavors.find((p: ProductFlavor) => p.flavor.id === selectedFlavorId);
+                          const flavorVariants = viewProduct.variants?.filter((v: Variant) => v.flavor_id === selectedFlavorId) || [];
+                          const activeCount = flavorVariants.filter((v: Variant) => v.is_active).length;
+                          const inactiveCount = flavorVariants.length - activeCount;
+                          return (
+                            <div className="rounded-[1.5rem] border overflow-hidden bg-[#FBFBF7]" style={{ borderColor: "#F5F4EE" }}>
+                              <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: "#F5F4EE" }}>
+                                <span className="font-bold text-sm text-[#1A1A1A]">{pf?.flavor.name} Variants</span>
+                                <div className="flex gap-2">
+                                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider" style={{ backgroundColor: "#DCFCE7", color: "#16A34A" }}>{activeCount} Active</span>
+                                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider" style={{ backgroundColor: "#FEE2E2", color: "#DC2626" }}>{inactiveCount} Inactive</span>
+                                </div>
+                              </div>
+                              <div className="p-4">
+                                {flavorVariants.length > 0 ? (
+                                  variantViewMode === "grid" ? (
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                                      {flavorVariants.map((variant: Variant) => (
+                                        <div key={variant.id} onClick={() => { setEditingPrice(variant.id); setPriceInput(variant.price.toString()); }}
+                                          className="p-4 rounded-2xl border text-center cursor-pointer hover:shadow-lg transition-all group relative overflow-hidden"
+                                          style={{ 
+                                            borderColor: variant.is_active ? "#16A34A20" : "#DC262620", 
+                                            backgroundColor: variant.is_active ? "#FFFFFF" : "#FEF2F2" 
+                                          }}
                                         >
-                                          <CheckCircle className="w-3 h-3" />
-                                        </button>
-                                        <button
-                                          onClick={() => { setEditingPrice(null); setPriceInput(""); }}
-                                          className="p-1 rounded bg-gray-400 text-white cursor-pointer"
-                                        >
-                                          <XCircle className="w-3 h-3" />
-                                        </button>
+                                          {variant.is_active && (
+                                            <div className="absolute top-0 left-0 w-1 h-full bg-[#16A34A]" />
+                                          )}
+                                          <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: variant.grade === "500M" ? "#7C3AED" : "#2563EB" }}>{variant.grade}</p>
+                                          <p className="text-base font-bold text-[#1A1A1A]">{variant.size.size}{variant.size.unit}</p>
+                                          <p className="text-[10px] text-gray-400 font-bold uppercase mb-3">{variant.size.pack_type}</p>
+                                          
+                                          {editingPrice === variant.id ? (
+                                            <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
+                                              <input type="number" value={priceInput} onChange={(e) => setPriceInput(e.target.value)} className="w-20 px-2 py-1.5 text-xs text-center rounded-lg border focus:ring-2 focus:ring-[#E8C54720] outline-none" style={{ borderColor: "#E8C547" }} autoFocus />
+                                              <button onClick={() => updateVariantMutation.mutate({ id: variant.id, price: parseFloat(priceInput) || 0, is_active: parseFloat(priceInput) > 0 })} className="p-1.5 rounded-lg bg-green-500 text-white cursor-pointer hover:bg-green-600 transition-colors">
+                                                <CheckCircle className="w-3.5 h-3.5" />
+                                              </button>
+                                              <button onClick={() => { setEditingPrice(null); setPriceInput(""); }} className="p-1.5 rounded-lg bg-gray-400 text-white cursor-pointer hover:bg-gray-500 transition-colors">
+                                                <XCircle className="w-3.5 h-3.5" />
+                                              </button>
+                                            </div>
+                                          ) : (
+                                            <div className="flex flex-col items-center gap-1">
+                                              <p className="text-sm font-bold" style={{ color: variant.price > 0 ? "#E8C547" : "#DC2626" }}>
+                                                {variant.price > 0 ? `${variant.price} SAR` : "Add Price"}
+                                              </p>
+                                              <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute top-2 right-2">
+                                                <Edit className="w-3.5 h-3.5 text-[#E8C547]" />
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <div className="space-y-2">
+                                      {flavorVariants.map((variant: Variant) => (
+                                        <div key={variant.id} className="flex items-center justify-between p-3 rounded-2xl border bg-white hover:shadow-md transition-all" style={{ borderColor: "#F5F4EE" }}>
+                                          <div className="flex items-center gap-4">
+                                            <span className="text-[10px] font-bold px-2 py-1 rounded-lg uppercase tracking-wider" style={{ backgroundColor: variant.grade === "500M" ? "#F3E8FF" : "#EFF6FF", color: variant.grade === "500M" ? "#7C3AED" : "#2563EB" }}>{variant.grade}</span>
+                                            <div>
+                                              <p className="text-sm font-bold text-[#1A1A1A]">{variant.size.size}{variant.size.unit}</p>
+                                              <p className="text-[10px] font-bold text-[#C9A83A] uppercase tracking-wider">{variant.sku}</p>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-3">
+                                            {editingPrice === variant.id ? (
+                                              <div className="flex items-center gap-1">
+                                                <input type="number" value={priceInput} onChange={(e) => setPriceInput(e.target.value)} className="w-24 px-3 py-1.5 text-sm rounded-xl border focus:ring-2 focus:ring-[#E8C54720] outline-none" style={{ borderColor: "#E8C547" }} autoFocus />
+                                                <button onClick={() => updateVariantMutation.mutate({ id: variant.id, price: parseFloat(priceInput) || 0, is_active: parseFloat(priceInput) > 0 })} className="px-3 py-1.5 rounded-xl text-xs font-bold bg-[#16A34A] text-white cursor-pointer">Save</button>
+                                                <button onClick={() => { setEditingPrice(null); setPriceInput(""); }} className="px-3 py-1.5 rounded-xl text-xs font-bold bg-[#9CA3AF] text-white cursor-pointer">Cancel</button>
+                                              </div>
+                                            ) : (
+                                              <>
+                                                <span className="text-sm font-bold" style={{ color: variant.price > 0 ? "#E8C547" : "#DC2626" }}>{variant.price > 0 ? `${variant.price} SAR` : "No Price"}</span>
+                                                <button onClick={() => { setEditingPrice(variant.id); setPriceInput(variant.price.toString()); }} className="p-2 rounded-xl bg-[#F5F4EE] hover:bg-[#E8C54720] cursor-pointer transition-colors group">
+                                                  <Edit className="w-4 h-4 text-[#E8C547]" />
+                                                </button>
+                                                {variant.is_active ? <CheckCircle className="w-5 h-5 text-[#16A34A]" /> : <DollarSign className="w-5 h-5 text-[#DC2626]" />}
+                                              </>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )
+                                ) : (
+                                  <div className="text-center py-10">
+                                    <Package className="w-12 h-12 mx-auto mb-3 opacity-20" style={{ color: "#C9A83A" }} />
+                                    <p className="text-sm font-bold text-red-400">No variants generated yet</p>
+                                    <p className="text-xs mt-1 text-gray-400">Go to SKUs page to generate variants for this flavor</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+
+                    {/* BATCHES TAB */}
+                    {activeTab === "batches" && (
+                      <div className="space-y-5 animate-in fade-in duration-300">
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#C9A83A" }}>Step 1: Select SKU to view batches</p>
+                          <div className="flex flex-wrap gap-2 p-4 rounded-[1.5rem] bg-[#FBFBF7] border" style={{ borderColor: "#F5F4EE" }}>
+                            {(viewProduct.variants || []).map((v: Variant) => (
+                              <button
+                                key={v.id}
+                                type="button"
+                                onClick={() => setSelectedVariantForBatch(v)}
+                                className="px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer border"
+                                style={{
+                                  backgroundColor: selectedVariantForBatch?.id === v.id ? "#E8C547" : "white",
+                                  color: selectedVariantForBatch?.id === v.id ? "white" : "#1A1A1A",
+                                  borderColor: selectedVariantForBatch?.id === v.id ? "#E8C547" : "#E8E7E1",
+                                }}
+                              >
+                                {v.sku}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {selectedVariantForBatch && (
+                          <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <h4 className="text-base font-bold text-[#1A1A1A]">{selectedVariantForBatch.sku}</h4>
+                                <span className="text-[10px] px-2 py-0.5 rounded-lg font-bold bg-[#F5F4EE] text-[#C9A83A] uppercase tracking-wider">{selectedVariantForBatch.flavor.name} • {selectedVariantForBatch.size.size}{selectedVariantForBatch.size.unit}</span>
+                              </div>
+                              <button 
+                                onClick={() => setBatchFormOpen(true)}
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all shadow-md active:scale-95 cursor-pointer"
+                                style={{ backgroundColor: "#F97316" }}
+                              >
+                                <Plus className="w-3.5 h-3.5" /> Log New Batch
+                              </button>
+                            </div>
+
+                            {batchesLoading ? (
+                              <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 animate-spin text-[#E8C547]" /></div>
+                            ) : batches && batches.length > 0 ? (
+                              <div className="grid grid-cols-1 gap-3">
+                                {batches.map((batch: Batch) => (
+                                  <div key={batch.id} className="p-4 rounded-[1.5rem] border bg-[#FBFBF7] group hover:border-[#E8C54740] transition-all" style={{ borderColor: "#F5F4EE" }}>
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-2xl bg-white border flex items-center justify-center font-bold text-lg text-[#1A1A1A]" style={{ borderColor: "#F5F4EE" }}>
+                                          {batch.quantity}
+                                        </div>
+                                        <div>
+                                          <p className="text-xs font-bold text-[#C9A83A] uppercase tracking-widest">{batch.batch_id}</p>
+                                          <div className="flex items-center gap-2 mt-0.5">
+                                            <span className="text-sm font-bold text-[#1A1A1A]">{batch.location}</span>
+                                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider px-2 py-0.5 bg-white border rounded-lg">{batch.packaging_state}</span>
+                                          </div>
+                                        </div>
                                       </div>
-                                    ) : (
-                                      <div className="flex flex-col items-center gap-1">
-                                        <p className="text-sm font-bold" style={{ color: variant.price > 0 ? "#E8C547" : "#DC2626" }}>
-                                          {variant.price > 0 ? `${variant.price} SAR` : "Add Price"}
-                                        </p>
-                                        {variant.is_active ? (
-                                          <CheckCircle className="w-4 h-4" style={{ color: "#16A34A" }} />
-                                        ) : (
-                                          <DollarSign className="w-4 h-4" style={{ color: "#DC2626" }} />
+                                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button onClick={() => { setEditingBatch(batch); setBatchForm({ quantity: batch.quantity.toString(), manufacturing_date: batch.manufacturing_date ? batch.manufacturing_date.split('T')[0] : "", expiry_date: batch.expiry_date ? batch.expiry_date.split('T')[0] : "", packaging_state: batch.packaging_state, location: batch.location, notes: batch.notes || "" }); setBatchFormOpen(true); }} className="p-2 rounded-xl hover:bg-[#E8C54720] transition-colors cursor-pointer"><Edit className="w-4 h-4 text-[#E8C547]" /></button>
+                                        <button onClick={() => deleteBatchMutation.mutate(batch.id)} className="p-2 rounded-xl hover:bg-red-50 transition-colors cursor-pointer"><Trash2 className="w-4 h-4 text-red-400" /></button>
+                                      </div>
+                                    </div>
+                                    {(batch.manufacturing_date || batch.expiry_date) && (
+                                      <div className="flex gap-4 mt-3 pt-3 border-t border-white">
+                                        {batch.manufacturing_date && (
+                                          <div>
+                                            <p className="text-[9px] font-bold text-[#C9A83A] uppercase tracking-widest">Mfg Date</p>
+                                            <p className="text-xs font-bold text-[#1A1A1A]">{format(new Date(batch.manufacturing_date), 'dd MMM yyyy')}</p>
+                                          </div>
+                                        )}
+                                        {batch.expiry_date && (
+                                          <div>
+                                            <p className="text-[9px] font-bold text-[#C9A83A] uppercase tracking-widest">Expiry Date</p>
+                                            <p className="text-xs font-bold text-[#1A1A1A]">{format(new Date(batch.expiry_date), 'dd MMM yyyy')}</p>
+                                          </div>
                                         )}
                                       </div>
                                     )}
@@ -682,258 +729,311 @@ export default function ProductEntryPage() {
                                 ))}
                               </div>
                             ) : (
-                              <div className="space-y-1">
-                                {flavorVariants.map((variant: Variant) => (
-                                  <div
-                                    key={variant.id}
-                                    className="flex items-center justify-between p-2 rounded-lg border"
-                                    style={{ borderColor: "#E8C54720" }}
-                                  >
-                                    <div className="flex items-center gap-3">
-                                      <span className="text-sm font-medium" style={{ color: "#1A1A1A" }}>{variant.size.size} {variant.size.unit}</span>
-                                      <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: "#F3F4F6", color: "#6B7280" }}>{variant.size.pack_type}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      {editingPrice === variant.id ? (
-                                        <div className="flex items-center gap-1">
-                                          <input
-                                            type="number"
-                                            value={priceInput}
-                                            onChange={(e) => setPriceInput(e.target.value)}
-                                            className="w-20 px-2 py-1 text-sm rounded border"
-                                            style={{ borderColor: "#E8C547" }}
-                                            autoFocus
-                                          />
-                                          <button
-                                            onClick={() => updateVariantMutation.mutate({ 
-                                              id: variant.id, 
-                                              price: parseFloat(priceInput) || 0, 
-                                              is_active: parseFloat(priceInput) > 0 
-                                            })}
-                                            className="px-2 py-1 rounded text-xs font-medium cursor-pointer"
-                                            style={{ backgroundColor: "#16A34A", color: "white" }}
-                                          >
-                                            Save
-                                          </button>
-                                          <button
-                                            onClick={() => { setEditingPrice(null); setPriceInput(""); }}
-                                            className="px-2 py-1 rounded text-xs font-medium cursor-pointer"
-                                            style={{ backgroundColor: "#9CA3AF", color: "white" }}
-                                          >
-                                            Cancel
-                                          </button>
-                                        </div>
-                                      ) : (
-                                        <>
-                                          <span className="text-sm font-semibold" style={{ color: variant.price > 0 ? "#E8C547" : "#DC2626" }}>
-                                            {variant.price > 0 ? `${variant.price} SAR` : "Add Price"}
-                                          </span>
-                                          <button
-                                            onClick={() => { setEditingPrice(variant.id); setPriceInput(variant.price.toString()); }}
-                                            className="p-1 rounded cursor-pointer hover:bg-gray-100"
-                                          >
-                                            <Edit className="w-4 h-4" style={{ color: "#E8C547" }} />
-                                          </button>
-                                          {variant.is_active ? (
-                                            <CheckCircle className="w-5 h-5" style={{ color: "#16A34A" }} />
-                                          ) : (
-                                            <DollarSign className="w-5 h-5" style={{ color: "#DC2626" }} />
-                                          )}
-                                        </>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
+                              <div className="text-center py-10 rounded-[1.5rem] bg-[#FBFBF7] border border-dashed border-[#E8E7E1]">
+                                <Layers className="w-10 h-10 mx-auto mb-2 opacity-10" />
+                                <p className="text-sm font-bold text-gray-400">No batches logged for this SKU</p>
                               </div>
-                            )
-                          ) : (
-                            <div className="text-center py-6">
-                              <Package className="w-8 h-8 mx-auto mb-2 opacity-50" style={{ color: "#C9A83A" }} />
-                              <p className="text-sm" style={{ color: "#DC2626" }}>No variants generated yet</p>
-                              <p className="text-xs mt-1" style={{ color: "#C9A83A" }}>Go to Variants page to generate variants</p>
-                            </div>
-                          )}
-                        </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    );
-                  })()}
-                </div>
-              )}
+                    )}
 
-              {/* Ingredients Tab */}
-              {activeTab === "ingredients" && (
-                <div className="space-y-4">
-                  {viewProduct.product_flavors && viewProduct.product_flavors.length > 0 ? (
-                    <>
-                      {/* Flavor Buttons Row */}
-                      <div className="flex flex-wrap gap-2">
-                        {viewProduct.product_flavors.map((pf: ProductFlavor) => (
-                          <button
-                            key={pf.id}
-                            type="button"
-                            onClick={() => setSelectedFlavorForIngredients(pf.flavor.id)}
-                            className="px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer"
+                    {/* PRODUCT INFO TAB */}
+                    {activeTab === "info" && (
+                      <div className="animate-in fade-in duration-300">
+                        <div className="p-5 rounded-[1.5rem] bg-[#FBFBF7] border mb-5" style={{ borderColor: "#F5F4EE" }}>
+                          <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#C9A83A" }}>Select Variant SKU</p>
+                          <div className="flex flex-wrap gap-2">
+                            {(viewProduct.variants || []).map((v: Variant) => (
+                              <button key={v.id} type="button" onClick={() => { setEditingInfoVariant(v.id); setInfoForm({ name_arabic: v.name_arabic || "", nutritional_values: v.nutritional_values || "", barcode: v.barcode || "", sfda_reg_no: v.sfda_reg_no || "", storage_instructions: v.storage_instructions || "", shelf_life_months: v.shelf_life_months || null }); }}
+                                className="px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer border"
+                                style={{
+                                  backgroundColor: editingInfoVariant === v.id ? "#E8C547" : "white",
+                                  color: editingInfoVariant === v.id ? "white" : "#1A1A1A",
+                                  borderColor: editingInfoVariant === v.id ? "#E8C547" : "#E8E7E1",
+                                }}
+                              >
+                                {v.sku}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {editingInfoVariant && (() => {
+                          const variant = viewProduct.variants.find((v: Variant) => v.id === editingInfoVariant);
+                          if (!variant) return null;
+                          const isEditing = !!editingInfoVariant;
+
+                          return (
+                            <div className="space-y-6 animate-in slide-in-from-top-2 duration-300">
+                              <div className="flex items-center justify-between px-2">
+                                <h4 className="text-lg font-bold text-[#1A1A1A]">{variant.sku} <span className="font-medium text-[#C9A83A]">Information</span></h4>
+                                <button 
+                                  onClick={() => updateVariantMutation.mutate({ id: variant.id, ...infoForm })}
+                                  disabled={updateVariantMutation.isPending}
+                                  className="flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold text-white transition-all shadow-md active:scale-95 cursor-pointer disabled:opacity-50"
+                                  style={{ backgroundColor: "#16A34A" }}
+                                >
+                                  {updateVariantMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />} Save Info
+                                </button>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-5">
+                                <div className="space-y-1.5">
+                                  <label className="text-[10px] font-bold uppercase tracking-widest text-[#C9A83A] ml-1">Arabic Name</label>
+                                  <input type="text" value={infoForm.name_arabic || ""} onChange={(e) => setInfoForm({ ...infoForm, name_arabic: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border text-sm font-medium focus:ring-2 focus:ring-[#E8C54720] outline-none transition-all" style={{ borderColor: "#E8E7E1" }} dir="rtl" />
+                                </div>
+                                <div className="space-y-1.5">
+                                  <label className="text-[10px] font-bold uppercase tracking-widest text-[#C9A83A] ml-1">Barcode</label>
+                                  <input type="text" value={infoForm.barcode || ""} onChange={(e) => setInfoForm({ ...infoForm, barcode: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border text-sm font-medium focus:ring-2 focus:ring-[#E8C54720] outline-none transition-all" style={{ borderColor: "#E8E7E1" }} />
+                                </div>
+                                <div className="space-y-1.5">
+                                  <label className="text-[10px] font-bold uppercase tracking-widest text-[#C9A83A] ml-1">SFDA Reg No</label>
+                                  <input type="text" value={infoForm.sfda_reg_no || ""} onChange={(e) => setInfoForm({ ...infoForm, sfda_reg_no: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border text-sm font-medium focus:ring-2 focus:ring-[#E8C54720] outline-none transition-all" style={{ borderColor: "#E8E7E1" }} />
+                                </div>
+                                <div className="space-y-1.5">
+                                  <label className="text-[10px] font-bold uppercase tracking-widest text-[#C9A83A] ml-1">Shelf Life (Months)</label>
+                                  <input type="number" value={infoForm.shelf_life_months || ""} onChange={(e) => setInfoForm({ ...infoForm, shelf_life_months: parseInt(e.target.value) || null })} className="w-full px-4 py-2.5 rounded-xl border text-sm font-medium focus:ring-2 focus:ring-[#E8C54720] outline-none transition-all" style={{ borderColor: "#E8E7E1" }} />
+                                </div>
+                                <div className="col-span-2 space-y-1.5">
+                                  <label className="text-[10px] font-bold uppercase tracking-widest text-[#C9A83A] ml-1">Storage Instructions</label>
+                                  <textarea value={infoForm.storage_instructions || ""} onChange={(e) => setInfoForm({ ...infoForm, storage_instructions: e.target.value })} rows={2} className="w-full px-4 py-3 rounded-xl border text-sm font-medium focus:ring-2 focus:ring-[#E8C54720] outline-none transition-all" style={{ borderColor: "#E8E7E1" }} />
+                                </div>
+                                <div className="col-span-2 space-y-1.5">
+                                  <label className="text-[10px] font-bold uppercase tracking-widest text-[#C9A83A] ml-1">Nutritional Values</label>
+                                  <textarea value={infoForm.nutritional_values || ""} onChange={(e) => setInfoForm({ ...infoForm, nutritional_values: e.target.value })} rows={3} className="w-full px-4 py-3 rounded-xl border text-sm font-medium focus:ring-2 focus:ring-[#E8C54720] outline-none transition-all" style={{ borderColor: "#E8E7E1" }} />
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+
+                    {/* INGREDIENTS TAB */}
+                    {activeTab === "ingredients" && (
+                      <div className="space-y-4 animate-in fade-in duration-300">
+                        {viewProduct.product_flavors?.length > 0 ? (
+                          <>
+                            <div className="flex flex-wrap gap-2">
+                              {viewProduct.product_flavors.map((pf: ProductFlavor) => (
+                                <button key={pf.id} type="button" onClick={() => setSelectedFlavorId(pf.flavor.id)}
+                                  className="px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer border"
+                                  style={{ 
+                                    backgroundColor: selectedFlavorId === pf.flavor.id ? "#E8C547" : "white", 
+                                    color: selectedFlavorId === pf.flavor.id ? "white" : "#1A1A1A", 
+                                    borderColor: selectedFlavorId === pf.flavor.id ? "#E8C547" : "#E8E7E1" 
+                                  }}
+                                >
+                                  {pf.flavor.name}
+                                </button>
+                              ))}
+                            </div>
+                            {selectedFlavorId && (() => {
+                              const pf = viewProduct.product_flavors.find((p: ProductFlavor) => p.flavor.id === selectedFlavorId);
+                              return pf ? (
+                                <div className="p-6 rounded-[1.5rem] border bg-[#FBFBF7] relative overflow-hidden" style={{ borderColor: "#F5F4EE" }}>
+                                  <div className="absolute top-0 right-0 p-3 opacity-10"><ShoppingBag className="w-12 h-12" /></div>
+                                  <div className="flex items-center gap-3 mb-4">
+                                    <span className="font-bold text-lg text-[#1A1A1A]">{pf.flavor.name}</span>
+                                    <span className="text-[10px] px-2.5 py-1 rounded-lg font-bold bg-[#E8C54720] text-[#E8C547] uppercase tracking-wider">{pf.flavor.short_code}</span>
+                                  </div>
+                                  {pf.flavor.ingredients ? (
+                                    <div className="flex flex-wrap gap-2">
+                                      {pf.flavor.ingredients.split(",").map((ing: string, idx: number) => (
+                                        <span key={idx} className="px-4 py-2 rounded-xl text-xs font-bold border bg-white text-[#4B5563]" style={{ borderColor: "#F5F4EE" }}>{ing.trim()}</span>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm font-bold text-gray-400 italic">No specific ingredients listed for this flavor.</p>
+                                  )}
+                                </div>
+                              ) : null;
+                            })()}
+                          </>
+                        ) : (
+                          <div className="text-center py-10 rounded-[1.5rem] bg-[#FBFBF7] border border-dashed border-[#E8E7E1]">
+                            <Package className="w-12 h-12 mx-auto mb-3 opacity-10" />
+                            <p className="text-sm font-bold text-gray-400">No flavors assigned to this product.</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex gap-3 justify-end pt-4 border-t" style={{ borderColor: "#F5F4EE" }}>
+                    <button onClick={handleClose} className="px-8 py-2.5 rounded-xl font-bold text-gray-500 hover:bg-gray-50 transition-colors cursor-pointer">Close</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <form onSubmit={handleSubmit} className="space-y-5">
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-bold ml-1 text-[#1A1A1A]">Product Name *</label>
+                      <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="e.g., Fruit Powder" required className="w-full px-4 py-3 rounded-xl border text-sm font-medium focus:ring-2 focus:ring-[#E8C54720] outline-none transition-all" style={{ borderColor: "#E8E7E1" }} />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-bold ml-1 text-[#1A1A1A]">Flavors *</label>
+                      <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-auto p-1 scrollbar-hide">
+                        {(flavors || []).map((f: Flavor) => (
+                          <button key={f.id} type="button"
+                            onClick={() => setFormData(prev => ({ ...prev, flavor_ids: prev.flavor_ids.includes(f.id) ? prev.flavor_ids.filter(id => id !== f.id) : [...prev.flavor_ids, f.id] }))}
+                            className="px-4 py-3 rounded-xl text-sm font-bold text-left transition-all cursor-pointer border relative"
                             style={{ 
-                              backgroundColor: selectedFlavorForIngredients === pf.flavor.id ? "#E8C547" : "#F5F4EE",
-                              color: selectedFlavorForIngredients === pf.flavor.id ? "white" : "#1A1A1A",
-                              border: selectedFlavorForIngredients === pf.flavor.id ? "none" : "1px solid #E8C54730"
+                              backgroundColor: formData.flavor_ids.includes(f.id) ? "#E8C54720" : "white", 
+                              color: formData.flavor_ids.includes(f.id) ? "#E8C547" : "#1A1A1A", 
+                              borderColor: formData.flavor_ids.includes(f.id) ? "#E8C547" : "#E8E7E1" 
                             }}
                           >
-                            {pf.flavor.name} ({pf.flavor.short_code})
+                            <span className="truncate block pr-4">{f.name}</span>
+                            {formData.flavor_ids.includes(f.id) && (
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-[#E8C547]" />
+                            )}
                           </button>
                         ))}
                       </div>
-
-                      {/* Selected Flavor Ingredients */}
-                      {selectedFlavorForIngredients && (() => {
-                        const selectedPF = viewProduct.product_flavors.find((pf: ProductFlavor) => pf.flavor.id === selectedFlavorForIngredients);
-                        const selectedFlavorData = selectedPF?.flavor;
-                        return (
-                          <div className="p-4 rounded-xl border" style={{ borderColor: "#E8C54730", backgroundColor: "#F5F4EE" }}>
-                            <div className="flex items-center gap-2 mb-3">
-                              <span className="font-semibold" style={{ color: "#1A1A1A" }}>{selectedFlavorData?.name}</span>
-                              <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "#E8C54730", color: "#E8C547" }}>
-                                {selectedFlavorData?.short_code}
-                              </span>
-                            </div>
-                            {selectedFlavorData?.ingredients ? (
-                              <div className="flex flex-wrap gap-2">
-                                {selectedFlavorData.ingredients.split(",").map((ing: string, idx: number) => (
-                                  <span 
-                                    key={idx}
-                                    className="px-3 py-1.5 rounded-lg text-sm"
-                                    style={{ backgroundColor: "#FFFFFF", color: "#1A1A1A", border: "1px solid #E8C54720" }}
-                                  >
-                                    {ing.trim()}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="text-sm" style={{ color: "#C9A83A" }}>No ingredients added for this flavor</p>
-                            )}
-                          </div>
-                        );
-                      })()}
-                    </>
-                  ) : (
-                    <div className="text-center py-8">
-                      <Package className="w-12 h-12 mx-auto mb-3 opacity-50" style={{ color: "#C9A83A" }} />
-                      <p className="text-sm font-medium" style={{ color: "#C9A83A" }}>No flavors in this product</p>
-                      <p className="text-xs mt-1" style={{ color: "#C9A83A" }}>Add flavors to see their ingredients</p>
+                      {formData.flavor_ids.length === 0 && <p className="text-[10px] font-bold uppercase tracking-wider ml-1 text-red-500">Select at least one flavor</p>}
                     </div>
-                  )}
+
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-bold ml-1 text-[#1A1A1A]">Description</label>
+                      <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={3} className="w-full px-4 py-3 rounded-xl border text-sm font-medium focus:ring-2 focus:ring-[#E8C54720] outline-none transition-all" style={{ borderColor: "#E8E7E1" }} placeholder="Optional product description..." />
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 rounded-2xl bg-[#FBFBF7] border" style={{ borderColor: "#F5F4EE" }}>
+                      <div className="flex items-center gap-3">
+                        <label className="text-sm font-bold text-[#1A1A1A]">Product Status</label>
+                        <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-lg" style={{ backgroundColor: formData.is_active ? "#DCFCE7" : "#FEE2E2", color: formData.is_active ? "#16A34A" : "#DC2626" }}>{formData.is_active ? "Active" : "Inactive"}</span>
+                      </div>
+                      <button type="button" onClick={() => setFormData({ ...formData, is_active: !formData.is_active })}
+                        className="relative inline-flex h-7 w-12 items-center rounded-full transition-colors cursor-pointer shadow-inner"
+                        style={{ backgroundColor: formData.is_active ? "#E8C547" : "#E5E7EB" }}
+                      >
+                        <span className="inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-sm" style={{ transform: formData.is_active ? "translateX(24px)" : "translateX(4px)" }} />
+                      </button>
+                    </div>
+
+                    <div className="flex gap-3 justify-end pt-2">
+                      <button type="button" onClick={handleClose} className="px-8 py-3 rounded-xl font-bold text-gray-500 hover:bg-gray-50 transition-colors cursor-pointer">Cancel</button>
+                      <button 
+                        type="submit" 
+                        disabled={createMutation.isPending || updateMutation.isPending}
+                        className="px-10 py-3 rounded-xl font-bold text-white transition-all shadow-md active:scale-95 cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                        style={{ backgroundColor: "#E8C547" }}
+                      >
+                        {(createMutation.isPending || updateMutation.isPending) && <Loader2 className="w-4 h-4 animate-spin" />}
+                        {editMode ? "Save Product" : "Create Product"}
+                      </button>
+                    </div>
+                  </form>
                 </div>
               )}
             </div>
-          ) : (
-            <div className="flex-1 overflow-auto">
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1" style={{ color: "#1A1A1A" }}>Product Name *</label>
-                  <Input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="e.g., Ice Cream"
-                    required
-                    style={{ borderColor: "#E8C54720" }}
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: "#1A1A1A" }}>Flavors *</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {(flavors || []).map((f: Flavor) => (
-                    <button
-                      key={f.id}
-                      type="button"
-                      onClick={() => handleFlavorToggle(f.id)}
-                      className="px-3 py-2 rounded-lg text-sm font-medium text-left transition-all cursor-pointer"
-                      style={{ 
-                        backgroundColor: formData.flavor_ids.includes(f.id) ? "#E8C547" : "#F5F4EE",
-                        color: formData.flavor_ids.includes(f.id) ? "white" : "#1A1A1A",
-                        border: formData.flavor_ids.includes(f.id) ? "none" : "1px solid #E8C54720"
-                      }}
-                    >
-                      {f.name}
-                    </button>
-                  ))}
-                </div>
-                {formData.flavor_ids.length === 0 && (
-                  <p className="text-xs mt-1" style={{ color: "#DC2626" }}>Select at least one flavor</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: "#1A1A1A" }}>Description</label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  rows={2}
-                  className="w-full px-3 py-2 rounded-md border text-sm"
-                  style={{ borderColor: "#E8C54720" }}
-                />
-              </div>
-
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium" style={{ color: "#1A1A1A" }}>Status</label>
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, is_active: !formData.is_active })}
-                  className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer"
-                  style={{ backgroundColor: formData.is_active ? "#E8C547" : "#DC2626" }}
-                >
-                  <span
-                    className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
-                    style={{ transform: formData.is_active ? "translateX(22px)" : "translateX(2px)" }}
-                  />
-                </button>
-                <span className="text-sm" style={{ color: formData.is_active ? "#16A34A" : "#DC2626" }}>
-                  {formData.is_active ? "Active" : "Inactive"}
-                </span>
-              </div>
-              
-              <div className="flex gap-2 justify-end pt-2">
-                <Button type="button" onClick={handleClose} style={{ borderColor: "#E8C54720", color: "#1A1A1A" }}>
-                  Cancel
-                </Button>
-                <Button 
-                  type="submit" 
-                  disabled={createMutation.isPending || updateMutation.isPending}
-                  style={{ backgroundColor: "#E8C547", color: "white" }}
-                >
-                  {editMode ? (updateMutation.isPending ? "Saving..." : "Save") : (createMutation.isPending ? "Saving..." : "Create")}
-                </Button>
-              </div>
-            </form>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent style={{ backgroundColor: "#FFFFFF" }}>
-          <DialogHeader>
-            <DialogTitle style={{ color: "#1A1A1A" }}>Delete Product</DialogTitle>
-          </DialogHeader>
-          <p style={{ color: "#1A1A1A" }}>
-            Are you sure you want to delete this product?
-          </p>
-          <div className="flex gap-2 justify-end pt-2">
-            <Button onClick={() => setDeleteOpen(false)} style={{ borderColor: "#E8C54720", color: "#1A1A1A" }}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleDelete} 
-              disabled={deleteMutation.isPending}
-              style={{ backgroundColor: "#DC2626", color: "white" }}
-            >
-              {deleteMutation.isPending ? "Deleting..." : "Delete"}
-            </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
+
+      {/* Batch Form Modal */}
+      {batchFormOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-lg bg-white rounded-[2rem] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between p-6 border-b" style={{ borderColor: "#F5F4EE" }}>
+              <h3 className="text-xl font-bold" style={{ color: "#1A1A1A" }}>{editingBatch ? "Edit Batch" : "Log New Batch"}</h3>
+              <button onClick={() => { setBatchFormOpen(false); setEditingBatch(null); setBatchForm(defaultBatchForm); }} className="p-2 rounded-full hover:bg-[#F5F4EE] transition-colors cursor-pointer">
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {selectedVariantForBatch && (
+                <div className="p-3 rounded-xl bg-[#FBFBF7] border flex items-center justify-between" style={{ borderColor: "#F5F4EE" }}>
+                  <span className="text-xs font-mono font-bold text-[#C9A83A]">{selectedVariantForBatch.sku}</span>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{selectedVariantForBatch.size.size}{selectedVariantForBatch.size.unit}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleBatchSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-bold ml-1 text-[#1A1A1A]">Quantity *</label>
+                    <input type="number" min="1" value={batchForm.quantity} onChange={(e) => setBatchForm({ ...batchForm, quantity: e.target.value })} required className="w-full px-4 py-2.5 rounded-xl border text-sm font-bold focus:ring-2 focus:ring-[#E8C54720] outline-none" style={{ borderColor: "#E8E7E1" }} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-bold ml-1 text-[#1A1A1A]">Packaging State</label>
+                    <select value={batchForm.packaging_state} onChange={(e) => setBatchForm({ ...batchForm, packaging_state: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border text-sm font-bold bg-white focus:ring-2 focus:ring-[#E8C54720] outline-none" style={{ borderColor: "#E8E7E1" }}>
+                      {PACKAGING_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-bold ml-1 text-[#1A1A1A]">Mfg Date</label>
+                    <input type="date" value={batchForm.manufacturing_date} onChange={(e) => setBatchForm({ ...batchForm, manufacturing_date: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border text-sm font-bold focus:ring-2 focus:ring-[#E8C54720] outline-none" style={{ borderColor: "#E8E7E1" }} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-bold ml-1 text-[#1A1A1A]">Expiry Date</label>
+                    <input type="date" value={batchForm.expiry_date} onChange={(e) => setBatchForm({ ...batchForm, expiry_date: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border text-sm font-bold focus:ring-2 focus:ring-[#E8C54720] outline-none" style={{ borderColor: "#E8E7E1" }} />
+                  </div>
+                  <div className="col-span-2 space-y-1.5">
+                    <label className="block text-sm font-bold ml-1 text-[#1A1A1A]">Location</label>
+                    <select value={batchForm.location} onChange={(e) => setBatchForm({ ...batchForm, location: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border text-sm font-bold bg-white focus:ring-2 focus:ring-[#E8C54720] outline-none" style={{ borderColor: "#E8E7E1" }}>
+                      {LOCATIONS.map((l) => <option key={l} value={l}>{l}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-bold ml-1 text-[#1A1A1A]">Notes</label>
+                  <textarea value={batchForm.notes} onChange={(e) => setBatchForm({ ...batchForm, notes: e.target.value })} rows={2} className="w-full px-4 py-3 rounded-xl border text-sm font-medium focus:ring-2 focus:ring-[#E8C54720] outline-none" style={{ borderColor: "#E8E7E1" }} placeholder="Optional batch notes..." />
+                </div>
+                <div className="flex gap-3 justify-end pt-4">
+                  <button type="button" onClick={() => setBatchFormOpen(false)} className="px-6 py-2.5 rounded-xl font-bold text-gray-500 hover:bg-gray-50 cursor-pointer">Cancel</button>
+                  <button 
+                    type="submit" 
+                    disabled={createBatchMutation.isPending || updateBatchMutation.isPending}
+                    className="px-8 py-2.5 rounded-xl font-bold text-white transition-all shadow-md active:scale-95 cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                    style={{ backgroundColor: "#E8C547" }}
+                  >
+                    {(createBatchMutation.isPending || updateBatchMutation.isPending) && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {editingBatch ? "Update Batch" : "Log Batch"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-white rounded-[2rem] shadow-2xl p-8 animate-in zoom-in-95 duration-200 text-center">
+            <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-8 h-8 text-red-500" />
+            </div>
+            <h3 className="text-xl font-bold text-[#1A1A1A]">Delete Product</h3>
+            <p className="text-gray-500 mt-2">Are you sure you want to delete this product? This will remove all associated flavor assignments and variants.</p>
+            
+            <div className="flex gap-3 mt-8">
+              <button
+                onClick={() => setDeleteOpen(false)}
+                className="flex-1 px-4 py-3 rounded-xl font-bold border transition-all text-gray-600 hover:bg-gray-50 cursor-pointer"
+                style={{ borderColor: "#E8E7E1" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteId && deleteMutation.mutate(deleteId)}
+                disabled={deleteMutation.isPending}
+                className="flex-1 px-4 py-3 rounded-xl font-bold text-white transition-all shadow-md active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+                style={{ backgroundColor: "#DC2626" }}
+              >
+                {deleteMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                Delete Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { bulkVariantSchema } from "@/lib/validations/variant";
+import { getMeshSize } from "@/lib/sku";
 
 export async function POST(request: Request) {
   try {
@@ -9,10 +11,37 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { variants } = await request.json();
+    const body = await request.json();
+    const validation = bulkVariantSchema.safeParse(body);
 
-    if (!variants || !Array.isArray(variants)) {
-      return NextResponse.json({ error: "Invalid variants data" }, { status: 400 });
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: "Validation failed", details: validation.error.format() },
+        { status: 400 }
+      );
+    }
+
+    const { variants } = validation.data;
+
+    // Validate all flavor relationships before starting the transaction
+    const flavorChecks = await Promise.all(
+      variants.map((v: any) =>
+        prisma.product_flavors.findUnique({
+          where: {
+            product_id_flavor_id: {
+              product_id: v.product_id,
+              flavor_id: v.flavor_id,
+            },
+          },
+        })
+      )
+    );
+
+    if (flavorChecks.some((check) => !check)) {
+      return NextResponse.json(
+        { error: "One or more variants have flavors not allowed for their product" },
+        { status: 400 }
+      );
     }
 
     const results = await prisma.$transaction(
@@ -20,16 +49,18 @@ export async function POST(request: Request) {
         prisma.product_variants.upsert({
           where: { sku: v.sku },
           update: {
-            price: parseFloat(v.price) || 0,
-            is_active: v.is_active ?? true,
+            price: v.price,
+            is_active: v.is_active,
           },
           create: {
             product_id: v.product_id,
             size_id: v.size_id,
             flavor_id: v.flavor_id,
             sku: v.sku,
-            price: parseFloat(v.price) || 0,
-            is_active: v.is_active ?? true,
+            price: v.price,
+            is_active: v.is_active,
+            grade: v.grade,
+            mesh_size: getMeshSize(v.grade),
           },
         })
       )
@@ -37,6 +68,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, count: results.length });
   } catch (error) {
+    console.error("Error processing bulk variants:", error);
     return NextResponse.json({ error: "Failed to process bulk variants" }, { status: 500 });
   }
 }

@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await context.params;
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -13,13 +14,13 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const batch = await prisma.$transaction(async (tx) => {
       // Get old batch to calculate difference
       const oldBatch = await tx.product_batches.findUnique({
-        where: { id: params.id },
+        where: { id },
       });
 
       if (!oldBatch) throw new Error("Batch not found");
 
       const updated = await tx.product_batches.update({
-        where: { id: params.id },
+        where: { id },
         data: {
           ...(quantity !== undefined && { quantity: parseInt(quantity) }),
           ...(packaging_state !== undefined && { packaging_state }),
@@ -51,14 +52,15 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await context.params;
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     await prisma.$transaction(async (tx) => {
       const oldBatch = await tx.product_batches.findUnique({
-        where: { id: params.id },
+        where: { id },
       });
 
       if (oldBatch) {
@@ -69,7 +71,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
         });
       }
 
-      await tx.product_batches.delete({ where: { id: params.id } });
+      await tx.product_batches.delete({ where: { id } });
     });
 
     return NextResponse.json({ success: true });

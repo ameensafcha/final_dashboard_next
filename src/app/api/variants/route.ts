@@ -32,7 +32,7 @@ export async function GET(request: Request) {
       prisma.sizes.findMany({ where: { is_active: true } }),
     ]);
 
-    console.log(variants)
+    // console.log(variants)
 
     if (searchParams.has("page") || searchParams.has("limit")) {
       return NextResponse.json({

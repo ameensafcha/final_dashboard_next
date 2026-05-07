@@ -1,17 +1,13 @@
 import { z } from "zod";
 
 export const createVariantSchema = z.object({
-  product_id: z.string({ required_error: "Product ID is required" }).uuid(),
-  size_id: z.string({ required_error: "Size ID is required" }).uuid(),
-  flavor_id: z.string({ required_error: "Flavor ID is required" }).uuid(),
-  sku: z
-    .string({ required_error: "SKU is required" })
-    .min(1, "SKU cannot be empty"),
+  product_id: z.string().uuid({ error: "Product ID is required" }),
+  size_id: z.string().uuid({ error: "Size ID is required" }),
+  flavor_id: z.string().uuid({ error: "Flavor ID is required" }),
+  sku: z.string().min(1, { error: "SKU cannot be empty" }),
   price: z.preprocess(
     (val) => (typeof val === "string" ? parseFloat(val) : val),
-    z
-      .number({ invalid_type_error: "Price must be a number" })
-      .min(0, "Price cannot be negative"),
+    z.number({ error: "Price must be a number" }).min(0, { error: "Price cannot be negative" }),
   ),
   is_active: z.boolean().optional().default(true),
   description: z.string().optional().nullable(),
@@ -28,13 +24,11 @@ export const createVariantSchema = z.object({
 });
 
 export const updateVariantSchema = z.object({
-  id: z.string({ required_error: "ID is required" }).uuid(),
+  id: z.string().uuid({ error: "ID is required" }),
   price: z
     .preprocess(
       (val) => (typeof val === "string" ? parseFloat(val) : val),
-      z
-        .number({ invalid_type_error: "Price must be a number" })
-        .min(0, "Price cannot be negative"),
+      z.number({ error: "Price must be a number" }).min(0, { error: "Price cannot be negative" }),
     )
     .optional(),
   is_active: z.boolean().optional(),

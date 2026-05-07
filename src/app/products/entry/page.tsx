@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Edit, Trash2, ShoppingBag, Package, DollarSign, CheckCircle, XCircle, LayoutGrid, List, Save, X, Layers, Loader2 } from "lucide-react";
+import { Plus, Edit, Trash2, ShoppingBag, Package, CheckCircle, XCircle, LayoutGrid, List, Save, X, Layers, Loader2 } from "lucide-react";
 import { useUIStore } from "@/lib/stores";
 import { PACKAGING_STATES, LOCATIONS } from "@/lib/sku";
 import { format } from "date-fns";
@@ -101,7 +101,6 @@ const TABS = [
   { id: "overview", label: "Overview" },
   { id: "variants", label: "Variants" },
   { id: "batches", label: "Batches" },
-  { id: "info", label: "Product Info" },
   { id: "ingredients", label: "Ingredients" },
 ];
 
@@ -112,26 +111,24 @@ export default function ProductsEntryPage() {
   const [viewProduct, setViewProduct] = useState<Product | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("variants");
   const [variantViewMode, setVariantViewMode] = useState<"grid" | "list">("grid");
   const [selectedFlavorId, setSelectedFlavorId] = useState<string | null>(null);
   
   // Batch logging state
   const [selectedVariantForBatch, setSelectedVariantForBatch] = useState<Variant | null>(null);
   const [batchFormOpen, setBatchFormOpen] = useState(false);
-  const [batchForm, setBatchForm] = useState(defaultBatchForm);
+  const [batchForm, setBatchForm] = useState<{
+    quantity: string;
+    manufacturing_date: string;
+    expiry_date: string;
+    packaging_state: string;
+    location: string;
+    notes: string;
+  }>(defaultBatchForm);
   const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
 
-  // Variant Info Editing
-  const [editingInfoVariant, setEditingInfoVariant] = useState<string | null>(null);
-  const [infoForm, setInfoForm] = useState({
-    name_arabic: "",
-    nutritional_values: "",
-    barcode: "",
-    sfda_reg_no: "",
-    storage_instructions: "",
-    shelf_life_months: null as number | null,
-  });
+  // Variant Info Editing removed - now handled in /products/variants page
 
   const [formData, setFormData] = useState({
     name: "",
@@ -221,9 +218,6 @@ export default function ProductsEntryPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["variants"] });
-      setEditingPrice(null);
-      setPriceInput("");
-      setEditingInfoVariant(null);
       addNotification({ type: "success", message: "Updated!" });
     },
     onError: (e: Error) => addNotification({ type: "error", message: e.message }),
@@ -318,14 +312,10 @@ export default function ProductsEntryPage() {
     setFormData({ name: "", description: "", is_active: true, flavor_ids: [] });
     setActiveTab("overview");
     setSelectedFlavorId(null);
-    setEditingPrice(null);
-    setPriceInput("");
-    setEditingInfoVariant(null);
     setSelectedVariantForBatch(null);
   };
 
-  const [editingPrice, setEditingPrice] = useState<string | null>(null);
-  const [priceInput, setPriceInput] = useState("");
+  
 
   if (isLoading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 animate-spin text-[#E8C547]" /></div>;
 
@@ -561,74 +551,56 @@ export default function ProductsEntryPage() {
                                 {flavorVariants.length > 0 ? (
                                   variantViewMode === "grid" ? (
                                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                                      {flavorVariants.map((variant: Variant) => (
-                                        <div key={variant.id} onClick={() => { setEditingPrice(variant.id); setPriceInput(variant.price.toString()); }}
-                                          className="p-4 rounded-2xl border text-center cursor-pointer hover:shadow-lg transition-all group relative overflow-hidden"
-                                          style={{ 
-                                            borderColor: variant.is_active ? "#16A34A20" : "#DC262620", 
-                                            backgroundColor: variant.is_active ? "#FFFFFF" : "#FEF2F2" 
-                                          }}
-                                        >
-                                          {variant.is_active && (
-                                            <div className="absolute top-0 left-0 w-1 h-full bg-[#16A34A]" />
-                                          )}
-                                          <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: variant.grade === "500M" ? "#7C3AED" : "#2563EB" }}>{variant.grade}</p>
-                                          <p className="text-base font-bold text-[#1A1A1A]">{variant.size.size}{variant.size.unit}</p>
-                                          <p className="text-[10px] text-gray-400 font-bold uppercase mb-3">{variant.size.pack_type}</p>
-                                          
-                                          {editingPrice === variant.id ? (
-                                            <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
-                                              <input type="number" value={priceInput} onChange={(e) => setPriceInput(e.target.value)} className="w-20 px-2 py-1.5 text-xs text-center rounded-lg border focus:ring-2 focus:ring-[#E8C54720] outline-none" style={{ borderColor: "#E8C547" }} autoFocus />
-                                              <button onClick={() => updateVariantMutation.mutate({ id: variant.id, price: parseFloat(priceInput) || 0, is_active: parseFloat(priceInput) > 0 })} className="p-1.5 rounded-lg bg-green-500 text-white cursor-pointer hover:bg-green-600 transition-colors">
-                                                <CheckCircle className="w-3.5 h-3.5" />
-                                              </button>
-                                              <button onClick={() => { setEditingPrice(null); setPriceInput(""); }} className="p-1.5 rounded-lg bg-gray-400 text-white cursor-pointer hover:bg-gray-500 transition-colors">
-                                                <XCircle className="w-3.5 h-3.5" />
-                                              </button>
-                                            </div>
-                                          ) : (
+                                        {flavorVariants.map((variant: Variant) => (
+                                         <div key={variant.id}
+                                           className="p-4 rounded-2xl border text-center cursor-pointer hover:shadow-lg transition-all group relative overflow-hidden"
+                                           style={{ 
+                                             borderColor: variant.is_active ? "#16A34A20" : "#DC262620", 
+                                             backgroundColor: variant.is_active ? "#FFFFFF" : "#FEF2F2" 
+                                           }}
+                                         >
+                                           {variant.is_active && (
+                                             <div className="absolute top-0 left-0 w-1 h-full bg-[#16A34A]" />
+                                           )}
+                                           <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: variant.grade === "500M" ? "#7C3AED" : "#2563EB" }}>{variant.grade}</p>
+                                           <p className="text-base font-bold" style={{ color: "#1A1A1A" }}>{variant.size.size}{variant.size.unit}</p>
+                                           <p className="text-[10px] text-gray-400 font-bold mb-3">{variant.size.pack_type}</p>
+                                           
                                             <div className="flex flex-col items-center gap-1">
-                                              <p className="text-sm font-bold" style={{ color: variant.price > 0 ? "#E8C547" : "#DC2626" }}>
-                                                {variant.price > 0 ? `${variant.price} SAR` : "Add Price"}
-                                              </p>
-                                              <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute top-2 right-2">
-                                                <Edit className="w-3.5 h-3.5 text-[#E8C547]" />
-                                              </div>
+                                              {variant.price > 0 ? (
+                                                <p className="text-sm font-bold" style={{ color: "#E8C547" }}>
+                                                  {variant.price} SAR
+                                                </p>
+                                              ) : (
+                                                <p className="text-sm" style={{ color: "#DC2626" }}>No Price</p>
+                                              )}
                                             </div>
-                                          )}
-                                        </div>
-                                      ))}
+                                         </div>
+                                       ))}
                                     </div>
                                   ) : (
                                     <div className="space-y-2">
                                       {flavorVariants.map((variant: Variant) => (
-                                        <div key={variant.id} className="flex items-center justify-between p-3 rounded-2xl border bg-white hover:shadow-md transition-all" style={{ borderColor: "#F5F4EE" }}>
-                                          <div className="flex items-center gap-4">
-                                            <span className="text-[10px] font-bold px-2 py-1 rounded-lg uppercase tracking-wider" style={{ backgroundColor: variant.grade === "500M" ? "#F3E8FF" : "#EFF6FF", color: variant.grade === "500M" ? "#7C3AED" : "#2563EB" }}>{variant.grade}</span>
-                                            <div>
-                                              <p className="text-sm font-bold text-[#1A1A1A]">{variant.size.size}{variant.size.unit}</p>
-                                              <p className="text-[10px] font-bold text-[#C9A83A] uppercase tracking-wider">{variant.sku}</p>
+                                         <div key={variant.id} className="flex items-center justify-between p-3 rounded-2xl border bg-white hover:shadow-md transition-all" style={{ borderColor: "#F5F4EE" }}>
+                                           <div className="flex items-center gap-4">
+                                             <span className="text-[10px] font-bold px-2 py-1 rounded-lg uppercase tracking-wider" style={{ backgroundColor: variant.grade === "500M" ? "#F3E8FF" : "#EFF6FF", color: variant.grade === "500M" ? "#7C3AED" : "#2563EB" }}>{variant.grade}</span>
+                                             <div>
+                                               <p className="text-sm font-bold" style={{ color: "#1A1A1A" }}>{variant.size.size}{variant.size.unit}</p>
+                                               <p className="text-[10px] font-bold text-[#C9A83A] uppercase tracking-wider">{variant.sku}</p>
+                                             </div>
+                                           </div>
+                                            <div className="flex items-center gap-3">
+                                              {variant.price > 0 ? (
+                                                <p className="text-sm font-bold" style={{ color: "#E8C547" }}>
+                                                  {variant.price} SAR
+                                                </p>
+                                              ) : (
+                                                <p className="text-sm" style={{ color: "#DC2626" }}>No Price</p>
+                                              )}
+                                              {variant.is_active ? <CheckCircle className="w-5 h-5 text-[#16A34A]" /> : <span className="text-xs font-bold">SAR</span>}
                                             </div>
-                                          </div>
-                                          <div className="flex items-center gap-3">
-                                            {editingPrice === variant.id ? (
-                                              <div className="flex items-center gap-1">
-                                                <input type="number" value={priceInput} onChange={(e) => setPriceInput(e.target.value)} className="w-24 px-3 py-1.5 text-sm rounded-xl border focus:ring-2 focus:ring-[#E8C54720] outline-none" style={{ borderColor: "#E8C547" }} autoFocus />
-                                                <button onClick={() => updateVariantMutation.mutate({ id: variant.id, price: parseFloat(priceInput) || 0, is_active: parseFloat(priceInput) > 0 })} className="px-3 py-1.5 rounded-xl text-xs font-bold bg-[#16A34A] text-white cursor-pointer">Save</button>
-                                                <button onClick={() => { setEditingPrice(null); setPriceInput(""); }} className="px-3 py-1.5 rounded-xl text-xs font-bold bg-[#9CA3AF] text-white cursor-pointer">Cancel</button>
-                                              </div>
-                                            ) : (
-                                              <>
-                                                <span className="text-sm font-bold" style={{ color: variant.price > 0 ? "#E8C547" : "#DC2626" }}>{variant.price > 0 ? `${variant.price} SAR` : "No Price"}</span>
-                                                <button onClick={() => { setEditingPrice(variant.id); setPriceInput(variant.price.toString()); }} className="p-2 rounded-xl bg-[#F5F4EE] hover:bg-[#E8C54720] cursor-pointer transition-colors group">
-                                                  <Edit className="w-4 h-4 text-[#E8C547]" />
-                                                </button>
-                                                {variant.is_active ? <CheckCircle className="w-5 h-5 text-[#16A34A]" /> : <DollarSign className="w-5 h-5 text-[#DC2626]" />}
-                                              </>
-                                            )}
-                                          </div>
-                                        </div>
-                                      ))}
+                                         </div>
+                                       ))}
                                     </div>
                                   )
                                 ) : (
@@ -736,78 +708,6 @@ export default function ProductsEntryPage() {
                             )}
                           </div>
                         )}
-                      </div>
-                    )}
-
-                    {/* PRODUCT INFO TAB */}
-                    {activeTab === "info" && (
-                      <div className="animate-in fade-in duration-300">
-                        <div className="p-5 rounded-[1.5rem] bg-[#FBFBF7] border mb-5" style={{ borderColor: "#F5F4EE" }}>
-                          <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#C9A83A" }}>Select Variant SKU</p>
-                          <div className="flex flex-wrap gap-2">
-                            {(viewProduct.variants || []).map((v: Variant) => (
-                              <button key={v.id} type="button" onClick={() => { setEditingInfoVariant(v.id); setInfoForm({ name_arabic: v.name_arabic || "", nutritional_values: v.nutritional_values || "", barcode: v.barcode || "", sfda_reg_no: v.sfda_reg_no || "", storage_instructions: v.storage_instructions || "", shelf_life_months: v.shelf_life_months || null }); }}
-                                className="px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer border"
-                                style={{
-                                  backgroundColor: editingInfoVariant === v.id ? "#E8C547" : "white",
-                                  color: editingInfoVariant === v.id ? "white" : "#1A1A1A",
-                                  borderColor: editingInfoVariant === v.id ? "#E8C547" : "#E8E7E1",
-                                }}
-                              >
-                                {v.sku}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        {editingInfoVariant && (() => {
-                          const variant = viewProduct.variants.find((v: Variant) => v.id === editingInfoVariant);
-                          if (!variant) return null;
-                          const isEditing = !!editingInfoVariant;
-
-                          return (
-                            <div className="space-y-6 animate-in slide-in-from-top-2 duration-300">
-                              <div className="flex items-center justify-between px-2">
-                                <h4 className="text-lg font-bold text-[#1A1A1A]">{variant.sku} <span className="font-medium text-[#C9A83A]">Information</span></h4>
-                                <button 
-                                  onClick={() => updateVariantMutation.mutate({ id: variant.id, ...infoForm })}
-                                  disabled={updateVariantMutation.isPending}
-                                  className="flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold text-white transition-all shadow-md active:scale-95 cursor-pointer disabled:opacity-50"
-                                  style={{ backgroundColor: "#16A34A" }}
-                                >
-                                  {updateVariantMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />} Save Info
-                                </button>
-                              </div>
-
-                              <div className="grid grid-cols-2 gap-5">
-                                <div className="space-y-1.5">
-                                  <label className="text-[10px] font-bold uppercase tracking-widest text-[#C9A83A] ml-1">Arabic Name</label>
-                                  <input type="text" value={infoForm.name_arabic || ""} onChange={(e) => setInfoForm({ ...infoForm, name_arabic: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border text-sm font-medium focus:ring-2 focus:ring-[#E8C54720] outline-none transition-all" style={{ borderColor: "#E8E7E1" }} dir="rtl" />
-                                </div>
-                                <div className="space-y-1.5">
-                                  <label className="text-[10px] font-bold uppercase tracking-widest text-[#C9A83A] ml-1">Barcode</label>
-                                  <input type="text" value={infoForm.barcode || ""} onChange={(e) => setInfoForm({ ...infoForm, barcode: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border text-sm font-medium focus:ring-2 focus:ring-[#E8C54720] outline-none transition-all" style={{ borderColor: "#E8E7E1" }} />
-                                </div>
-                                <div className="space-y-1.5">
-                                  <label className="text-[10px] font-bold uppercase tracking-widest text-[#C9A83A] ml-1">SFDA Reg No</label>
-                                  <input type="text" value={infoForm.sfda_reg_no || ""} onChange={(e) => setInfoForm({ ...infoForm, sfda_reg_no: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border text-sm font-medium focus:ring-2 focus:ring-[#E8C54720] outline-none transition-all" style={{ borderColor: "#E8E7E1" }} />
-                                </div>
-                                <div className="space-y-1.5">
-                                  <label className="text-[10px] font-bold uppercase tracking-widest text-[#C9A83A] ml-1">Shelf Life (Months)</label>
-                                  <input type="number" value={infoForm.shelf_life_months || ""} onChange={(e) => setInfoForm({ ...infoForm, shelf_life_months: parseInt(e.target.value) || null })} className="w-full px-4 py-2.5 rounded-xl border text-sm font-medium focus:ring-2 focus:ring-[#E8C54720] outline-none transition-all" style={{ borderColor: "#E8E7E1" }} />
-                                </div>
-                                <div className="col-span-2 space-y-1.5">
-                                  <label className="text-[10px] font-bold uppercase tracking-widest text-[#C9A83A] ml-1">Storage Instructions</label>
-                                  <textarea value={infoForm.storage_instructions || ""} onChange={(e) => setInfoForm({ ...infoForm, storage_instructions: e.target.value })} rows={2} className="w-full px-4 py-3 rounded-xl border text-sm font-medium focus:ring-2 focus:ring-[#E8C54720] outline-none transition-all" style={{ borderColor: "#E8E7E1" }} />
-                                </div>
-                                <div className="col-span-2 space-y-1.5">
-                                  <label className="text-[10px] font-bold uppercase tracking-widest text-[#C9A83A] ml-1">Nutritional Values</label>
-                                  <textarea value={infoForm.nutritional_values || ""} onChange={(e) => setInfoForm({ ...infoForm, nutritional_values: e.target.value })} rows={3} className="w-full px-4 py-3 rounded-xl border text-sm font-medium focus:ring-2 focus:ring-[#E8C54720] outline-none transition-all" style={{ borderColor: "#E8E7E1" }} />
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })()}
                       </div>
                     )}
 

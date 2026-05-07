@@ -79,6 +79,12 @@ interface Variant {
   sku: string;
   is_active: boolean;
   grade: string;
+  name_arabic: string | null;
+  barcode: string | null;
+  sfda_reg_no: string | null;
+  shelf_life_months: number | null;
+  storage_instructions: string | null;
+  nutritional_values: string | null;
   product: Product;
   flavor: Flavor;
   size: Size;
@@ -93,6 +99,12 @@ const defaultForm = {
   description: "",
   sku: "",
   is_active: true,
+  name_arabic: "",
+  barcode: "",
+  sfda_reg_no: "",
+  shelf_life_months: null as number | null,
+  storage_instructions: "",
+  nutritional_values: "",
 };
 
 const defaultGenerate = {
@@ -292,6 +304,12 @@ export default function VariantsPage() {
       description: variant.description || "",
       sku: variant.sku,
       is_active: variant.is_active,
+      name_arabic: variant.name_arabic || "",
+      barcode: variant.barcode || "",
+      sfda_reg_no: variant.sfda_reg_no || "",
+      shelf_life_months: variant.shelf_life_months || null,
+      storage_instructions: variant.storage_instructions || "",
+      nutritional_values: variant.nutritional_values || "",
     });
     setEditMode(true);
     setEditId(variant.id);
@@ -652,21 +670,71 @@ export default function VariantsPage() {
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 rounded-2xl border" style={{ borderColor: "#F5F4EE" }}>
-                      <p className="text-xs uppercase tracking-wider font-bold mb-1" style={{ color: "#C9A83A" }}>Flavor</p>
+                      <p className="text-xs uppercase tracking-widest font-bold mb-1" style={{ color: "#C9A83A" }}>Flavor</p>
                       <p className="text-base font-semibold" style={{ color: "#1A1A1A" }}>{viewVariant.flavor.name}</p>
                     </div>
                     <div className="p-4 rounded-2xl border" style={{ borderColor: "#F5F4EE" }}>
-                      <p className="text-xs uppercase tracking-wider font-bold mb-1" style={{ color: "#C9A83A" }}>Size</p>
+                      <p className="text-xs uppercase tracking-widest font-bold mb-1" style={{ color: "#C9A83A" }}>Size</p>
                       <p className="text-base font-semibold" style={{ color: "#1A1A1A" }}>{viewVariant.size.size}{viewVariant.size.unit}</p>
                       <p className="text-[10px] text-gray-500 uppercase font-bold">{viewVariant.size.pack_type}</p>
                     </div>
                     <div className="p-4 rounded-2xl border col-span-2" style={{ borderColor: "#F5F4EE" }}>
-                      <p className="text-xs uppercase tracking-wider font-bold mb-1" style={{ color: "#C9A83A" }}>Price</p>
+                      <p className="text-xs uppercase tracking-widest font-bold mb-1" style={{ color: "#C9A83A" }}>Price</p>
                       <p className="text-2xl font-bold" style={{ color: viewVariant.price > 0 ? "#E8C547" : "#DC2626" }}>
                         {viewVariant.price > 0 ? `${viewVariant.price} SAR` : "Price Not Set"}
                       </p>
                     </div>
                   </div>
+
+                  {viewVariant.description && (
+                    <div className="p-4 rounded-2xl border" style={{ borderColor: "#F5F4EE" }}>
+                      <p className="text-xs uppercase tracking-widest font-bold mb-1" style={{ color: "#C9A83A" }}>Description</p>
+                      <p className="text-sm" style={{ color: "#1A1A1A" }}>{viewVariant.description}</p>
+                    </div>
+                  )}
+
+                  {viewVariant.name_arabic && (
+                    <div className="p-4 rounded-2xl border" style={{ borderColor: "#F5F4EE" }}>
+                      <p className="text-xs uppercase tracking-widest font-bold mb-1" style={{ color: "#C9A83A" }}>Arabic Name</p>
+                      <p className="text-sm" style={{ color: "#1A1A1A" }} dir="rtl">{viewVariant.name_arabic}</p>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-4">
+                    {viewVariant.barcode && (
+                      <div className="p-4 rounded-2xl border" style={{ borderColor: "#F5F4EE" }}>
+                        <p className="text-xs uppercase tracking-widest font-bold mb-1" style={{ color: "#C9A83A" }}>Barcode</p>
+                        <p className="text-sm font-mono" style={{ color: "#1A1A1A" }}>{viewVariant.barcode}</p>
+                      </div>
+                    )}
+                    {viewVariant.sfda_reg_no && (
+                      <div className="p-4 rounded-2xl border" style={{ borderColor: "#F5F4EE" }}>
+                        <p className="text-xs uppercase tracking-widest font-bold mb-1" style={{ color: "#C9A83A" }}>SFDA Reg No</p>
+                        <p className="text-sm font-mono" style={{ color: "#1A1A1A" }}>{viewVariant.sfda_reg_no}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {viewVariant.shelf_life_months && (
+                    <div className="p-4 rounded-2xl border" style={{ borderColor: "#F5F4EE" }}>
+                      <p className="text-xs uppercase tracking-widest font-bold mb-1" style={{ color: "#C9A83A" }}>Shelf Life</p>
+                      <p className="text-sm" style={{ color: "#1A1A1A" }}>{viewVariant.shelf_life_months} months</p>
+                    </div>
+                  )}
+
+                  {viewVariant.storage_instructions && (
+                    <div className="p-4 rounded-2xl border col-span-2" style={{ borderColor: "#F5F4EE" }}>
+                      <p className="text-xs uppercase tracking-widest font-bold mb-1" style={{ color: "#C9A83A" }}>Storage Instructions</p>
+                      <p className="text-sm whitespace-pre-wrap" style={{ color: "#1A1A1A" }}>{viewVariant.storage_instructions}</p>
+                    </div>
+                  )}
+
+                  {viewVariant.nutritional_values && (
+                    <div className="p-4 rounded-2xl border col-span-2" style={{ borderColor: "#F5F4EE" }}>
+                      <p className="text-xs uppercase tracking-widest font-bold mb-1" style={{ color: "#C9A83A" }}>Nutritional Values</p>
+                      <p className="text-sm whitespace-pre-wrap" style={{ color: "#1A1A1A" }}>{viewVariant.nutritional_values}</p>
+                    </div>
+                  )}
                   
                   <div className="flex gap-3 justify-end pt-4">
                     <button onClick={handleClose} className="px-6 py-2.5 rounded-xl font-semibold text-gray-500 hover:bg-gray-50 transition-colors cursor-pointer">Close</button>
@@ -832,6 +900,75 @@ export default function VariantsPage() {
                     />
                   </div>
 
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-bold ml-1" style={{ color: "#1A1A1A" }}>Arabic Name</label>
+                    <input
+                      type="text"
+                      value={formData.name_arabic || ""}
+                      onChange={(e) => setFormData({ ...formData, name_arabic: e.target.value })}
+                      className="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-[#E8C54720] transition-all bg-white"
+                      style={{ borderColor: "#E8E7E1" }}
+                      dir="rtl"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-bold ml-1" style={{ color: "#1A1A1A" }}>Barcode</label>
+                      <input
+                        type="text"
+                        value={formData.barcode || ""}
+                        onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                        className="w-full px-4 py-2.5 rounded-xl border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#E8C54720] transition-all bg-white"
+                        style={{ borderColor: "#E8E7E1" }}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-bold ml-1" style={{ color: "#1A1A1A" }}>SFDA Reg No</label>
+                      <input
+                        type="text"
+                        value={formData.sfda_reg_no || ""}
+                        onChange={(e) => setFormData({ ...formData, sfda_reg_no: e.target.value })}
+                        className="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-[#E8C54720] transition-all bg-white"
+                        style={{ borderColor: "#E8E7E1" }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-bold ml-1" style={{ color: "#1A1A1A" }}>Shelf Life (Months)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.shelf_life_months || ""}
+                      onChange={(e) => setFormData({ ...formData, shelf_life_months: parseInt(e.target.value) || null })}
+                      className="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-[#E8C54720] transition-all bg-white"
+                      style={{ borderColor: "#E8E7E1" }}
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-bold ml-1" style={{ color: "#1A1A1A" }}>Storage Instructions</label>
+                    <textarea
+                      value={formData.storage_instructions || ""}
+                      onChange={(e) => setFormData({ ...formData, storage_instructions: e.target.value })}
+                      rows={2}
+                      className="w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-[#E8C54720] transition-all bg-white"
+                      style={{ borderColor: "#E8E7E1" }}
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-bold ml-1" style={{ color: "#1A1A1A" }}>Nutritional Values</label>
+                    <textarea
+                      value={formData.nutritional_values || ""}
+                      onChange={(e) => setFormData({ ...formData, nutritional_values: e.target.value })}
+                      rows={3}
+                      className="w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-[#E8C54720] transition-all bg-white"
+                      style={{ borderColor: "#E8E7E1" }}
+                    />
+                  </div>
+                  
                   <div className="flex gap-3 justify-end pt-4">
                     <button type="button" onClick={handleClose} className="px-6 py-2.5 rounded-xl font-semibold text-gray-500 hover:bg-gray-50 transition-colors cursor-pointer">Cancel</button>
                     <button

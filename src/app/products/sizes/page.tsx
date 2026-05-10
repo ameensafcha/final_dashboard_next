@@ -2,16 +2,11 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Ruler, Edit, Trash2, Plus } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Plus } from "lucide-react";
 import { useUIStore } from "@/lib/stores";
+import { SizesTable } from "./_components/sizes-table";
+import { SizeDialog } from "./_components/size-dialog";
+import { DeleteSizeDialog } from "./_components/delete-size-dialog";
 
 async function fetchSizes() {
   const res = await fetch("/api/sizes");
@@ -40,13 +35,13 @@ interface DeleteError extends Error {
 export default function SizesPage() {
   const queryClient = useQueryClient();
   const { addNotification } = useUIStore();
-  
+
   const [open, setOpen] = useState(false);
   const [editSize, setEditSize] = useState<Size | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [linkedProducts, setLinkedProducts] = useState<{ id: string; name: string; sku: string }[]>([]);
-  
+  const [linkedProducts, setLinkedProducts] = useState<LinkedProduct[]>([]);
+
   const [formData, setFormData] = useState({
     size: "",
     unit: "kg",
@@ -107,7 +102,7 @@ export default function SizesPage() {
   const toggleMutation = useMutation({
     mutationFn: async (data: { id: string; is_active: boolean }) => {
       const res = await fetch("/api/sizes", {
-        method: "PATCH",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
@@ -151,9 +146,9 @@ export default function SizesPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (editSize) {
-      updateMutation.mutate({ id: editSize.id, size: formData.size, unit: formData.unit, pack_type: formData.pack_type, is_active: formData.is_active });
+      updateMutation.mutate({ id: editSize.id, ...formData });
     } else {
-      createMutation.mutate({ size: formData.size, unit: formData.unit, pack_type: formData.pack_type } as typeof formData);
+      createMutation.mutate({ size: formData.size, unit: formData.unit, pack_type: formData.pack_type });
     }
   };
 
@@ -179,13 +174,13 @@ export default function SizesPage() {
     setFormData({ size: "", unit: "kg", pack_type: "", is_active: true });
   };
 
+  const isPending = createMutation.isPending || updateMutation.isPending;
+
   if (isLoading) return (
     <div className="flex items-center justify-center h-64">
       <div className="animate-spin w-8 h-8 border-2 border-t-transparent rounded-full" style={{ borderColor: "#E8C547", borderTopColor: "transparent" }}></div>
     </div>
   );
-
-  const sizesList: Size[] = sizes || [];
 
   return (
     <div className="p-6">
@@ -194,7 +189,7 @@ export default function SizesPage() {
           <h1 className="text-2xl font-bold" style={{ color: "#1A1A1A" }}>Sizes</h1>
           <p className="text-sm mt-1" style={{ color: "#C9A83A" }}>Manage product sizes</p>
         </div>
-        <button 
+        <button
           onClick={() => setOpen(true)}
           className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 hover:opacity-90 cursor-pointer"
           style={{ backgroundColor: "#F97316", color: "white" }}
@@ -204,245 +199,30 @@ export default function SizesPage() {
         </button>
       </div>
 
-      <div 
-        className="rounded-xl overflow-hidden border"
-        style={{ backgroundColor: "#FFFFFF", borderColor: "#E8C54720" }}
-      >
-        <table className="w-full">
-          <thead>
-            <tr style={{ backgroundColor: "#F5F4EE" }}>
-              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#1A1A1A" }}>Size</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#1A1A1A" }}>Unit</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#1A1A1A" }}>Pack Type</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#1A1A1A" }}>Status</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: "#1A1A1A" }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sizesList.map((item, index) => (
-              <tr 
-                key={item.id}
-                style={{ backgroundColor: index % 2 === 0 ? "transparent" : "#F5F4EE" }}
-              >
-                <td className="px-4 py-3 text-sm font-medium" style={{ color: "#1A1A1A" }}>{item.size}</td>
-                <td className="px-4 py-3 text-sm" style={{ color: "#1A1A1A" }}>{item.unit}</td>
-                <td className="px-4 py-3 text-sm" style={{ color: "#1A1A1A" }}>{item.pack_type}</td>
-                <td className="px-4 py-3">
-                  <button 
-                    onClick={() => handleToggle(item)}
-                    className="px-2 py-1 rounded-full text-xs font-medium cursor-pointer hover:opacity-80"
-                    style={{ 
-                      backgroundColor: item.is_active ? "#DCFCE7" : "#FEE2E2",
-                      color: item.is_active ? "#16A34A" : "#DC2626"
-                    }}
-                  >
-                    {item.is_active ? "Active" : "Inactive"}
-                  </button>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <button 
-                      onClick={() => handleEdit(item)}
-                      className="p-1.5 rounded-lg hover:bg-yellow-100 cursor-pointer" 
-                      style={{ color: "#E8C547" }}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button 
-                      onClick={() => { setDeleteId(item.id); setDeleteOpen(true); }}
-                      className="p-1.5 rounded-lg hover:bg-red-100 cursor-pointer" 
-                      style={{ color: "#DC2626" }}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {sizesList.length === 0 && (
-              <tr>
-                <td colSpan={5} className="px-4 py-12 text-center">
-                  <div className="flex flex-col items-center gap-2">
-                    <Ruler className="w-12 h-12 opacity-30" style={{ color: "#C9A83A" }} />
-                    <p className="font-medium" style={{ color: "#C9A83A" }}>No sizes found</p>
-                    <p className="text-sm" style={{ color: "#C9A83A" }}>Add your first size</p>
-                  </div>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <SizesTable
+        sizes={sizes || []}
+        onEdit={handleEdit}
+        onDelete={(s) => { setDeleteId(s.id); setDeleteOpen(true); }}
+        onToggle={handleToggle}
+      />
 
-      {/* Add/Edit Dialog */}
-     {open && (
-  // 1. The Overlay / Backdrop
-  <div 
-    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 overflow-y-auto"
-    onClick={handleClose} // Closes modal when clicking outside
-  >
-    {/* // 2. The Modal Container */}
-    <div 
-      className="relative w-full max-w-md rounded-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
-      style={{ backgroundColor: "#FFFFFF" }}
-      onClick={(e) => e.stopPropagation()} // Prevents clicks inside the form from triggering the overlay close
-    >
-      {/* Modal Header */}
-      <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: "#E8C54720" }}>
-        <h2 className="text-xl font-bold" style={{ color: "#1A1A1A" }}>
-          {editSize ? "Edit Size" : "Add Size"}
-        </h2>
-        <button 
-          onClick={handleClose}
-          className="text-gray-400 hover:text-red-500 transition-colors cursor-pointer p-1 rounded-md"
-          aria-label="Close"
-        >
-          ✕
-        </button>
-      </div>
-      
-      {/* Modal Body / Form */}
-      <div className="p-6 overflow-y-auto">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          
-          {/* Size and Unit Grid */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: "#1A1A1A" }}>
-                Size
-              </label>
-              <Input
-                type="number"
-                value={formData.size}
-                onChange={(e) => setFormData({ ...formData, size: e.target.value })}
-                placeholder="e.g., 1, 500, 100"
-                required
-                style={{ borderColor: "#E8C54720" }}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: "#1A1A1A" }}>
-                Unit
-              </label>
-              <select
-                value={formData.unit}
-                onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                className="w-full px-3 py-2 rounded-md border focus:outline-none focus:ring-2 focus:border-transparent transition-all"
-                style={{ 
-                  borderColor: "#E8C54720", 
-                  color: "#1A1A1A",
-                  backgroundColor: "#FFFFFF" 
-                }}
-              >
-                <option value="kg">kg</option>
-                <option value="gm">gm</option>
-              </select>
-            </div>
-          </div>
+      <SizeDialog
+        open={open}
+        editSize={editSize}
+        formData={formData}
+        isPending={isPending}
+        onClose={handleClose}
+        onChange={(field, value) => setFormData(prev => ({ ...prev, [field]: value }))}
+        onSubmit={handleSubmit}
+      />
 
-          {/* Pack Type Input */}
-          <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: "#1A1A1A" }}>
-              Pack Type
-            </label>
-            <Input
-              type="text"
-              value={formData.pack_type}
-              onChange={(e) => setFormData({ ...formData, pack_type: e.target.value })}
-              placeholder="e.g., Bottle, Box, Pouch"
-              required
-              style={{ borderColor: "#E8C54720" }}
-            />
-          </div>
-
-          {/* Status Toggle (Only for Edit Mode) */}
-          {editSize && (
-            <div className="flex items-center justify-between pt-2">
-              <label className="text-sm font-medium" style={{ color: "#1A1A1A" }}>
-                Status
-              </label>
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, is_active: !formData.is_active })}
-                className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer"
-                style={{ backgroundColor: formData.is_active ? "#E8C547" : "#DC2626" }}
-              >
-                <span
-                  className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
-                  style={{ transform: formData.is_active ? "translateX(22px)" : "translateX(2px)" }}
-                />
-              </button>
-            </div>
-          )}
-
-          {/* Footer Actions */}
-          <div className="flex gap-2 justify-end pt-4 mt-4 border-t" style={{ borderColor: "#E8C54720" }}>
-            <Button 
-              type="button" 
-              variant="outline"
-              onClick={handleClose} 
-              style={{ borderColor: "#E8C54720", color: "#1A1A1A" }}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={createMutation.isPending || updateMutation.isPending}
-              style={{ backgroundColor: "#E8C547", color: "white" }}
-              className="hover:opacity-90"
-            >
-              {editSize 
-                ? (updateMutation.isPending ? "Saving..." : "Save") 
-                : (createMutation.isPending ? "Saving..." : "Save")}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-)}
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteOpen} onOpenChange={(open) => { setDeleteOpen(open); if (!open) setLinkedProducts([]); }}>
-        <DialogContent style={{ backgroundColor: "#FFFFFF", maxWidth: "450px" }}>
-          <DialogHeader>
-            <DialogTitle style={{ color: "#1A1A1A" }}>Delete Size</DialogTitle>
-          </DialogHeader>
-          {linkedProducts.length > 0 ? (
-            <div className="space-y-3">
-              <p style={{ color: "#DC2626" }}>
-                This size is linked to {linkedProducts.length} product(s). Please delete them first:
-              </p>
-              <div className="max-h-40 overflow-y-auto border rounded-lg p-2" style={{ borderColor: "#DC262620" }}>
-                {linkedProducts.map(p => (
-                  <div key={p.id} className="flex items-center justify-between p-2 rounded" style={{ backgroundColor: "#FEE2E2" }}>
-                    <span className="text-sm font-medium" style={{ color: "#1A1A1A" }}>{p.name}</span>
-                    <span className="text-xs font-mono" style={{ color: "#C9A83A" }}>{p.sku}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <p style={{ color: "#1A1A1A" }}>
-              Are you sure you want to delete this size?
-            </p>
-          )}
-          <div className="flex gap-2 justify-end pt-2">
-            <Button onClick={() => { setDeleteOpen(false); setLinkedProducts([]); }} style={{ borderColor: "#E8C54720", color: "#1A1A1A" }}>
-              Cancel
-            </Button>
-            {linkedProducts.length === 0 && (
-              <Button 
-                onClick={handleDelete} 
-                disabled={deleteMutation.isPending}
-                style={{ backgroundColor: "#DC2626", color: "white" }}
-              >
-                {deleteMutation.isPending ? "Deleting..." : "Delete"}
-              </Button>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      <DeleteSizeDialog
+        open={deleteOpen}
+        isPending={deleteMutation.isPending}
+        linkedProducts={linkedProducts}
+        onClose={() => { setDeleteOpen(false); setLinkedProducts([]); }}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

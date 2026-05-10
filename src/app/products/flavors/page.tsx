@@ -2,18 +2,14 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Sparkles, Edit, Trash2, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { z } from "zod";
 import { flavorSchema, updateFlavorSchema } from "@/lib/validations/flavor";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { useUIStore } from "@/lib/stores";
+import { FlavorsTable } from "./_components/flavors-table";
+import { FlavorDialog } from "./_components/flavor-dialog";
+import { DeleteFlavorDialog } from "./_components/delete-flavor-dialog";
+import { ViewFlavorDialog } from "./_components/view-flavor-dialog";
 
 async function fetchFlavors() {
   const res = await fetch("/api/flavors");
@@ -42,9 +38,7 @@ export default function FlavorsPage() {
   const [viewFlavor, setViewFlavor] = useState<Flavor | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [linkedProducts, setLinkedProducts] = useState<
-    { id: string; name: string; sku: string }[]
-  >([]);
+  const [linkedProducts, setLinkedProducts] = useState<LinkedProduct[]>([]);
   const [ingredientInput, setIngredientInput] = useState("");
 
   const [formData, setFormData] = useState({
@@ -61,41 +55,12 @@ export default function FlavorsPage() {
     placeholderData: (previousData) => previousData,
   });
 
-  const generateShortCode = (name: string): string => {
-    const words = name
-      .trim()
-      .split(/\s+/)
-      .filter((w) => w.length > 0);
-    if (words.length === 0) return "";
-    if (words.length === 1) return words[0].substring(0, 2).toUpperCase();
-    return (words[0][0] + words[1][0]).toUpperCase();
-  };
-
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newName = e.target.value;
-    const generatedCode = generateShortCode(newName);
-    setFormData((prev) => ({
-      ...prev,
-      name: newName,
-      short_code:
-        !editFlavor && generatedCode ? generatedCode : prev.short_code,
-    }));
-  };
-
   const createMutation = useMutation({
-    mutationFn: async (data: {
-      name: string;
-      short_code: string;
-      ingredients: string[];
-    }) => {
+    mutationFn: async (data: { name: string; short_code: string; ingredients: string[] }) => {
       const res = await fetch("/api/flavors", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: data.name,
-          short_code: data.short_code,
-          ingredients: data.ingredients.join(", "),
-        }),
+        body: JSON.stringify({ name: data.name, short_code: data.short_code, ingredients: data.ingredients.join(", ") }),
       });
       if (!res.ok) throw new Error("Failed to create");
       return res.json();
@@ -103,22 +68,11 @@ export default function FlavorsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["flavors"] });
       setOpen(false);
-      setFormData({
-        name: "",
-        short_code: "",
-        ingredients: [],
-        is_active: true,
-      });
-      addNotification({
-        type: "success",
-        message: "Flavor added successfully!",
-      });
+      setFormData({ name: "", short_code: "", ingredients: [], is_active: true });
+      addNotification({ type: "success", message: "Flavor added successfully!" });
     },
     onError: (error: Error) => {
-      addNotification({
-        type: "error",
-        message: error.message || "Failed to add flavor",
-      });
+      addNotification({ type: "error", message: error.message || "Failed to add flavor" });
     },
   });
 
@@ -136,22 +90,11 @@ export default function FlavorsPage() {
       queryClient.invalidateQueries({ queryKey: ["flavors"] });
       setOpen(false);
       setEditFlavor(null);
-      setFormData({
-        name: "",
-        short_code: "",
-        ingredients: [],
-        is_active: true,
-      });
-      addNotification({
-        type: "success",
-        message: "Flavor updated successfully!",
-      });
+      setFormData({ name: "", short_code: "", ingredients: [], is_active: true });
+      addNotification({ type: "success", message: "Flavor updated successfully!" });
     },
     onError: (error: Error) => {
-      addNotification({
-        type: "error",
-        message: error.message || "Failed to update",
-      });
+      addNotification({ type: "error", message: error.message || "Failed to update" });
     },
   });
 
@@ -160,9 +103,7 @@ export default function FlavorsPage() {
       const res = await fetch(`/api/flavors?id=${id}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) {
-        const error = new Error(
-          data.error || "Failed to delete",
-        ) as DeleteError;
+        const error = new Error(data.error || "Failed to delete") as DeleteError;
         error.linkedProducts = data.linkedProducts || [];
         throw error;
       }
@@ -173,18 +114,12 @@ export default function FlavorsPage() {
       setDeleteOpen(false);
       setDeleteId(null);
       setLinkedProducts([]);
-      addNotification({
-        type: "success",
-        message: "Flavor deleted successfully!",
-      });
+      addNotification({ type: "success", message: "Flavor deleted successfully!" });
     },
     onError: (error: Error) => {
       const linked = (error as DeleteError).linkedProducts || [];
       setLinkedProducts(linked);
-      addNotification({
-        type: "error",
-        message: error.message || "Failed to delete",
-      });
+      addNotification({ type: "error", message: error.message || "Failed to delete" });
     },
   });
 
@@ -192,50 +127,17 @@ export default function FlavorsPage() {
     e.preventDefault();
     const ingredientsStr = formData.ingredients.join(", ");
     if (editFlavor) {
-      updateMutation.mutate({
-        id: editFlavor.id,
-        name: formData.name,
-        short_code: formData.short_code,
-        ingredients: ingredientsStr,
-        is_active: formData.is_active,
-      });
+      updateMutation.mutate({ id: editFlavor.id, name: formData.name, short_code: formData.short_code, ingredients: ingredientsStr, is_active: formData.is_active });
     } else {
-      createMutation.mutate({
-        name: formData.name,
-        short_code: formData.short_code,
-        ingredients: formData.ingredients,
-      });
+      createMutation.mutate({ name: formData.name, short_code: formData.short_code, ingredients: formData.ingredients });
     }
   };
 
   const handleEdit = (flavor: Flavor) => {
     setEditFlavor(flavor);
-    const ingredientList = flavor.ingredients
-      ? flavor.ingredients
-          .split(",")
-          .map((i) => i.trim())
-          .filter((i) => i)
-      : [];
-    setFormData({
-      name: flavor.name,
-      short_code: flavor.short_code,
-      ingredients: ingredientList,
-      is_active: flavor.is_active,
-    });
+    const ingredientList = flavor.ingredients ? flavor.ingredients.split(",").map((i) => i.trim()).filter((i) => i) : [];
+    setFormData({ name: flavor.name, short_code: flavor.short_code, ingredients: ingredientList, is_active: flavor.is_active });
     setOpen(true);
-  };
-
-  const handleClose = (openState: boolean) => {
-    if (!openState) {
-      setOpen(false);
-      setEditFlavor(null);
-      setFormData({
-        name: "",
-        short_code: "",
-        ingredients: [],
-        is_active: true,
-      });
-    }
   };
 
   const handleDelete = () => {
@@ -244,28 +146,27 @@ export default function FlavorsPage() {
     }
   };
 
-  if (isLoading)
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div
-          className="animate-spin w-8 h-8 border-2 border-t-transparent rounded-full"
-          style={{ borderColor: "#E8C547", borderTopColor: "transparent" }}
-        ></div>
-      </div>
-    );
+  const handleClose = () => {
+    setOpen(false);
+    setEditFlavor(null);
+    setFormData({ name: "", short_code: "", ingredients: [], is_active: true });
+  };
+
+  if (isLoading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="animate-spin w-8 h-8 border-2 border-t-transparent rounded-full" style={{ borderColor: "#E8C547", borderTopColor: "transparent" }}></div>
+    </div>
+  );
 
   const flavorsList: Flavor[] = flavors || [];
+  const isPending = createMutation.isPending || updateMutation.isPending;
 
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: "#1A1A1A" }}>
-            Flavors
-          </h1>
-          <p className="text-sm mt-1" style={{ color: "#C9A83A" }}>
-            Manage product flavors
-          </p>
+          <h1 className="text-2xl font-bold" style={{ color: "#1A1A1A" }}>Flavors</h1>
+          <p className="text-sm mt-1" style={{ color: "#C9A83A" }}>Manage product flavors</p>
         </div>
         <button
           onClick={() => setOpen(true)}
@@ -277,474 +178,46 @@ export default function FlavorsPage() {
         </button>
       </div>
 
-      <div
-        className="rounded-xl overflow-hidden border"
-        style={{ backgroundColor: "#FFFFFF", borderColor: "#E8C54720" }}
-      >
-        <table className="w-full">
-          <thead>
-            <tr style={{ backgroundColor: "#F5F4EE" }}>
-              <th
-                className="px-4 py-3 text-left text-sm font-semibold"
-                style={{ color: "#1A1A1A" }}
-              >
-                Name
-              </th>
-              <th
-                className="px-4 py-3 text-left text-sm font-semibold"
-                style={{ color: "#1A1A1A" }}
-              >
-                Short Code
-              </th>
-              <th
-                className="px-4 py-3 text-left text-sm font-semibold"
-                style={{ color: "#1A1A1A" }}
-              >
-                Ingredients
-              </th>
-              <th
-                className="px-4 py-3 text-left text-sm font-semibold"
-                style={{ color: "#1A1A1A" }}
-              >
-                Status
-              </th>
-              <th
-                className="px-4 py-3 text-left text-sm font-semibold"
-                style={{ color: "#1A1A1A" }}
-              >
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {flavorsList.map((item, index) => (
-              <tr
-                key={item.id}
-                style={{
-                  backgroundColor: index % 2 === 0 ? "transparent" : "#F5F4EE",
-                }}
-              >
-                <td
-                  className="px-4 py-3 text-sm font-medium"
-                  style={{ color: "#1A1A1A" }}
-                >
-                  {item.name}
-                </td>
-                <td
-                  className="px-4 py-3 text-sm font-mono"
-                  style={{ color: "#E8C547" }}
-                >
-                  {item.short_code}
-                </td>
-                <td className="px-4 py-3 text-sm" style={{ color: "#1A1A1A" }}>
-                  {item.ingredients || "—"}
-                </td>
-                <td className="px-4 py-3">
-                  <button
-                    className="px-2 py-1 rounded-full text-xs font-medium cursor-pointer hover:opacity-80"
-                    style={{
-                      backgroundColor: item.is_active ? "#DCFCE7" : "#FEE2E2",
-                      color: item.is_active ? "#16A34A" : "#DC2626",
-                    }}
-                  >
-                    {item.is_active ? "Active" : "Inactive"}
-                  </button>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setViewFlavor(item)}
-                      className="px-3 py-1 rounded-lg text-sm font-medium hover:bg-yellow-100 cursor-pointer"
-                      style={{ color: "#E8C547", backgroundColor: "#F5F4EE" }}
-                    >
-                      View
-                    </button>
-                    <button
-                      onClick={() => handleEdit(item)}
-                      className="p-1.5 rounded-lg hover:bg-yellow-100 cursor-pointer"
-                      style={{ color: "#E8C547" }}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => {
-                        setDeleteId(item.id);
-                        setDeleteOpen(true);
-                      }}
-                      className="p-1.5 rounded-lg hover:bg-red-100 cursor-pointer"
-                      style={{ color: "#DC2626" }}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {flavorsList.length === 0 && (
-              <tr>
-                <td colSpan={5} className="px-4 py-12 text-center">
-                  <div className="flex flex-col items-center gap-2">
-                    <Sparkles
-                      className="w-12 h-12 opacity-30"
-                      style={{ color: "#C9A83A" }}
-                    />
-                    <p className="font-medium" style={{ color: "#C9A83A" }}>
-                      No flavors found
-                    </p>
-                    <p className="text-sm" style={{ color: "#C9A83A" }}>
-                      Add your first flavor
-                    </p>
-                  </div>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <FlavorsTable
+        flavors={flavorsList}
+        onView={(f) => setViewFlavor(f)}
+        onEdit={handleEdit}
+        onDelete={(f) => { setDeleteId(f.id); setDeleteOpen(true); }}
+      />
 
-       {/* Add/Edit Dialog */}
-{open && (
-  // 1. The Overlay / Backdrop
-  <div 
-    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 overflow-y-auto"
-    onClick={() => setOpen(false)} // Close when clicking outside
-  >
-    {/* // 2. The Modal Container */}
-    <div 
-      className="relative w-full max-w-lg rounded-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
-      style={{ backgroundColor: "#FFFFFF" }}
-      onClick={(e) => e.stopPropagation()} // Prevent clicks inside from triggering the overlay close
-    >
-      {/* Modal Header */}
-      <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: "#E8C54720" }}>
-        <h2 className="text-xl font-bold" style={{ color: "#1A1A1A" }}>
-          {editFlavor ? "Edit Flavor" : "Add Flavor"}
-        </h2>
-        <button 
-          onClick={() => setOpen(false)}
-          className="text-gray-400 hover:text-red-500 transition-colors cursor-pointer p-1"
-          aria-label="Close"
-        >
-          ✕
-        </button>
-      </div>
-      
-      {/* Modal Body / Form */}
-      <div className="p-6 overflow-y-auto">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          
-          {/* Name Input */}
-          <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: "#1A1A1A" }}>
-              Name
-            </label>
-            <Input
-              type="text"
-              value={formData.name}
-              onChange={handleNameChange}
-              placeholder="e.g., Chocolate, Vanilla, Strawberry"
-              required
-              style={{ borderColor: "#E8C54720" }}
-            />
-          </div>
-
-          {/* Short Code Input */}
-          <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: "#1A1A1A" }}>
-              Short Code (Auto-generated)
-            </label>
-            <Input
-              type="text"
-              value={formData.short_code}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  short_code: e.target.value.toUpperCase(),
-                })
-              }
-              placeholder="e.g., CH, VAN"
-              maxLength={3}
-              required
-              style={{ borderColor: "#E8C54720" }}
-            />
-            <p className="text-xs mt-1" style={{ color: "#C9A83A" }}>
-              First 2 letters of first 2 words
-            </p>
-          </div>
-
-          {/* Ingredients Input */}
-          <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: "#1A1A1A" }}>
-              Ingredients
-            </label>
-            <div className="space-y-2">
-              {formData.ingredients.map((ing, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                  <Input
-                    type="text"
-                    value={ing}
-                    onChange={(e) => {
-                      const newIngredients = [...formData.ingredients];
-                      newIngredients[idx] = e.target.value;
-                      setFormData({ ...formData, ingredients: newIngredients });
-                    }}
-                    placeholder="Ingredient name"
-                    className="flex-1"
-                    style={{ borderColor: "#E8C54720" }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const newIngredients = formData.ingredients.filter((_, i) => i !== idx);
-                      setFormData({ ...formData, ingredients: newIngredients });
-                    }}
-                    className="px-3 py-2 rounded-lg hover:bg-red-100 cursor-pointer transition-colors"
-                    style={{ color: "#DC2626" }}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
-              
-              <div className="flex items-center gap-2">
-                <Input
-                  type="text"
-                  value={ingredientInput}
-                  onChange={(e) => setIngredientInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && ingredientInput.trim()) {
-                      e.preventDefault();
-                      setFormData({
-                        ...formData,
-                        ingredients: [...formData.ingredients, ingredientInput.trim()],
-                      });
-                      setIngredientInput("");
-                    }
-                  }}
-                  placeholder="Type ingredient and press Enter or click Add"
-                  className="flex-1"
-                  style={{ borderColor: "#E8C54720" }}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (ingredientInput.trim()) {
-                      setFormData({
-                        ...formData,
-                        ingredients: [...formData.ingredients, ingredientInput.trim()],
-                      });
-                      setIngredientInput("");
-                    }
-                  }}
-                  className="px-4 py-2 rounded-lg text-white font-medium cursor-pointer hover:opacity-90 transition-opacity"
-                  style={{ backgroundColor: "#E8C547" }}
-                >
-                  Add
-                </button>
-              </div>
-            </div>
-            <p className="text-xs mt-1" style={{ color: "#C9A83A" }}>
-              Add ingredients one by one
-            </p>
-          </div>
-
-          {/* Status Toggle */}
-          {editFlavor && (
-            <div className="flex items-center gap-2 pt-2">
-              <label className="text-sm font-medium" style={{ color: "#1A1A1A" }}>
-                Status
-              </label>
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, is_active: !formData.is_active })}
-                className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer"
-                style={{ backgroundColor: formData.is_active ? "#E8C547" : "#DC2626" }}
-              >
-                <span
-                  className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
-                  style={{ transform: formData.is_active ? "translateX(22px)" : "translateX(2px)" }}
-                />
-              </button>
-            </div>
-          )}
-
-          {/* Footer Actions */}
-          <div className="flex gap-2 justify-end pt-4 mt-4 border-t" style={{ borderColor: "#E8C54720" }}>
-            <Button 
-              type="button" 
-              variant="outline"
-              onClick={() => setOpen(false)} 
-              style={{ borderColor: "#E8C54720", color: "#1A1A1A" }}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={createMutation.isPending || updateMutation.isPending}
-              style={{ backgroundColor: "#E8C547", color: "white" }}
-              className="hover:opacity-90"
-            >
-              {editFlavor 
-                ? (updateMutation.isPending ? "Saving..." : "Save Changes") 
-                : (createMutation.isPending ? "Saving..." : "Add Flavor")}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-)}
-      {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={deleteOpen}
-        onOpenChange={(open) => {
-          setDeleteOpen(open);
-          if (!open) setLinkedProducts([]);
+      <FlavorDialog
+        open={open}
+        editFlavor={editFlavor}
+        formData={formData}
+        ingredientInput={ingredientInput}
+        isPending={isPending}
+        onClose={handleClose}
+        onChange={(field, value) => setFormData(prev => ({ ...prev, [field]: value }))}
+        onIngredientInputChange={setIngredientInput}
+        onAddIngredient={() => {
+          if (ingredientInput.trim()) {
+            setFormData(prev => ({ ...prev, ingredients: [...prev.ingredients, ingredientInput.trim()] }));
+            setIngredientInput("");
+          }
         }}
-      >
-        <DialogContent
-          style={{ backgroundColor: "#FFFFFF", maxWidth: "450px" }}
-        >
-          <DialogHeader>
-            <DialogTitle style={{ color: "#1A1A1A" }}>
-              Delete Flavor
-            </DialogTitle>
-          </DialogHeader>
-          {linkedProducts.length > 0 ? (
-            <div className="space-y-3">
-              <p style={{ color: "#DC2626" }}>
-                This flavor is linked to {linkedProducts.length} product(s).
-                Please delete them first:
-              </p>
-              <div
-                className="max-h-40 overflow-y-auto border rounded-lg p-2"
-                style={{ borderColor: "#DC262620" }}
-              >
-                {linkedProducts.map((p) => (
-                  <div
-                    key={p.id}
-                    className="flex items-center justify-between p-2 rounded"
-                    style={{ backgroundColor: "#FEE2E2" }}
-                  >
-                    <span
-                      className="text-sm font-medium"
-                      style={{ color: "#1A1A1A" }}
-                    >
-                      {p.name}
-                    </span>
-                    <span
-                      className="text-xs font-mono"
-                      style={{ color: "#C9A83A" }}
-                    >
-                      {p.sku}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <p style={{ color: "#1A1A1A" }}>
-              Are you sure you want to delete this flavor?
-            </p>
-          )}
-          <div className="flex gap-2 justify-end pt-2">
-            <Button
-              onClick={() => {
-                setDeleteOpen(false);
-                setLinkedProducts([]);
-              }}
-              style={{ borderColor: "#E8C54720", color: "#1A1A1A" }}
-            >
-              Cancel
-            </Button>
-            {linkedProducts.length === 0 && (
-              <Button
-                onClick={handleDelete}
-                disabled={deleteMutation.isPending}
-                style={{ backgroundColor: "#DC2626", color: "white" }}
-              >
-                {deleteMutation.isPending ? "Deleting..." : "Delete"}
-              </Button>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+        onRemoveIngredient={(index) => {
+          setFormData(prev => ({ ...prev, ingredients: prev.ingredients.filter((_, i) => i !== index) }));
+        }}
+        onSubmit={handleSubmit}
+      />
 
-      {/* View Detail Dialog */}
-      <Dialog open={!!viewFlavor} onOpenChange={() => setViewFlavor(null)}>
-        <DialogContent
-          style={{ backgroundColor: "#FFFFFF", maxWidth: "450px" }}
-        >
-          <DialogHeader>
-            <DialogTitle
-              style={{
-                color: "#1A1A1A",
-                fontSize: "1.5rem",
-                fontWeight: "bold",
-              }}
-            >
-              {viewFlavor?.name}
-            </DialogTitle>
-          </DialogHeader>
+      <DeleteFlavorDialog
+        open={deleteOpen}
+        isPending={deleteMutation.isPending}
+        linkedProducts={linkedProducts}
+        onClose={() => { setDeleteOpen(false); setLinkedProducts([]); }}
+        onConfirm={handleDelete}
+      />
 
-          {viewFlavor && (
-            <div className="space-y-4">
-              {/* SKU & Status */}
-              <div className="flex items-center justify-between">
-                <span
-                  className="font-mono text-sm"
-                  style={{ color: "#C9A83A" }}
-                >
-                  {viewFlavor.short_code}
-                </span>
-                <span
-                  className="px-3 py-1 rounded-full text-xs font-medium"
-                  style={{
-                    backgroundColor: viewFlavor.is_active
-                      ? "#DCFCE7"
-                      : "#FEE2E2",
-                    color: viewFlavor.is_active ? "#16A34A" : "#DC2626",
-                  }}
-                >
-                  {viewFlavor.is_active ? "Active" : "Inactive"}
-                </span>
-              </div>
-
-              {/* Ingredients */}
-              <div>
-                <p
-                  className="text-xs uppercase tracking-wide mb-2"
-                  style={{ color: "#C9A83A" }}
-                >
-                  Ingredients
-                </p>
-                {viewFlavor.ingredients ? (
-                  <div className="flex flex-wrap gap-2">
-                    {viewFlavor.ingredients
-                      .split(",")
-                      .map((ing: string, idx: number) => (
-                        <span
-                          key={idx}
-                          className="px-3 py-1.5 rounded-lg text-sm"
-                          style={{
-                            backgroundColor: "#F5F4EE",
-                            color: "#1A1A1A",
-                          }}
-                        >
-                          {ing.trim()}
-                        </span>
-                      ))}
-                  </div>
-                ) : (
-                  <p className="text-sm" style={{ color: "#C9A83A" }}>
-                    No ingredients added
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <ViewFlavorDialog
+        flavor={viewFlavor}
+        onClose={() => setViewFlavor(null)}
+      />
     </div>
   );
 }

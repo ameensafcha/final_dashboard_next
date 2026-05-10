@@ -313,12 +313,22 @@ export function StocksTable({ initialData }: StocksTableProps) {
               <div>
                 <label className="block text-sm font-medium mb-1" style={{ color: "#666" }}>Select Product Variant</label>
                 {isExistingUpdate ? (
-                  <div className="w-full px-4 py-2 rounded-xl border bg-gray-50 text-sm font-medium flex items-center h-10" style={{ borderColor: "#E8E7E1" }}>
+                  <>
+                    <div className="w-full px-4 py-2 rounded-xl border bg-gray-50 text-sm font-medium flex items-center h-10" style={{ borderColor: "#E8E7E1" }}>
+                      {(() => {
+                        const item = data.products.items.find(i => i.variant_id === selectedVariantId);
+                        return item ? `${item.variant.product.name} - ${item.variant.flavor.name} (${item.variant.size.size}${item.variant.size.unit})` : "Selected Variant";
+                      })()}
+                    </div>
                     {(() => {
                       const item = data.products.items.find(i => i.variant_id === selectedVariantId);
-                      return item ? `${item.variant.product.name} - ${item.variant.flavor.name} (${item.variant.size.size}${item.variant.size.unit})` : "Selected Variant";
+                      return item ? (
+                        <div className="mt-2 text-sm font-medium" style={{ color: "#16A34A" }}>
+                          Current Stock: <span className="font-bold">{item.quantity}</span> units
+                        </div>
+                      ) : null;
                     })()}
-                  </div>
+                  </>
                 ) : (
                   <div className="relative">
                     <div 
@@ -430,6 +440,27 @@ export function StocksTable({ initialData }: StocksTableProps) {
                   />
                 </div>
               </div>
+
+              {isExistingUpdate && selectedVariantId && updateQuantity && !isNaN(parseInt(updateQuantity)) && (() => {
+                const item = data.products.items.find(i => i.variant_id === selectedVariantId);
+                if (!item) return null;
+                const currentQty = item.quantity;
+                const qty = parseInt(updateQuantity);
+                let result: number;
+                if (updateType === "set") result = qty;
+                else if (updateType === "add") result = currentQty + qty;
+                else if (updateType === "subtract") result = currentQty - qty;
+                else result = currentQty;
+                return (
+                  <div className="px-4 py-3 rounded-xl flex items-center justify-between" style={{ backgroundColor: "#F5F4EE" }}>
+                    <span className="text-sm font-medium" style={{ color: "#666" }}>
+                      Current: <span className="font-bold" style={{ color: "#1A1A1A" }}>{currentQty}</span>
+                      <span className="mx-2">→</span>
+                      New: <span className="font-bold" style={{ color: result >= 0 ? "#16A34A" : "#DC2626" }}>{result}</span> units
+                    </span>
+                  </div>
+                );
+              })()}
 
               <div className="pt-4 flex gap-3">
                 <button

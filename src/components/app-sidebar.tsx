@@ -33,7 +33,7 @@ const inventoryItems = [
 ];
 
 const productsItems = [
-  { label: "Product Entry", href: "/products/entry", icon: Plus },
+  { label: "Products", href: "/products", icon: Plus },
   { label: "Variants", href: "/products/variants", icon: Package },
   { label: "Flavors", href: "/products/flavors", icon: Sparkles },
   { label: "Sizes", href: "/products/sizes", icon: Ruler },
